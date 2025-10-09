@@ -1,0 +1,5 @@
+El objetivo de este apartado routes es: organizar las peticiones de las funciones mediante la señalización y la separacion de "/"
+para que en un futuro se pueda ver la ruta de la peticion en la URI.
+
+Las implementaciones con texto en verde, es el necesario, para indexar y documentar las peticiones en el swagger.
+

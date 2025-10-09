@@ -1,0 +1,15 @@
+1-primero se importan las librerias mongoose (que conecta node con mongodb) que nos ayuda a crear el modelo y esquema usuario,
+tambien se importa la libreria bycript (npm install bcryptjs) la cual es recomendable a la hora de encriptar variables en la base
+ de datos (importante para la integridad y seguridad de los usuarios).
+
+2-para poder crear el modelo usuario y que typescript lo pueda interpretar es necesario empezar definiendo un esquema. Sin esquema
+solo mongoose puede interpretar las variables, typescript no. En resumen: la interfaz da tipado a a las variables de cada modelo 
+en typescript.
+
+3-Por lo contrario el esquema de de usuario, es lo que da valor y logica al modelo en tiempo de ejecución y es lo que se utiliza 
+para guardarlo en mongodb.
+
+4-utilizamos un metodo para de encriptacion que nos proporciona la libreria importada anteriormente, así podemos guardar de manera
+segura.
+
+5- Por último exportaremos el modelo usuario y guardaremos en una variable que se pueda exportar y utilizar en el resto de proyecto.

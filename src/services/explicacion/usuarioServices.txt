@@ -1,0 +1,33 @@
+1- Primero importamos el modelo Usuario y su interfaz IUsuario desde la carpeta models. 
+   Además importamos Types desde mongoose, que nos permite validar si un id tiene 
+   el formato correcto de ObjectId antes de hacer operaciones en la base de datos.
+
+2- Creamos la clase UserService, que centraliza toda la lógica relacionada con los 
+   usuarios, permitiendo mantener el código organizado y modular.
+
+3- El método createUser recibe un objeto parcial de IUsuario y crea un nuevo usuario. 
+   Se instancia un objeto Usuario y se llama al método save() de mongoose. 
+   Si ocurre algún error, se lanza una excepción con un mensaje descriptivo.
+
+4- El método getAllUsers obtiene todos los usuarios de la base de datos. Antes de 
+   devolverlos, verifica si la colección está vacía mediante countDocuments(). 
+   Si no hay usuarios, lanza un error indicando que no existen registros.
+
+5- El método getUserById busca un usuario por su id. Primero valida que el id sea un 
+   ObjectId válido usando Types.ObjectId.isValid(). Si no lo es, se lanza un error.
+
+6- El método getUserByUsername permite buscar un usuario por su username. Antes de 
+   ejecutar la consulta, valida que se haya proporcionado un username, y si no, 
+   lanza un error.
+
+7- Los métodos updateUserById y updateUserByUsername permiten actualizar los datos 
+   de un usuario existente, ya sea usando su id o su username. Ambos métodos retornan 
+   el usuario actualizado gracias a la opción { new: true } de mongoose.
+
+8- Los métodos deleteUserById y deleteUserByUsername eliminan un usuario de la base 
+   de datos, ya sea por id o por username. Antes de ejecutar la operación, se valida 
+   que el dato proporcionado sea correcto y, de no ser así, se lanza un error.
+
+9- Cada método incluye validaciones para asegurar la integridad de los datos y 
+   lanzar errores descriptivos cuando los datos proporcionados no son correctos, 
+   lo que ayuda a evitar fallos o inconsistencias en la base de datos.

@@ -1,0 +1,29 @@
+1- Primero importamos el modelo Evento y su interfaz IEvento desde la carpeta models.
+También importamos Types desde mongoose, lo que nos permite validar si un id tiene
+el formato correcto de ObjectId antes de realizar consultas o modificaciones en la base de datos.
+
+2- Creamos la clase EventoService, que centraliza toda la lógica relacionada con los eventos.
+Esto ayuda a mantener el proyecto organizado y modular, separando la lógica de negocio del controlador.
+
+3- El método createEvento recibe un objeto parcial de IEvento y crea un nuevo registro.
+Se instancia un objeto de tipo Evento y se llama al método save() de mongoose.
+En caso de error (por ejemplo, falta un campo obligatorio), se lanza una excepción con un mensaje descriptivo.
+
+4- El método getAllEventos obtiene todos los eventos almacenados en la base de datos.
+Antes de devolverlos, puede usar countDocuments() para verificar si existen registros.
+Si no hay eventos, lanza un error indicando que la colección está vacía.
+
+5- El método getEventoById busca un evento por su id.
+Primero valida que el id proporcionado sea un ObjectId válido usando Types.ObjectId.isValid().
+Si no lo es, lanza un error. Si no existe el evento, también devuelve un error indicando que no se encontró.
+
+6- El método getEventoByTitle permite buscar un evento por su title.
+Antes de ejecutar la búsqueda, valida que se haya proporcionado un título válido; si no, lanza un error.
+
+7- Los métodos updateEventoById y updateEventoByTitle permiten actualizar los datos de un evento,
+ya sea usando su id o su title. Ambos métodos retornan el evento actualizado gracias a la opción
+{ new: true } de mongoose, que devuelve el documento modificado en lugar del original.
+
+8- Los métodos deleteEventoById y deleteEventoByTitle eliminan un evento de la base de datos,
+ya sea mediante su id o su title. Antes de ejecutar la operación se valida la información y,
+si no es correcta, se lanza un error.

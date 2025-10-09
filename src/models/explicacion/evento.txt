@@ -1,0 +1,11 @@
+1.Primero importamos las librerías necesarias.
+En este caso usamos mongoose que es la que nos permite conectar Node con MongoDB y crear tanto el esquema como el modelo de evento.
+
+2.Definimos una interfaz para el evento.
+Esto no es obligatorio para Mongoose, pero sí para TypeScript, ya que nos permite tener tipado en el código y detectar errores más fácil. Aquí se definen las variables que tendrá cada evento, por ejemplo: title, description, date y address.
+
+3.Creamos el esquema de evento.
+El esquema es lo que realmente usa Mongoose en tiempo de ejecución. Aquí ponemos la lógica de cada campo (si es requerido, qué tipo de dato es, si tiene valor por defecto, etc.). Por ejemplo, title obligatorio, date de tipo fecha, y address de tipo string.
+
+4.Exportamos el modelo de evento.
+Finalmente creamos y exportamos el modelo Evento a partir del esquema. Este modelo es el que se utilizará en controladores y rutas para crear, consultar o borrar eventos en la base de datos.
