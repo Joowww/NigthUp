@@ -4,9 +4,9 @@ const options: swaggerJSDoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'API RESTful con Node, Express, TypeScript y MongoDB',
+      title: 'API RESTful con Node, Express, TypeScript y MongoDB - CRUD* con Paginación',
       version: '1.0.0',
-      description: 'RUTAS DE LA API PARA EL SWAGGER (Node + Express + TS + MongoDB)',
+      description: 'RUTAS DE LA API PARA EL SWAGGER (Node + Express + TS + MongoDB) - Implementando CRUD* (soft delete) y paginación',
     },
     servers: [
       {

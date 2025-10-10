@@ -2,7 +2,10 @@ import { Router } from 'express';
 import {
   createEvento,
   getAllEventos,
+  getAllEventosWithInactive,
   getEventoById,
+  disableEventoById,
+  reactivateEventoById,
   deleteEventoById
 } from '../controller/eventoController';
 
@@ -16,44 +19,92 @@ const router = Router();
  *       type: object
  *       required:
  *         - name
- *         - date
+ *         - schedule
  *       properties:
  *         id:
  *           type: string
  *           description: ID generado por MongoDB
  *         name:
  *           type: string
- *         description:
+ *         schedule:
  *           type: string
- *         date:
+ *         address:
  *           type: string
- *           format: date-time
- *         location:
- *           type: string
+ *         active:
+ *           type: boolean
+ *           description: Indica si el evento está activo
  *       example:
  *         name: "Conferencia de Tecnología"
- *         description: "Una conferencia sobre las últimas tendencias tecnológicas"
- *         date: "2024-01-15T10:00:00Z"
- *         location: "Auditorio Principal"
+ *         schedule: "2024-01-15T10:00:00Z"
+ *         address: "Auditorio Principal"
+ *         active: true
  */
 
 /**
  * @swagger
  * /api/event:
  *   get:
- *     summary: Obtener todos los eventos
+ *     summary: Obtener todos los eventos activos (paginated)
  *     tags: [Eventos]
+ *     parameters:
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *         description: Número de registros a saltar (paginación)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Número de registros a devolver (paginación)
  *     responses:
  *       200:
- *         description: Lista de eventos obtenida exitosamente
+ *         description: Lista de eventos activos obtenida exitosamente
  *         content:
  *           application/json:
  *             schema:
- *               type: array
- *               items:
- *                 $ref: '#/components/schemas/Evento'
+ *               type: object
+ *               properties:
+ *                 eventos:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Evento'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     skip:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     hasMore:
+ *                       type: boolean
  */
 router.get('/', getAllEventos);
+
+/**
+ * @swagger
+ * /api/event/all/inactive-included:
+ *   get:
+ *     summary: Obtener todos los eventos incluyendo inactivos (paginated) - Solo admin
+ *     tags: [Eventos]
+ *     parameters:
+ *       - in: query
+ *         name: skip
+ *         schema:
+ *           type: integer
+ *         description: Número de registros a saltar (paginación)
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *         description: Número de registros a devolver (paginación)
+ *     responses:
+ *       200:
+ *         description: Lista de todos los eventos obtenida exitosamente
+ */
+router.get('/all/inactive-included', getAllEventosWithInactive);
 
 /**
  * @swagger
@@ -79,7 +130,7 @@ router.post('/', createEvento);
  * @swagger
  * /api/event/{id}:
  *   get:
- *     summary: Obtener un evento por ID
+ *     summary: Obtener un evento activo por ID
  *     tags: [Eventos]
  *     parameters:
  *       - in: path
@@ -100,7 +151,7 @@ router.get('/:id', getEventoById);
  * @swagger
  * /api/event/{id}:
  *   delete:
- *     summary: Eliminar un evento por ID
+ *     summary: Deshabilitar un evento por ID (Soft Delete)
  *     tags: [Eventos]
  *     parameters:
  *       - in: path
@@ -111,10 +162,52 @@ router.get('/:id', getEventoById);
  *         description: ID del evento
  *     responses:
  *       200:
- *         description: Evento eliminado exitosamente
+ *         description: Evento deshabilitado exitosamente
  *       404:
  *         description: Evento no encontrado
  */
-router.delete('/:id', deleteEventoById);
+router.put('/:id', disableEventoById);
+
+/**
+ * @swagger
+ * /api/event/{id}/reactivate:
+ *   put:
+ *     summary: Reactivar un evento por ID
+ *     tags: [Eventos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID del evento
+ *     responses:
+ *       200:
+ *         description: Evento reactivado exitosamente
+ *       404:
+ *         description: Evento no encontrado
+ */
+router.put('/:id/reactivate', reactivateEventoById);
+
+/**
+ * @swagger
+ * /api/event/hard/{id}:
+ *   delete:
+ *     summary: Eliminar permanentemente un evento por ID (Hard Delete) - Solo admin
+ *     tags: [Eventos]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID del evento
+ *     responses:
+ *       200:
+ *         description: Evento eliminado permanentemente
+ *       404:
+ *         description: Evento no encontrado
+ */
+router.delete('/hard/:id', deleteEventoById);
 
 export default router;

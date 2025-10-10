@@ -48,8 +48,39 @@ export async function createEvento(req: Request, res: Response): Promise<Respons
 
 export async function getAllEventos(req: Request, res: Response): Promise<Response> {
   try {
-    const eventos = await eventoService.getAllEventos();
-    return res.status(200).json(eventos);
+    const skip = parseInt(req.query.skip as string) || 0;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const result = await eventoService.getAllEventos(skip, limit);
+    return res.status(200).json({
+      eventos: result.eventos,
+      pagination: {
+        skip,
+        limit,
+        total: result.total,
+        hasMore: (skip + limit) < result.total
+      }
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function getAllEventosWithInactive(req: Request, res: Response): Promise<Response> {
+  try {
+    const skip = parseInt(req.query.skip as string) || 0;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const result = await eventoService.getAllEventosWithInactive(skip, limit);
+    return res.status(200).json({
+      eventos: result.eventos,
+      pagination: {
+        skip,
+        limit,
+        total: result.total,
+        hasMore: (skip + limit) < result.total
+      }
+    });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }
@@ -66,22 +97,43 @@ export async function getEventoById(req: Request, res: Response): Promise<Respon
   }
 }
 
+export async function disableEventoById(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const disabledEvento = await eventoService.disableEventoById(id);
+    if (!disabledEvento) return res.status(404).json({ message: 'EVENTO NO ENCONTRADO' });
+    return res.status(200).json({ 
+      message: 'Evento deshabilitado correctamente',
+      evento: disabledEvento 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function reactivateEventoById(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const reactivatedEvento = await eventoService.reactivateEventoById(id);
+    if (!reactivatedEvento) return res.status(404).json({ message: 'EVENTO NO ENCONTRADO' });
+    return res.status(200).json({ 
+      message: 'Evento reactivado correctamente',
+      evento: reactivatedEvento 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
 export async function deleteEventoById(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
-
-    const toDelete = await Evento.findById(id).lean().exec();
-    if (!toDelete) return res.status(404).json({ message: 'EVENTO NO ENCONTRADO' });
-
-    if (Array.isArray(toDelete.participantes) && toDelete.participantes.length > 0) {
-      await Usuario.updateMany(
-        { _id: { $in: toDelete.participantes } },
-        { $pull: { eventos: toDelete._id } }
-      ).exec();
-    }
-
-    const deleted = await eventoService.deleteEventoById(id);
-    return res.status(200).json(deleted);
+    const deletedEvento = await eventoService.deleteEventoById(id);
+    if (!deletedEvento) return res.status(404).json({ message: 'EVENTO NO ENCONTRADO' });
+    return res.status(200).json({ 
+      message: 'Evento eliminado permanentemente',
+      evento: deletedEvento 
+    });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }

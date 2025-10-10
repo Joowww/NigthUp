@@ -8,6 +8,7 @@ export interface IUsuario {
   password: string;
   birthday: Date;
   eventos: Types.ObjectId[];
+  active: boolean;
   comparePassword(candidatePassword: string): Promise<boolean>;
   isModified(path: string): boolean;
 }
@@ -17,7 +18,8 @@ const usuarioSchema = new Schema<IUsuario>({
   gmail: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   birthday: { type: Date, required: true },
-  eventos: [{ type: Schema.Types.ObjectId, ref: 'Evento', default: [] }]
+  eventos: [{ type: Schema.Types.ObjectId, ref: 'Evento', default: [] }],
+  active: { type: Boolean, default: true }
 }, {
   timestamps: false,
   versionKey: false

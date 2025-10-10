@@ -6,14 +6,19 @@ export interface IEvento {
   schedule: string;
   address?: string;
   participantes: Types.ObjectId[];
+  active: boolean;
 }
 
 const eventoSchema = new Schema<IEvento>({
   name: { type: String, required: true },
   schedule: { type: String, required: true },
   address: { type: String },
-  participantes: [{ type: Schema.Types.ObjectId, ref: 'Usuario', default: [] }]
-}, { timestamps: false, versionKey: false });
+  participantes: [{ type: Schema.Types.ObjectId, ref: 'Usuario', default: [] }],
+  active: { type: Boolean, default: true } 
+}, { 
+  timestamps: false, 
+  versionKey: false 
+});
 
 export const Evento = model<IEvento>('Evento', eventoSchema);
 export default Evento;

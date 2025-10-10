@@ -22,8 +22,39 @@ export async function createUser(req: Request, res: Response): Promise<Response>
 
 export async function getAllUsers(req: Request, res: Response): Promise<Response> {
   try {
-    const users = await userService.getAllUsers();
-    return res.status(200).json(users);
+    const skip = parseInt(req.query.skip as string) || 0;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const result = await userService.getAllUsers(skip, limit);
+    return res.status(200).json({
+      users: result.users,
+      pagination: {
+        skip,
+        limit,
+        total: result.total,
+        hasMore: (skip + limit) < result.total
+      }
+    });
+  } catch (error) {
+    return res.status(404).json({ message: (error as Error).message });
+  }
+}
+
+export async function getAllUsersWithInactive(req: Request, res: Response): Promise<Response> {
+  try {
+    const skip = parseInt(req.query.skip as string) || 0;
+    const limit = parseInt(req.query.limit as string) || 10;
+    
+    const result = await userService.getAllUsersWithInactive(skip, limit);
+    return res.status(200).json({
+      users: result.users,
+      pagination: {
+        skip,
+        limit,
+        total: result.total,
+        hasMore: (skip + limit) < result.total
+      }
+    });
   } catch (error) {
     return res.status(404).json({ message: (error as Error).message });
   }
@@ -75,12 +106,71 @@ export async function updateUserByUsername(req: Request, res: Response): Promise
   }
 }
 
+export async function disableUserById(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const disabledUser = await userService.disableUserById(id);
+    if (!disabledUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    return res.status(200).json({ 
+      message: 'Usuario deshabilitado correctamente',
+      user: disabledUser 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function disableUserByUsername(req: Request, res: Response): Promise<Response> {
+  try {
+    const { username } = req.params;
+    const disabledUser = await userService.disableUserByUsername(username);
+    if (!disabledUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    return res.status(200).json({ 
+      message: 'Usuario deshabilitado correctamente',
+      user: disabledUser 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function reactivateUserById(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const reactivatedUser = await userService.reactivateUserById(id);
+    if (!reactivatedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    return res.status(200).json({ 
+      message: 'Usuario reactivado correctamente',
+      user: reactivatedUser 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function reactivateUserByUsername(req: Request, res: Response): Promise<Response> {
+  try {
+    const { username } = req.params;
+    const reactivatedUser = await userService.reactivateUserByUsername(username);
+    if (!reactivatedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    return res.status(200).json({ 
+      message: 'Usuario reactivado correctamente',
+      user: reactivatedUser 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
 export async function deleteUserById(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
     const deletedUser = await userService.deleteUserById(id);
     if (!deletedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
-    return res.status(200).json(deletedUser);
+    return res.status(200).json({ 
+      message: 'Usuario eliminado permanentemente',
+      user: deletedUser 
+    });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }
@@ -91,7 +181,10 @@ export async function deleteUserByUsername(req: Request, res: Response): Promise
     const { username } = req.params;
     const deletedUser = await userService.deleteUserByUsername(username);
     if (!deletedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
-    return res.status(200).json(deletedUser);
+    return res.status(200).json({ 
+      message: 'Usuario eliminado permanentemente',
+      user: deletedUser 
+    });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }
@@ -109,14 +202,13 @@ export async function addEventToUser(req: Request, res: Response): Promise<Respo
     return res.status(400).json({ message: (error as Error).message });
   }
 }
-  /* Auxiliar function to eliminate the password of the user object */
+
 function removePassword(user: any) {
   const userObj = user.toObject();
   delete userObj.password;
   return userObj;
 }
 
-/* Login */
 export async function loginUser(req: Request, res: Response): Promise<Response> {
   console.log('login usuario');
   const errors = validationResult(req);
@@ -130,7 +222,7 @@ export async function loginUser(req: Request, res: Response): Promise<Response> 
     const user = await userService.loginUser(username, password);
     if (!user) {
       return res.status(401).json({ 
-        message: 'CREDENCIALES INCORRECTAS' 
+        message: 'CREDENCIALES INCORRECTAS O USUARIO DESHABILITADO' 
       });
     }
 
@@ -143,7 +235,6 @@ export async function loginUser(req: Request, res: Response): Promise<Response> 
   }
 }
 
-/* Create admin only development */
 export async function createAdminUser(req: Request, res: Response): Promise<Response> {
   try {
     await userService.createAdminUser();
