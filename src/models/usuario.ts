@@ -9,6 +9,7 @@ export interface IUsuario {
   birthday: Date;
   eventos: Types.ObjectId[];
   active: boolean;
+  admin: boolean;
   comparePassword(candidatePassword: string): Promise<boolean>;
   isModified(path: string): boolean;
 }
@@ -19,7 +20,8 @@ const usuarioSchema = new Schema<IUsuario>({
   password: { type: String, required: true },
   birthday: { type: Date, required: true },
   eventos: [{ type: Schema.Types.ObjectId, ref: 'Evento', default: [] }],
-  active: { type: Boolean, default: true }
+  active: { type: Boolean, default: true },
+  admin: { type: Boolean, default: false }
 }, {
   timestamps: false,
   versionKey: false

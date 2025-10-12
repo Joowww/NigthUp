@@ -125,24 +125,63 @@ export class UserService {
     }
   }
 
-  async createAdminUser(): Promise<void> {
+  async loginAdmin(username: string, password: string): Promise<IUsuario | null> {
     try {
-      const adminExists = await Usuario.findOne({ username: 'admin' });
-      if (!adminExists) {
-        const adminUser = new Usuario({
-          username: 'admin',
-          gmail: 'admin@example.com',
-          password: 'admin',
-          birthday: new Date('2000-01-01'),
-          active: true
-        });
-        await adminUser.save();
-        console.log('Usuario admin creado exitosamente');
-      } else {
-        console.log('Usuario admin ya existe');
+      const user = await Usuario.findOne({ username, active: true, admin: true });
+      if (!user) {
+        return null;
       }
+      
+      const isPasswordValid = await user.comparePassword(password);
+      if (!isPasswordValid) {
+        return null;
+      }
+      
+      return user;
     } catch (error) {
-      console.error('Error creando usuario admin:', error);
+      throw new Error((error as Error).message);
     }
+  }
+
+  async isUserAdmin(userId: string): Promise<boolean> {
+    const user = await Usuario.findById(userId);
+    return user ? user.admin : false;
+  }
+
+  // NUEVO: Crear usuario admin directamente
+  async createAdminUser(userData: Partial<IUsuario>): Promise<IUsuario | null> {
+    try {
+      const adminUser = new Usuario({
+        ...userData,
+        admin: true
+      });
+      return await adminUser.save();
+    } catch (error) {
+      throw new Error((error as Error).message);
+    }
+  }
+
+  // Hacer admin a un usuario existente
+  async makeUserAdmin(userId: string): Promise<IUsuario | null> {
+    return await Usuario.findByIdAndUpdate(
+      userId,
+      { admin: true },
+      { new: true }
+    );
+  }
+
+  // Quitar permisos de admin
+  async removeUserAdmin(userId: string): Promise<IUsuario | null> {
+    return await Usuario.findByIdAndUpdate(
+      userId,
+      { admin: false },
+      { new: true }
+    );
+  }
+
+  // Verificar si existe al menos un admin en el sistema
+  async hasAnyAdmin(): Promise<boolean> {
+    const adminCount = await Usuario.countDocuments({ admin: true, active: true });
+    return adminCount > 0;
   }
 }
