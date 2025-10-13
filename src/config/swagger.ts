@@ -10,7 +10,7 @@ const options: swaggerJSDoc.Options = {
     },
     servers: [
       {
-        url: 'http://localhost:3000/api-doc', 
+        url: 'http://localhost:3000', // ✅ CAMBIADO
       },
     ],
   },
@@ -21,6 +21,5 @@ const options: swaggerJSDoc.Options = {
 };
 
 const swaggerSpec = swaggerJSDoc(options);
-
 
 export default swaggerSpec;
