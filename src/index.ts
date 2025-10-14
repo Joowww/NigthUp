@@ -1,10 +1,10 @@
 import express from 'express';
 import mongoose from "mongoose";
 import cors from 'cors'; 
-import usuarioRoutes from './routes/usuarioRoutes'; 
+import userRoutes from './routes/userRoutes'; 
 import swaggerUi from 'swagger-ui-express';
 import swaggerSpec from './config/swagger';
-import eventoRoutes from './routes/eventoRoutes';
+import eventRoutes from './routes/eventRoutes';
 
 const app = express();
 const PORT = 3000;
@@ -14,18 +14,18 @@ app.use(express.json());
 app.use(express.json() as express.RequestHandler); 
 app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec));
 
-mongoose.connect('mongodb://localhost:27017/BBDD')
+mongoose.connect('mongodb://localhost:27017/DB')
     .then(() => {
-        console.log('CONEXION EXITOSA A LA BASE DE DATOS DE MONGODB'); 
+        console.log('SUCCESSFUL CONNECTION TO MONGODB DATABASE'); 
         
         app.listen(PORT, () => {
-            console.log(`URL DEL SERVIDOR http://localhost:${PORT}`);
-            console.log(`Swagger docs en http://localhost:${PORT}/api-docs`);
+            console.log(`SERVER URL http://localhost:${PORT}`);
+            console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
         });
     })
     .catch(err => {
-        console.error('HAY ALGUN ERROR CON LA CONEXION', err);
+        console.error('THERE WAS A CONNECTION ERROR', err);
     });
 
-app.use('/api/user', usuarioRoutes);
-app.use('/api/event', eventoRoutes);
+app.use('/api/user', userRoutes);
+app.use('/api/event', eventRoutes);

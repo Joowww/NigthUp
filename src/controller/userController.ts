@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
-import { IUsuario } from '../models/usuario';
-import { UserService } from '../services/usuarioServices';
+import { IUser } from '../models/user';
+import { UserService } from '../services/userServices';
 import { validationResult } from 'express-validator';
 
 const userService = new UserService();
@@ -20,16 +20,16 @@ export async function createUser(req: Request, res: Response): Promise<Response>
     return res.status(400).json({ errors: errors.array() });
   }
   try {
-    const { username, gmail, password, birthday } = req.body as IUsuario;
-    const newUser: Partial<IUsuario> = { username, gmail, password, birthday };
+    const { username, email, password, birthday } = req.body as IUser;
+    const newUser: Partial<IUser> = { username, email, password, birthday };
     const user = await userService.createUser(newUser);
     return res.status(201).json(user);
   } catch {
-    return res.status(500).json({ error: 'FALLO AL CREAR EL USUARIO' });
+    return res.status(500).json({ error: 'FAILED TO CREATE USER' });
   }
 }
 
-// NUEVO: Crear usuario admin (requiere que ya exista un admin para autorizar)
+// NEW: Create admin user (requires existing admin for authorization)
 export async function createAdminUser(req: Request, res: Response): Promise<Response> {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -37,30 +37,30 @@ export async function createAdminUser(req: Request, res: Response): Promise<Resp
   }
 
   try {
-    const { adminUsername, adminPassword, username, gmail, password, birthday } = req.body;
+    const { adminUsername, adminPassword, username, email, password, birthday } = req.body;
 
-    // Verificar que quien crea el admin es un admin
+    // Verify that the creator is an admin
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
-    const newAdmin: Partial<IUsuario> = { username, gmail, password, birthday };
+    const newAdmin: Partial<IUser> = { username, email, password, birthday };
     const adminUser = await userService.createAdminUser(newAdmin);
     return res.status(201).json({
-      message: 'Usuario administrador creado exitosamente',
+      message: 'Admin user created successfully',
       user: adminUser
     });
   } catch (error) {
-    return res.status(500).json({ error: 'FALLO AL CREAR EL USUARIO ADMINISTRADOR' });
+    return res.status(500).json({ error: 'FAILED TO CREATE ADMIN USER' });
   }
 }
 
-// NUEVO: Crear primer admin (no requiere autenticación, solo si no hay admins en el sistema)
+// NEW: Create first admin (no authentication required, only if no admins in the system)
 export async function createFirstAdmin(req: Request, res: Response): Promise<Response> {
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
@@ -68,24 +68,24 @@ export async function createFirstAdmin(req: Request, res: Response): Promise<Res
   }
 
   try {
-    // Verificar si ya existe algún admin
+    // Check if any admin already exists
     const hasAdmin = await userService.hasAnyAdmin();
     if (hasAdmin) {
       return res.status(400).json({ 
-        message: 'Ya existen administradores en el sistema. Usa el endpoint regular de creación de admins.' 
+        message: 'Admins already exist in the system. Use the regular admin creation endpoint.' 
       });
     }
 
-    const { username, gmail, password, birthday } = req.body;
-    const newAdmin: Partial<IUsuario> = { username, gmail, password, birthday };
+    const { username, email, password, birthday } = req.body;
+    const newAdmin: Partial<IUser> = { username, email, password, birthday };
     const adminUser = await userService.createAdminUser(newAdmin);
     
     return res.status(201).json({
-      message: 'PRIMER USUARIO ADMINISTRADOR CREADO EXITOSAMENTE',
+      message: 'FIRST ADMIN USER CREATED SUCCESSFULLY',
       user: adminUser
     });
   } catch (error) {
-    return res.status(500).json({ error: 'FALLO AL CREAR EL PRIMER ADMINISTRADOR' });
+    return res.status(500).json({ error: 'FAILED TO CREATE FIRST ADMIN' });
   }
 }
 
@@ -114,12 +114,12 @@ export async function getAllUsersWithInactive(req: Request, res: Response): Prom
     const { adminUsername, adminPassword } = req.body;
     
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const skip = parseInt(req.query.skip as string) || 0;
@@ -144,7 +144,7 @@ export async function getUserById(req: Request, res: Response): Promise<Response
   try {
     const { id } = req.params;
     const user = await userService.getUserById(id);
-    if (!user) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!user) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json(user);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
@@ -155,7 +155,7 @@ export async function getUserByUsername(req: Request, res: Response): Promise<Re
   try {
     const { username } = req.params;
     const user = await userService.getUserByUsername(username);
-    if (!user) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!user) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json(user);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
@@ -165,9 +165,9 @@ export async function getUserByUsername(req: Request, res: Response): Promise<Re
 export async function updateUserById(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
-    const userData: Partial<IUsuario> = req.body;
+    const userData: Partial<IUser> = req.body;
     const updatedUser = await userService.updateUserById(id, userData);
-    if (!updatedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!updatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json(updatedUser);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
@@ -177,9 +177,9 @@ export async function updateUserById(req: Request, res: Response): Promise<Respo
 export async function updateUserByUsername(req: Request, res: Response): Promise<Response> {
   try {
     const { username } = req.params;
-    const userData: Partial<IUsuario> = req.body;
+    const userData: Partial<IUser> = req.body;
     const updatedUser = await userService.updateUserByUsername(username, userData);
-    if (!updatedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!updatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json(updatedUser);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
@@ -192,18 +192,18 @@ export async function disableUserById(req: Request, res: Response): Promise<Resp
     const { adminUsername, adminPassword } = req.body;
 
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const disabledUser = await userService.disableUserById(id);
-    if (!disabledUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!disabledUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
-      message: 'Usuario deshabilitado correctamente',
+      message: 'User disabled successfully',
       user: disabledUser 
     });
   } catch (error) {
@@ -217,18 +217,18 @@ export async function disableUserByUsername(req: Request, res: Response): Promis
     const { adminUsername, adminPassword } = req.body;
 
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const disabledUser = await userService.disableUserByUsername(username);
-    if (!disabledUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!disabledUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
-      message: 'Usuario deshabilitado correctamente',
+      message: 'User disabled successfully',
       user: disabledUser 
     });
   } catch (error) {
@@ -242,18 +242,18 @@ export async function reactivateUserById(req: Request, res: Response): Promise<R
     const { adminUsername, adminPassword } = req.body;
 
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const reactivatedUser = await userService.reactivateUserById(id);
-    if (!reactivatedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!reactivatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
-      message: 'Usuario reactivado correctamente',
+      message: 'User reactivated successfully',
       user: reactivatedUser 
     });
   } catch (error) {
@@ -267,18 +267,18 @@ export async function reactivateUserByUsername(req: Request, res: Response): Pro
     const { adminUsername, adminPassword } = req.body;
 
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const reactivatedUser = await userService.reactivateUserByUsername(username);
-    if (!reactivatedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!reactivatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
-      message: 'Usuario reactivado correctamente',
+      message: 'User reactivated successfully',
       user: reactivatedUser 
     });
   } catch (error) {
@@ -292,18 +292,18 @@ export async function makeUserAdmin(req: Request, res: Response): Promise<Respon
     const { adminUsername, adminPassword } = req.body;
 
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const adminUser = await userService.makeUserAdmin(id);
-    if (!adminUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!adminUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
-      message: 'Usuario convertido en administrador',
+      message: 'User converted to administrator',
       user: adminUser 
     });
   } catch (error) {
@@ -317,18 +317,18 @@ export async function removeUserAdmin(req: Request, res: Response): Promise<Resp
     const { adminUsername, adminPassword } = req.body;
 
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const normalUser = await userService.removeUserAdmin(id);
-    if (!normalUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!normalUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
-      message: 'Permisos de administrador removidos',
+      message: 'Administrator permissions removed',
       user: normalUser 
     });
   } catch (error) {
@@ -342,18 +342,18 @@ export async function deleteUserById(req: Request, res: Response): Promise<Respo
     const { adminUsername, adminPassword } = req.body;
 
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const deletedUser = await userService.deleteUserById(id);
-    if (!deletedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!deletedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
-      message: 'Usuario eliminado permanentemente',
+      message: 'User permanently deleted',
       user: deletedUser 
     });
   } catch (error) {
@@ -367,18 +367,18 @@ export async function deleteUserByUsername(req: Request, res: Response): Promise
     const { adminUsername, adminPassword } = req.body;
 
     if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Se requieren credenciales de administrador' });
+      return res.status(401).json({ message: 'Admin credentials required' });
     }
 
     const isAdmin = await verifyAdmin(adminUsername, adminPassword);
     if (!isAdmin) {
-      return res.status(403).json({ message: 'NO TIENES PERMISOS DE ADMINISTRADOR' });
+      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
     }
 
     const deletedUser = await userService.deleteUserByUsername(username);
-    if (!deletedUser) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!deletedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
-      message: 'Usuario eliminado permanentemente',
+      message: 'User permanently deleted',
       user: deletedUser 
     });
   } catch (error) {
@@ -390,9 +390,9 @@ export async function addEventToUser(req: Request, res: Response): Promise<Respo
   try {
     const { id } = req.params;
     const { eventId } = req.body;
-    if (!eventId) return res.status(400).json({ message: 'Falta eventId' });
+    if (!eventId) return res.status(400).json({ message: 'Missing eventId' });
     const updated = await userService.addEventToUser(id, eventId);
-    if (!updated) return res.status(404).json({ message: 'USUARIO NO ENCONTRADO' });
+    if (!updated) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json(updated);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
@@ -406,7 +406,7 @@ function removePassword(user: any) {
 }
 
 export async function loginUser(req: Request, res: Response): Promise<Response> {
-  console.log('login usuario');
+  console.log('user login');
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -418,21 +418,21 @@ export async function loginUser(req: Request, res: Response): Promise<Response> 
     const user = await userService.loginUser(username, password);
     if (!user) {
       return res.status(401).json({ 
-        message: 'CREDENCIALES INCORRECTAS O USUARIO DESHABILITADO' 
+        message: 'INCORRECT CREDENTIALS OR USER DISABLED' 
       });
     }
 
     return res.status(200).json({
-      message: 'LOGIN EXITOSO',
+      message: 'LOGIN SUCCESSFUL',
       user: removePassword(user)
     });
   } catch (error) {
-    return res.status(500).json({ error: 'ERROR EN EL LOGIN' });
+    return res.status(500).json({ error: 'LOGIN ERROR' });
   }
 }
 
 export async function loginBackoffice(req: Request, res: Response): Promise<Response> {
-  console.log('login backoffice');
+  console.log('backoffice login');
   const errors = validationResult(req);
   if (!errors.isEmpty()) {
     return res.status(400).json({ errors: errors.array() });
@@ -444,16 +444,16 @@ export async function loginBackoffice(req: Request, res: Response): Promise<Resp
     const user = await userService.loginAdmin(username, password);
     if (!user) {
       return res.status(401).json({ 
-        message: 'CREDENCIALES INCORRECTAS O NO TIENES PERMISOS DE ADMINISTRADOR' 
+        message: 'INCORRECT CREDENTIALS OR YOU DO NOT HAVE ADMIN PERMISSIONS' 
       });
     }
 
     return res.status(200).json({
-      message: 'LOGIN BACKOFFICE EXITOSO',
+      message: 'BACKOFFICE LOGIN SUCCESSFUL',
       user: removePassword(user),
       isAdmin: true
     });
   } catch (error) {
-    return res.status(500).json({ error: 'ERROR EN EL LOGIN BACKOFFICE' });
+    return res.status(500).json({ error: 'BACKOFFICE LOGIN ERROR' });
   }
 }
