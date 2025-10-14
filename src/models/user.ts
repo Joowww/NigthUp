@@ -9,7 +9,7 @@ export interface IUser {
   birthday: Date;
   events: Types.ObjectId[];
   active: boolean;
-  admin: boolean;
+  role: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
   isModified(path: string): boolean;
 }
@@ -21,7 +21,7 @@ const userSchema = new Schema<IUser>({
   birthday: { type: Date, required: true },
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   active: { type: Boolean, default: true },
-  admin: { type: Boolean, default: false }
+  role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' }
 }, {
   timestamps: false,
   versionKey: false

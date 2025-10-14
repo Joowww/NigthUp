@@ -49,4 +49,15 @@ export class EventService {
   async deleteEventById(id: string): Promise<IEvent | null> {
     return await Event.findByIdAndDelete(id);
   }
+  async updateEventById(id: string, event: Partial<IEvent>): Promise<IEvent | null> {
+    return await Event.findOneAndUpdate(
+      { _id: id, active: true }, 
+      event, 
+      { new: true }
+    );
+  }
+  async getUsersByEventId(id: string): Promise<IEvent | null> {
+    return await Event.findById(id).populate('users');
+  }
+  
 }

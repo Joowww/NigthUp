@@ -29,12 +29,17 @@ const options: swaggerJSDoc.Options = {
       {
         name: 'Administration',
         description: 'Admin-only management endpoints'
+      },
+      { name: 'Business',
+        description: 'Business management endpoints'
       }
     ],
   },
   apis: [
     './src/routes/userRoutes.ts',
-    './src/routes/eventRoutes.ts'
+    './src/routes/eventRoutes.ts',
+    './src/routes/businessRoutes.ts'
+
   ],
 };
 
