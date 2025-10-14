@@ -145,7 +145,7 @@ export class UserService {
 
   async isUserAdmin(userId: string): Promise<boolean> {
     const user = await User.findById(userId);
-    return user ? user.admin : false;
+    return user ? user.role ==='admin' : false;
   }
 
   // NEW: Create admin user directly
@@ -184,4 +184,17 @@ export class UserService {
     const adminCount = await User.countDocuments({ admin: true, active: true });
     return adminCount > 0;
   }
+
+  async removeEventFromUser(userId: string, eventId: string): Promise<IUser | null> {
+    const updatedUser = await User.findByIdAndUpdate(
+      userId,
+      { $pull: { events: eventId } },
+      { new: true }
+    );  
+    if (updatedUser) {
+      await Event.findByIdAndUpdate(eventId, { $pull: { participants: userId } }, { new: true });
+    }
+    return updatedUser;
+  }
+
 }
