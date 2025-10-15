@@ -2,7 +2,6 @@ import { Router } from 'express';
 import {
   createUser,
   createAdminUser,
-  createFirstAdmin,
   getAllUsers,
   getAllUsersWithInactive,
   getUserById,
@@ -18,8 +17,7 @@ import {
   deleteUserById,
   deleteUserByUsername,
   addEventToUser,
-  loginUser,           
-  loginBackoffice
+  loginUser
 } from '../controller/userController';
 
 const router = Router();
@@ -290,7 +288,7 @@ router.post('/auth/login', loginUser);
  *       401:
  *         description: Incorrect credentials or you do not have admin permissions
  */
-router.post('/auth/login-backoffice', loginBackoffice);
+
 
 /**
  * @swagger
@@ -327,51 +325,7 @@ router.post('/auth/login-backoffice', loginBackoffice);
  *       500:
  *         description: Failed to create first administrator
  */
-router.post('/auth/first-admin', createFirstAdmin);
 
-/**
- * @swagger
- * /api/user/admin/create:
- *   post:
- *     summary: Create new administrator user - Admin only
- *     tags: [Administration]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - adminUsername
- *               - adminPassword
- *               - username
- *               - email
- *               - password
- *               - birthday
- *             properties:
- *               adminUsername:
- *                 type: string
- *               adminPassword:
- *                 type: string
- *               username:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               birthday:
- *                 type: string
- *                 format: date
- *     responses:
- *       201:
- *         description: Administrator user created successfully
- *       401:
- *         description: Admin credentials required
- *       403:
- *         description: You do not have admin permissions
- *       500:
- *         description: Failed to create administrator user
- */
 router.post('/admin/create', createAdminUser);
 
 // =============================================

@@ -138,3 +138,67 @@ export async function deleteEventById(req: Request, res: Response): Promise<Resp
     return res.status(400).json({ message: (error as Error).message });
   }
 }
+export async function updateEvent(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const { name, schedule, address, participants } = req.body;
+    const scheduleStr = normalizeSchedule(schedule);
+    const participantIds = normalizeParticipants(participants);
+    const updatedEvent = await eventService.updateEvent(id, {
+      name,
+      schedule: scheduleStr,
+      address,
+      participants: participantIds as any
+    });
+    if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
+    return res.status(200).json({ 
+      message: 'Event updated successfully',
+      event: updatedEvent 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function getUsersByEventId(req: Request, res: Response): Promise<Response> {
+  try {
+    const { id } = req.params;
+    const eventWithUsers = await eventService.getUsersByEventId(id);
+    if (!eventWithUsers) return res.status(404).json({ message: 'EVENT NOT FOUND' });
+    return res.status(200).json(eventWithUsers);
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+export async function addUserToEvent(req: Request, res: Response): Promise<Response> {
+  try {
+    const { eventId, userId } = req.params;
+    const updatedEvent = await eventService.addUserToEvent(eventId, userId);
+    if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
+    await User.findByIdAndUpdate(
+      userId,
+      { $addToSet: { events: eventId } },
+      { new: true }
+    ).exec();
+    return res.status(200).json(updatedEvent);
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function removeUserFromEvent(req: Request, res: Response): Promise<Response> { 
+  try {
+    const { eventId, userId } = req.params;
+    const updatedEvent = await eventService.removeUserFromEvent(eventId, userId);
+    if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
+    await User.findByIdAndUpdate(
+      userId,
+      { $pull: { events: eventId } },
+      { new: true }
+    ).exec();
+    return res.status(200).json(updatedEvent);
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+

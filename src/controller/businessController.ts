@@ -155,3 +155,22 @@ export async function removeManagerFromBussines(req: Request, res: Response): Pr
         return res.status(400).json({ message: (error as Error).message });
     }
 }
+
+export async function updateBussines(req: Request, res: Response): Promise<Response> {
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
+    try {
+        const { id } = req.params;
+        const { name, address, phone, email } = req.body as IBussines;
+        const updatedBussines: Partial<IBussines> = { name, address, phone, email };
+        const bussines = await bussinesService.updateBussines(id, updatedBussines);
+        if (!bussines) {
+            return res.status(404).json({ message: 'NEGOCIO NO ENCONTRADO' });
+        }
+        return res.status(200).json(bussines);
+    } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+    }
+}

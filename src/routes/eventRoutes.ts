@@ -6,7 +6,11 @@ import {
   getEventById,
   disableEventById,
   reactivateEventById,
-  deleteEventById
+  deleteEventById,
+  updateEvent,
+  getUsersByEventId,
+  removeUserFromEvent,
+  addUserToEvent
 } from '../controller/eventController';
 
 const router = Router();
@@ -229,5 +233,107 @@ router.put('/:id/reactivate', reactivateEventById);
  *         description: Event not found
  */
 router.delete('/hard/:id', deleteEventById);
+
+/**
+ * @swagger
+ * /api/event/{id}:
+ *   patch:
+ *     summary: Update event details by ID
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/Event'
+ *     responses:
+ *       200:
+ *         description: Event updated successfully
+ *       404:
+ *         description: Event not found
+ */
+router.patch('/:id', updateEvent);
+
+/**
+ * @swagger
+ * /api/event/{id}/users:
+ *   get:
+ *     summary: Get all users participating in an event
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: id
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     responses:
+ *       200:
+ *         description: List of users in the event
+ *       404:
+ *         description: Event not found
+ */
+router.get('/:id/users', getUsersByEventId);
+
+/**
+ * @swagger
+ * /api/event/{eventId}/user/{userId}:
+ *   put:
+ *     summary: Add a user to an event
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User added to event
+ *       404:
+ *         description: Event or user not found
+ */
+router.put('/:eventId/user/:userId', addUserToEvent);
+
+/**
+ * @swagger
+ * /api/event/{eventId}/user/{userId}:
+ *   delete:
+ *     summary: Remove a user from an event
+ *     tags: [Events]
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: User removed from event
+ *       404:
+ *         description: Event or user not found
+ */
+router.delete('/:eventId/user/:userId', removeUserFromEvent);
 
 export default router;

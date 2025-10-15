@@ -81,4 +81,8 @@ export class BussinesService {
             { new: true }
         ).populate('eventos');
     }
+
+    async updateBussines(id: string, data: Partial<IBussines>): Promise<IBussines | null> {
+        return await Bussines.findByIdAndUpdate(id, data, { new: true });
+    }
 }

@@ -60,41 +60,13 @@ export async function createAdminUser(req: Request, res: Response): Promise<Resp
   }
 }
 
-// NEW: Create first admin (no authentication required, only if no admins in the system)
-export async function createFirstAdmin(req: Request, res: Response): Promise<Response> {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  try {
-    // Check if any admin already exists
-    const hasAdmin = await userService.hasAnyAdmin();
-    if (hasAdmin) {
-      return res.status(400).json({ 
-        message: 'Admins already exist in the system. Use the regular admin creation endpoint.' 
-      });
-    }
-
-    const { username, email, password, birthday } = req.body;
-    const newAdmin: Partial<IUser> = { username, email, password, birthday };
-    const adminUser = await userService.createAdminUser(newAdmin);
-    
-    return res.status(201).json({
-      message: 'FIRST ADMIN USER CREATED SUCCESSFULLY',
-      user: adminUser
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'FAILED TO CREATE FIRST ADMIN' });
-  }
-}
 
 export async function getAllUsers(req: Request, res: Response): Promise<Response> {
   try {
     const skip = parseInt(req.query.skip as string) || 0;
-    const limit = parseInt(req.query.limit as string) || 10;
+    const limit = parseInt(req.query.limit as string) || 5;
     
-    const result = await userService.getAllUsers(skip, limit);
+    const result = await userService.getAllUsersWithInactive(skip, limit);
     return res.status(200).json({
       users: result.users,
       pagination: {
@@ -428,32 +400,5 @@ export async function loginUser(req: Request, res: Response): Promise<Response> 
     });
   } catch (error) {
     return res.status(500).json({ error: 'LOGIN ERROR' });
-  }
-}
-
-export async function loginBackoffice(req: Request, res: Response): Promise<Response> {
-  console.log('backoffice login');
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-  
-  try {
-    const { username, password } = req.body;
-    
-    const user = await userService.loginAdmin(username, password);
-    if (!user) {
-      return res.status(401).json({ 
-        message: 'INCORRECT CREDENTIALS OR YOU DO NOT HAVE ADMIN PERMISSIONS' 
-      });
-    }
-
-    return res.status(200).json({
-      message: 'BACKOFFICE LOGIN SUCCESSFUL',
-      user: removePassword(user),
-      isAdmin: true
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'BACKOFFICE LOGIN ERROR' });
   }
 }

@@ -59,5 +59,29 @@ export class EventService {
   async getUsersByEventId(id: string): Promise<IEvent | null> {
     return await Event.findById(id).populate('users');
   }
+
+  async addUserToEvent(eventId: string, userId: string): Promise<IEvent | null> {
+    return await Event.findByIdAndUpdate(
+      eventId,
+      { $addToSet: { users: userId } },
+      { new: true }
+    ).populate('users');
+  }
+
+  async removeUserFromEvent(eventId: string, userId: string): Promise<IEvent | null> {
+    return await Event.findByIdAndUpdate(
+      eventId,
+      { $pull: { users: userId } },
+      { new: true }
+    ).populate('users');
+  }
+
+  async getEventsByUserId(userId: string): Promise<IEvent[]> {
+    return await Event.find({ participants: userId, active: true });
+  }
+
+async updateEvent(id: string, data: Partial<IEvent>): Promise<IEvent | null> {
+    return await Event.findByIdAndUpdate(id, data, { new: true });
+  }
   
 }
