@@ -4,23 +4,45 @@ const options: swaggerJSDoc.Options = {
   definition: {
     openapi: '3.0.0',
     info: {
-      title: 'API RESTful con Node, Express, TypeScript y MongoDB - CRUD* con Paginación',
+      title: 'RESTful API with Node, Express, TypeScript and MongoDB',
       version: '1.0.0',
-      description: 'RUTAS DE LA API PARA EL SWAGGER (Node + Express + TS + MongoDB) - Implementando CRUD* (soft delete) y paginación',
+      description: 'API documentation for Users, Events and Admin management',
     },
     servers: [
       {
-        url: 'http://localhost:3000/api-doc', 
+        url: 'http://localhost:3000',
       },
+    ],
+    tags: [
+      {
+        name: 'Users',
+        description: 'User management endpoints'
+      },
+      {
+        name: 'Events',
+        description: 'Event management endpoints'
+      },
+      {
+        name: 'Authentication',
+        description: 'Authentication and authorization endpoints'
+      },
+      {
+        name: 'Administration',
+        description: 'Admin-only management endpoints'
+      },
+      { name: 'Business',
+        description: 'Business management endpoints'
+      }
     ],
   },
   apis: [
-    './src/routes/usuarioRoutes.ts',
-    './src/routes/eventoRoutes.ts'
+    './src/routes/userRoutes.ts',
+    './src/routes/eventRoutes.ts',
+    './src/routes/businessRoutes.ts'
+
   ],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
-
 
 export default swaggerSpec;

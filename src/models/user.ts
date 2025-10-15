@@ -1,31 +1,33 @@
 import mongoose, { Schema, model, Types } from 'mongoose';
 import bcrypt from 'bcryptjs';
 
-export interface IUsuario {
+export interface IUser {
   _id: Types.ObjectId;
   username: string;
-  gmail: string;
+  email: string;
   password: string;
   birthday: Date;
-  eventos: Types.ObjectId[];
+  events: Types.ObjectId[];
   active: boolean;
+  role: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
   isModified(path: string): boolean;
 }
 
-const usuarioSchema = new Schema<IUsuario>({
+const userSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true },
-  gmail: { type: String, required: true, unique: true },
+  email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   birthday: { type: Date, required: true },
-  eventos: [{ type: Schema.Types.ObjectId, ref: 'Evento', default: [] }],
-  active: { type: Boolean, default: true }
+  events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
+  active: { type: Boolean, default: true },
+  role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' }
 }, {
   timestamps: false,
   versionKey: false
 });
 
-usuarioSchema.pre<IUsuario>('save', async function (next) {
+userSchema.pre<IUser>('save', async function (next) {
   if (!this.isModified('password')) return next();
   const salt = await bcrypt.genSalt();
   const hash = await bcrypt.hash(this.password, salt);
@@ -33,9 +35,9 @@ usuarioSchema.pre<IUsuario>('save', async function (next) {
   next();
 });
 
-usuarioSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
+userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, this.password);
 };
 
-export const Usuario = model<IUsuario>('Usuario', usuarioSchema);
-export default Usuario;
+export const User = model<IUser>('User', userSchema);
+export default User;
