@@ -1,24 +1,24 @@
 import { Schema, model, Types } from 'mongoose';
 
-export interface IEvent {
+export interface IEvento {
   _id: Types.ObjectId;
   name: string;
   schedule: string;
   address?: string;
-  participants: Types.ObjectId[];
+  participantes: Types.ObjectId[];
   active: boolean;
 }
 
-const eventSchema = new Schema<IEvent>({
+const eventoSchema = new Schema<IEvento>({
   name: { type: String, required: true },
   schedule: { type: String, required: true },
   address: { type: String },
-  participants: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
+  participantes: [{ type: Schema.Types.ObjectId, ref: 'Usuario', default: [] }],
   active: { type: Boolean, default: true } 
 }, { 
   timestamps: false, 
   versionKey: false 
 });
 
-export const Event = model<IEvent>('Event', eventSchema);
-export default Event;
+export const Evento = model<IEvento>('Evento', eventoSchema);
+export default Evento;
