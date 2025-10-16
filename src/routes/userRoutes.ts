@@ -113,31 +113,6 @@ router.get('/', getAllUsers);
  *   get:
  *     summary: Get all users including inactive ones (paginated) - Admin only
  *     tags: [Administration]
- *     parameters:
- *       - in: query
- *         name: skip
- *         schema:
- *           type: integer
- *         description: Number of records to skip (pagination)
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *         description: Number of records to return (pagination)
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - adminUsername
- *               - adminPassword
- *             properties:
- *               adminUsername:
- *                 type: string
- *               adminPassword:
- *                 type: string
  *     responses:
  *       200:
  *         description: List of all users obtained successfully
@@ -146,7 +121,7 @@ router.get('/', getAllUsers);
  *       403:
  *         description: You do not have admin permissions
  */
-router.get('/all/inactive-included', getAllUsersWithInactive);
+router.post('/all/inactive-included', getAllUsersWithInactive);
 
 /**
  * @swagger
@@ -292,7 +267,7 @@ router.post('/auth/login', loginUser);
 
 /**
  * @swagger
- * /api/user/auth/first-admin:
+ * /api/user/admin/create:
  *   post:
  *     summary: Create first administrator user (only if no admins in the system)
  *     tags: [Administration]

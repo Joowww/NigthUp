@@ -37,18 +37,12 @@ export async function createAdminUser(req: Request, res: Response): Promise<Resp
   }
 
   try {
-    const { adminUsername, adminPassword, username, email, password, birthday } = req.body;
+    const { username, email, password, birthday } = req.body;
 
     // Verify that the creator is an admin
-    if (!adminUsername || !adminPassword) {
+    if (!username || !password) {
       return res.status(401).json({ message: 'Admin credentials required' });
     }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
-
     const newAdmin: Partial<IUser> = { username, email, password, birthday };
     const adminUser = await userService.createAdminUser(newAdmin);
     return res.status(201).json({
@@ -83,16 +77,6 @@ export async function getAllUsers(req: Request, res: Response): Promise<Response
 
 export async function getAllUsersWithInactive(req: Request, res: Response): Promise<Response> {
   try {
-    const { adminUsername, adminPassword } = req.body;
-    
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const skip = parseInt(req.query.skip as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
@@ -161,16 +145,6 @@ export async function updateUserByUsername(req: Request, res: Response): Promise
 export async function disableUserById(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
-    const { adminUsername, adminPassword } = req.body;
-
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const disabledUser = await userService.disableUserById(id);
     if (!disabledUser) return res.status(404).json({ message: 'USER NOT FOUND' });
@@ -186,16 +160,6 @@ export async function disableUserById(req: Request, res: Response): Promise<Resp
 export async function disableUserByUsername(req: Request, res: Response): Promise<Response> {
   try {
     const { username } = req.params;
-    const { adminUsername, adminPassword } = req.body;
-
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const disabledUser = await userService.disableUserByUsername(username);
     if (!disabledUser) return res.status(404).json({ message: 'USER NOT FOUND' });
@@ -211,16 +175,6 @@ export async function disableUserByUsername(req: Request, res: Response): Promis
 export async function reactivateUserById(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
-    const { adminUsername, adminPassword } = req.body;
-
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const reactivatedUser = await userService.reactivateUserById(id);
     if (!reactivatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
@@ -236,16 +190,6 @@ export async function reactivateUserById(req: Request, res: Response): Promise<R
 export async function reactivateUserByUsername(req: Request, res: Response): Promise<Response> {
   try {
     const { username } = req.params;
-    const { adminUsername, adminPassword } = req.body;
-
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const reactivatedUser = await userService.reactivateUserByUsername(username);
     if (!reactivatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
@@ -261,16 +205,6 @@ export async function reactivateUserByUsername(req: Request, res: Response): Pro
 export async function makeUserAdmin(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
-    const { adminUsername, adminPassword } = req.body;
-
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const adminUser = await userService.makeUserAdmin(id);
     if (!adminUser) return res.status(404).json({ message: 'USER NOT FOUND' });
@@ -286,16 +220,6 @@ export async function makeUserAdmin(req: Request, res: Response): Promise<Respon
 export async function removeUserAdmin(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
-    const { adminUsername, adminPassword } = req.body;
-
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const normalUser = await userService.removeUserAdmin(id);
     if (!normalUser) return res.status(404).json({ message: 'USER NOT FOUND' });
@@ -311,16 +235,6 @@ export async function removeUserAdmin(req: Request, res: Response): Promise<Resp
 export async function deleteUserById(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
-    const { adminUsername, adminPassword } = req.body;
-
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const deletedUser = await userService.deleteUserById(id);
     if (!deletedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
@@ -336,16 +250,6 @@ export async function deleteUserById(req: Request, res: Response): Promise<Respo
 export async function deleteUserByUsername(req: Request, res: Response): Promise<Response> {
   try {
     const { username } = req.params;
-    const { adminUsername, adminPassword } = req.body;
-
-    if (!adminUsername || !adminPassword) {
-      return res.status(401).json({ message: 'Admin credentials required' });
-    }
-
-    const isAdmin = await verifyAdmin(adminUsername, adminPassword);
-    if (!isAdmin) {
-      return res.status(403).json({ message: 'YOU DO NOT HAVE ADMIN PERMISSIONS' });
-    }
 
     const deletedUser = await userService.deleteUserByUsername(username);
     if (!deletedUser) return res.status(404).json({ message: 'USER NOT FOUND' });

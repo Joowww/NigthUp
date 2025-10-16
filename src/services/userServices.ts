@@ -153,7 +153,7 @@ export class UserService {
     try {
       const adminUser = new User({
         ...userData,
-        admin: true
+        role: 'admin',
       });
       return await adminUser.save();
     } catch (error) {
