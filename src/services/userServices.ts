@@ -2,9 +2,9 @@ import { User, IUser } from '../models/user';
 import { Event } from '../models/event';
 
 export class UserService {
-  async createUser(user: Partial<IUser>): Promise<IUser | null> {
+  async createUser(userData: Partial<IUser>): Promise<IUser | null> {
     try {
-      const newUser = new User(user);
+      const newUser = new User(userData);
       return await newUser.save();
     } catch (error) {
       throw new Error((error as Error).message);
@@ -14,45 +14,69 @@ export class UserService {
   async getAllUsers(skip: number = 0, limit: number = 10): Promise<{users: IUser[], total: number}> {
     const users = await User.find({ active: true })
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .populate('events', 'name schedule')
+      .select('-password');
     
     const total = await User.countDocuments({ active: true });
-    
     return { users, total };
   }
 
   async getAllUsersWithInactive(skip: number = 0, limit: number = 10): Promise<{users: IUser[], total: number}> {
     const users = await User.find()
       .skip(skip)
-      .limit(limit);
+      .limit(limit)
+      .populate('events', 'name schedule')
+      .select('-password');
     
     const total = await User.countDocuments();
-    
     return { users, total };
   }
 
   async getUserById(id: string): Promise<IUser | null> {
-    return await User.findOne({ _id: id, active: true });
+    return await User.findOne({ _id: id, active: true })
+      .populate('events', 'name schedule')
+      .select('-password');
   }
 
   async getUserByUsername(username: string): Promise<IUser | null> {
-    return await User.findOne({ username, active: true });
+    return await User.findOne({ username, active: true })
+      .populate('events', 'name schedule')
+      .select('-password');
   }
 
-  async updateUserById(id: string, user: Partial<IUser>): Promise<IUser | null> {
+  async updateUserById(id: string, userData: Partial<IUser>): Promise<IUser | null> {
+    // No permitir actualizar el rol a admin desde aquí
+    if (userData.role === 'admin') {
+      throw new Error('Cannot update role to admin from this service');
+    }
+
+    if (userData.password) {
+      throw new Error('Password cannot be updated from this service');
+    }
+
     return await User.findOneAndUpdate(
       { _id: id, active: true }, 
-      user, 
+      userData, 
       { new: true }
-    );
+    ).populate('events', 'name schedule').select('-password');
   }
 
-  async updateUserByUsername(username: string, user: Partial<IUser>): Promise<IUser | null> {
+  async updateUserByUsername(username: string, userData: Partial<IUser>): Promise<IUser | null> {
+    // No permitir actualizar el rol a admin desde aquí
+    if (userData.role === 'admin') {
+      throw new Error('Cannot update role to admin from this service');
+    }
+
+    if (userData.password) {
+      throw new Error('Password cannot be updated from this service');
+    }
+
     return await User.findOneAndUpdate(
       { username, active: true }, 
-      user, 
+      userData, 
       { new: true }
-    );
+    ).populate('events', 'name schedule').select('-password');
   }
 
   async disableUserById(id: string): Promise<IUser | null> {
@@ -60,7 +84,7 @@ export class UserService {
       id, 
       { active: false }, 
       { new: true }
-    );
+    ).populate('events', 'name schedule').select('-password');
   }
 
   async disableUserByUsername(username: string): Promise<IUser | null> {
@@ -68,7 +92,7 @@ export class UserService {
       { username }, 
       { active: false }, 
       { new: true }
-    );
+    ).populate('events', 'name schedule').select('-password');
   }
 
   async reactivateUserById(id: string): Promise<IUser | null> {
@@ -76,7 +100,7 @@ export class UserService {
       id, 
       { active: true }, 
       { new: true }
-    );
+    ).populate('events', 'name schedule').select('-password');
   }
 
   async reactivateUserByUsername(username: string): Promise<IUser | null> {
@@ -84,7 +108,7 @@ export class UserService {
       { username }, 
       { active: true }, 
       { new: true }
-    );
+    ).populate('events', 'name schedule').select('-password');
   }
 
   async deleteUserById(id: string): Promise<IUser | null> {
@@ -100,16 +124,23 @@ export class UserService {
       userId,
       { $addToSet: { events: eventId } },
       { new: true }
-    );
+    ).populate('events', 'name schedule').select('-password');
+    
     if (updatedUser) {
-      await Event.findByIdAndUpdate(eventId, { $addToSet: { participants: userId } }, { new: true });
+      await Event.findByIdAndUpdate(
+        eventId, 
+        { $addToSet: { participants: userId } }, 
+        { new: true }
+      );
     }
     return updatedUser;
   }
 
   async loginUser(username: string, password: string): Promise<IUser | null> {
     try {
-      const user = await User.findOne({ username, active: true });
+      const user = await User.findOne({ username, active: true })
+        .populate('events', 'name schedule');
+      
       if (!user) {
         return null;
       }
@@ -125,64 +156,20 @@ export class UserService {
     }
   }
 
-  async loginAdmin(username: string, password: string): Promise<IUser | null> {
-    try {
-      const user = await User.findOne({ username, active: true, admin: true });
-      if (!user) {
-        return null;
-      }
-      
-      const isPasswordValid = await user.comparePassword(password);
-      if (!isPasswordValid) {
-        return null;
-      }
-      
-      return user;
-    } catch (error) {
-      throw new Error((error as Error).message);
-    }
-  }
-
-  async isUserAdmin(userId: string): Promise<boolean> {
-    const user = await User.findById(userId);
-    return user ? user.role ==='admin' : false;
-  }
-
-  // NEW: Create admin user directly
-  async createAdminUser(userData: Partial<IUser>): Promise<IUser | null> {
-    try {
-      const adminUser = new User({
-        ...userData,
-        role: 'admin',
-      });
-      return await adminUser.save();
-    } catch (error) {
-      throw new Error((error as Error).message);
-    }
-  }
-
-  // Make existing user an admin
   async makeUserAdmin(userId: string): Promise<IUser | null> {
     return await User.findByIdAndUpdate(
       userId,
-      { admin: true },
+      { role: 'admin' },
       { new: true }
-    );
+    ).populate('events', 'name schedule').select('-password');
   }
 
-  // Remove admin permissions
   async removeUserAdmin(userId: string): Promise<IUser | null> {
     return await User.findByIdAndUpdate(
       userId,
-      { admin: false },
+      { role: 'user' },
       { new: true }
-    );
-  }
-
-  // Check if there is any admin in the system
-  async hasAnyAdmin(): Promise<boolean> {
-    const adminCount = await User.countDocuments({ admin: true, active: true });
-    return adminCount > 0;
+    ).populate('events', 'name schedule').select('-password');
   }
 
   async removeEventFromUser(userId: string, eventId: string): Promise<IUser | null> {
@@ -190,11 +177,20 @@ export class UserService {
       userId,
       { $pull: { events: eventId } },
       { new: true }
-    );  
+    ).populate('events', 'name schedule').select('-password');
+    
     if (updatedUser) {
-      await Event.findByIdAndUpdate(eventId, { $pull: { participants: userId } }, { new: true });
+      await Event.findByIdAndUpdate(
+        eventId, 
+        { $pull: { participants: userId } }, 
+        { new: true }
+      );
     }
     return updatedUser;
   }
 
+  async hasAnyAdmin(): Promise<boolean> {
+    const adminCount = await User.countDocuments({ role: 'admin', active: true });
+    return adminCount > 0;
+  }
 }

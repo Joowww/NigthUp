@@ -1,88 +1,96 @@
-import {Bussines,IBussines} from "../models/business";
+import { Business, IBusiness } from "../models/business";
 
-export class BussinesService {  
+export class BusinessService {
+  async createBusiness(data: Partial<IBusiness>): Promise<IBusiness> {
+    const business = new Business(data);
+    return await business.save();
+  }
 
-    async createBussines(data: Partial<IBussines>): Promise<IBussines> {
-        const b = new Bussines(data);
-        return await b.save();
-    }
-
-    async getAllBussines(skip: number = 0, limit: number = 10): Promise<{bussines: IBussines[], total: number}> {
-        const bussines = await Bussines.find({ active: true })
-            .skip(skip)
-            .limit(limit);
-        const total = await Bussines.countDocuments({ active: true });
-        return { bussines, total };
-    }   
+  async getAllBusinesses(skip: number = 0, limit: number = 10): Promise<{businesses: IBusiness[], total: number}> {
+    const businesses = await Business.find({ active: true })
+      .skip(skip)
+      .limit(limit)
+      .populate('events')
+      .populate('managers', 'username email');
     
-    async getAllBussinesWithInactive(skip: number = 0, limit: number = 10): Promise<{bussines: IBussines[], total: number}> {
-        const bussines = await Bussines.find()
-            .skip(skip)
-            .limit(limit);
-        const total = await Bussines.countDocuments();
-        return { bussines, total };
-    }   
+    const total = await Business.countDocuments({ active: true });
+    return { businesses, total };
+  }
 
-    async getBussinesById(id: string): Promise<IBussines | null> {
-        console.log("ID en service:", id);
-        return await Bussines.findOne({ _id: id, active: true }).populate('eventos');
-    }
+  async getAllBusinessesWithInactive(skip: number = 0, limit: number = 10): Promise<{businesses: IBusiness[], total: number}> {
+    const businesses = await Business.find()
+      .skip(skip)
+      .limit(limit)
+      .populate('events')
+      .populate('managers', 'username email');
+    
+    const total = await Business.countDocuments();
+    return { businesses, total };
+  }
 
-    async disableBussinesById(id: string): Promise<IBussines | null> {
-        return await Bussines.findByIdAndUpdate(
-            id, 
-            { active: false }, 
-            { new: true }
-        );
-    }   
-    async reactivateBussinesById(id: string): Promise<IBussines | null> {
-        return await Bussines.findByIdAndUpdate(
-            id, 
-            { active: true },
-            { new: true }
-        );
-    }
-    async deleteBussinesById(id: string): Promise<IBussines | null> {
-        return await Bussines.findByIdAndDelete(id);
-    }
+  async getBusinessById(id: string): Promise<IBusiness | null> {
+    return await Business.findOne({ _id: id, active: true })
+      .populate('events')
+      .populate('managers', 'username email');
+  }
 
-    async addManagerToBussines(bussinesId: string, managerId: string): Promise<IBussines | null> {
-        return await Bussines.findByIdAndUpdate(
-            bussinesId,
-            { $addToSet: { managers: managerId } },
-            { new: true }
-        ).populate('managers');
-    }   
+  async disableBusinessById(id: string): Promise<IBusiness | null> {
+    return await Business.findByIdAndUpdate(
+      id,
+      { active: false },
+      { new: true }
+    ).populate('events').populate('managers', 'username email');
+  }
 
-    async removeManagerFromBussines(bussinesId: string, managerId: string): Promise<IBussines | null> {
-        return await Bussines.findByIdAndUpdate(
-            bussinesId,
-            { $pull: { managers: managerId } },
-            { new: true }
-        ).populate('managers');
-    }   
+  async reactivateBusinessById(id: string): Promise<IBusiness | null> {
+    return await Business.findByIdAndUpdate(
+      id,
+      { active: true },
+      { new: true }
+    ).populate('events').populate('managers', 'username email');
+  }
 
-    //
-    /*
-    /*FUNCIONES PARA EL PROJECT MANAGER EL EVENTO
-    /*
-    */
-    async addEventoToBussines(bussinesId: string, eventoId: string): Promise<IBussines | null> {
-        return await Bussines.findByIdAndUpdate(
-            bussinesId,
-            { $addToSet: { eventos: eventoId } },
-            { new: true }
-        ).populate('eventos');
-    }
-    async removeEventoFromBussines(bussinesId: string, eventoId: string): Promise<IBussines | null> {
-        return await Bussines.findByIdAndUpdate(
-            bussinesId,
-            { $pull: { eventos: eventoId } },
-            { new: true }
-        ).populate('eventos');
-    }
+  async deleteBusinessById(id: string): Promise<IBusiness | null> {
+    return await Business.findByIdAndDelete(id);
+  }
 
-    async updateBussines(id: string, data: Partial<IBussines>): Promise<IBussines | null> {
-        return await Bussines.findByIdAndUpdate(id, data, { new: true });
-    }
+  async addManagerToBusiness(businessId: string, managerId: string): Promise<IBusiness | null> {
+    return await Business.findByIdAndUpdate(
+      businessId,
+      { $addToSet: { managers: managerId } },
+      { new: true }
+    ).populate('managers', 'username email').populate('events');
+  }
+
+  async removeManagerFromBusiness(businessId: string, managerId: string): Promise<IBusiness | null> {
+    return await Business.findByIdAndUpdate(
+      businessId,
+      { $pull: { managers: managerId } },
+      { new: true }
+    ).populate('managers', 'username email').populate('events');
+  }
+
+  async addEventToBusiness(businessId: string, eventId: string): Promise<IBusiness | null> {
+    return await Business.findByIdAndUpdate(
+      businessId,
+      { $addToSet: { events: eventId } },
+      { new: true }
+    ).populate('events').populate('managers', 'username email');
+  }
+
+  async removeEventFromBusiness(businessId: string, eventId: string): Promise<IBusiness | null> {
+    return await Business.findByIdAndUpdate(
+      businessId,
+      { $pull: { events: eventId } },
+      { new: true }
+    ).populate('events').populate('managers', 'username email');
+  }
+
+  async updateBusiness(id: string, data: Partial<IBusiness>): Promise<IBusiness | null> {
+    return await Business.findByIdAndUpdate(
+      id, 
+      data, 
+      { new: true }
+    ).populate('events').populate('managers', 'username email');
+  }
 }

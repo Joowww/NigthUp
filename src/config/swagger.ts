@@ -6,7 +6,7 @@ const options: swaggerJSDoc.Options = {
     info: {
       title: 'RESTful API with Node, Express, TypeScript and MongoDB',
       version: '1.0.0',
-      description: 'API documentation for Users, Events and Admin management',
+      description: 'API documentation for Users, Events and Business management',
     },
     servers: [
       {
@@ -23,15 +23,16 @@ const options: swaggerJSDoc.Options = {
         description: 'Event management endpoints'
       },
       {
+        name: 'Business',
+        description: 'Business management endpoints'
+      },
+      {
         name: 'Authentication',
         description: 'Authentication and authorization endpoints'
       },
       {
         name: 'Administration',
         description: 'Admin-only management endpoints'
-      },
-      { name: 'Business',
-        description: 'Business management endpoints'
       }
     ],
   },
@@ -39,7 +40,6 @@ const options: swaggerJSDoc.Options = {
     './src/routes/userRoutes.ts',
     './src/routes/eventRoutes.ts',
     './src/routes/businessRoutes.ts'
-
   ],
 };
 

@@ -1,27 +1,28 @@
 import { Schema, model, Types } from 'mongoose';
-import { IEvent } from './event';
 
-export interface IBussines {
-  _id: Types.ObjectId;//CIF
+export interface IBusiness {
+  _id: Types.ObjectId;
   name: string;
   address?: string;
   phone?: string;
   email?: string;
-  eventos?: IEvent[];
-  managers?: Types.ObjectId[];//id of that users who are managers of the business
+  events: Types.ObjectId[];
+  managers: Types.ObjectId[];
   active: boolean;
 }
-const bussinesSchema = new Schema<IBussines>({
+
+const businessSchema = new Schema<IBusiness>({
   name: { type: String, required: true },
   address: { type: String },
-    phone: { type: String },
-    email: { type: String },
-    eventos: [{ type: Schema.Types.ObjectId, ref: 'Evento', default: undefined }],
+  phone: { type: String },
+  email: { type: String },
+  events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
+  managers: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
   active: { type: Boolean, default: true } 
 }, { 
   timestamps: false, 
   versionKey: false 
 });
 
-export const Bussines = model<IBussines>('bussines', bussinesSchema);
-export default Bussines;
+export const Business = model<IBusiness>('Business', businessSchema);
+export default Business;

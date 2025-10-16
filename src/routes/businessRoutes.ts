@@ -1,18 +1,19 @@
 import { Router } from 'express';
-import { 
-    createBussines, 
-    getAllBussines, 
-    getAllBussinesWithInactive, 
-    getBussinesById, 
-    disableBussinesById, 
-    reactivateBussinesById,
-    deleteBussinesById, 
-    addEventoToBussines,
-    removeEventoFromBussines,
-    addManagerToBussines,
-    removeManagerFromBussines,
-    updateBussines
+import {
+  createBusiness,
+  getAllBusinesses,
+  getAllBusinessesWithInactive,
+  getBusinessById,
+  disableBusinessById,
+  reactivateBusinessById,
+  deleteBusinessById,
+  addEventToBusiness,
+  removeEventFromBusiness,
+  addManagerToBusiness,
+  removeManagerFromBusiness,
+  updateBusiness
 } from '../controller/businessController';
+
 const router = Router();
 
 /**
@@ -20,6 +21,39 @@ const router = Router();
  * components:
  *   schemas:
  *     Business:
+ *       type: object
+ *       required:
+ *         - name
+ *       properties:
+ *         _id:
+ *           type: string
+ *           description: ID único del negocio
+ *         name:
+ *           type: string
+ *           example: "Bar Central"
+ *         address:
+ *           type: string
+ *           example: "Calle Mayor 1"
+ *         phone:
+ *           type: string
+ *           example: "666777888"
+ *         email:
+ *           type: string
+ *           example: "bar@central.com"
+ *         events:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Array de IDs de eventos
+ *         managers:
+ *           type: array
+ *           items:
+ *             type: string
+ *           description: Array de IDs de managers
+ *         active:
+ *           type: boolean
+ *           example: true
+ *     BusinessCreate:
  *       type: object
  *       required:
  *         - name
@@ -36,99 +70,81 @@ const router = Router();
  *         email:
  *           type: string
  *           example: "bar@central.com"
- *         eventos:
- *           type: array
- *           items:
- *             $ref: '#/components/schemas/Evento'
- *         active:
- *           type: boolean
- *           example: true
- *     Evento:
- *       type: object
- *       required:
- *         - nombre
- *       properties:
- *         nombre:
- *           type: string
- *           example: "Fiesta de inauguración"
- *         fecha:
- *           type: string
- *           format: date-time
- *           example: "2025-10-12T22:00:00Z"
- *         descripcion:
- *           type: string
- *           example: "Ven a celebrar la apertura con nosotros"
  */
 
 /**
  * @swagger
  * /api/business:
  *   post:
- *     summary: Create a new business
+ *     summary: Crear un nuevo negocio
  *     tags: [Business]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Business'
+ *             $ref: '#/components/schemas/BusinessCreate'
  *     responses:
  *       201:
- *         description: Business successfully created
+ *         description: Negocio creado exitosamente
+ *       400:
+ *         description: Error en los datos de entrada
+ *       500:
+ *         description: Error del servidor
  */
-router.post('/', createBussines);
+router.post('/', createBusiness);
 
 /**
  * @swagger
- * /api/business/all:
+ * /api/business:
  *   get:
- *     summary: Get all active businesses
+ *     summary: Obtener todos los negocios activos
  *     tags: [Business]
  *     parameters:
  *       - in: query
  *         name: skip
  *         schema:
  *           type: integer
- *         description: Number of items to skip
+ *         description: Número de elementos a saltar
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *         description: Maximum number of items to return
+ *         description: Número máximo de elementos a retornar
  *     responses:
  *       200:
- *         description: List of active businesses
+ *         description: Lista de negocios activos
  */
-router.get('/all', getAllBussines);
+router.get('/', getAllBusinesses);
 
 /**
  * @swagger
- * /api/business/allInactive:
+ * /api/business/all/inactive-included:
  *   get:
- *     summary: Get all businesses (including inactive)
+ *     summary: Obtener todos los negocios (incluyendo inactivos)
  *     tags: [Business]
  *     parameters:
  *       - in: query
  *         name: skip
  *         schema:
  *           type: integer
- *         description: Number of items to skip
+ *         description: Número de elementos a saltar
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
- *         description: Maximum number of items to return
+ *         description: Número máximo de elementos a retornar
  *     responses:
  *       200:
- *         description: List of all businesses
+ *         description: Lista de todos los negocios
  */
-router.get('/allInactive', getAllBussinesWithInactive);
+router.get('/all/inactive-included', getAllBusinessesWithInactive);
 
 /**
  * @swagger
- * /api/business/get/{id}:
+ * /api/business/{id}:
  *   get:
- *     summary: Get business by ID
+ *     summary: Obtener negocio por ID
  *     tags: [Business]
  *     parameters:
  *       - in: path
@@ -138,17 +154,17 @@ router.get('/allInactive', getAllBussinesWithInactive);
  *           type: string
  *     responses:
  *       200:
- *         description: Business found
+ *         description: Negocio encontrado
  *       404:
- *         description: Business not found
+ *         description: Negocio no encontrado
  */
-router.get('/get/:id', getBussinesById);
+router.get('/:id', getBusinessById);
 
 /**
  * @swagger
- * /api/business/disable/{id}:
+ * /api/business/{id}/disable:
  *   patch:
- *     summary: Disable business by ID
+ *     summary: Desactivar negocio por ID
  *     tags: [Business]
  *     parameters:
  *       - in: path
@@ -158,17 +174,17 @@ router.get('/get/:id', getBussinesById);
  *           type: string
  *     responses:
  *       200:
- *         description: Business disabled
+ *         description: Negocio desactivado
  *       404:
- *         description: Business not found
+ *         description: Negocio no encontrado
  */
-router.patch('/disable/:id', disableBussinesById);
+router.patch('/:id/disable', disableBusinessById);
 
 /**
  * @swagger
- * /api/business/reactivate/{id}:
+ * /api/business/{id}/reactivate:
  *   patch:
- *     summary: Reactivate business by ID
+ *     summary: Reactivar negocio por ID
  *     tags: [Business]
  *     parameters:
  *       - in: path
@@ -178,17 +194,17 @@ router.patch('/disable/:id', disableBussinesById);
  *           type: string
  *     responses:
  *       200:
- *         description: Business reactivated
+ *         description: Negocio reactivado
  *       404:
- *         description: Business not found
+ *         description: Negocio no encontrado
  */
-router.patch('/reactivate/:id', reactivateBussinesById);
+router.patch('/:id/reactivate', reactivateBusinessById);
 
 /**
  * @swagger
- * /api/business/delete/{id}:
+ * /api/business/hard/{id}:
  *   delete:
- *     summary: Delete business by ID
+ *     summary: Eliminar negocio por ID
  *     tags: [Business]
  *     parameters:
  *       - in: path
@@ -198,17 +214,117 @@ router.patch('/reactivate/:id', reactivateBussinesById);
  *           type: string
  *     responses:
  *       200:
- *         description: Business deleted
+ *         description: Negocio eliminado
  *       404:
- *         description: Business not found
+ *         description: Negocio no encontrado
  */
-router.delete('/delete/:id', deleteBussinesById);
+router.delete('/hard/:id', deleteBusinessById);
 
 /**
  * @swagger
- * /api/business/{id}/evento/add:
- *   post:
- *     summary: Add event to a business
+ * /api/business/{businessId}/event/{eventId}:
+ *   put:
+ *     summary: Agregar evento a un negocio
+ *     tags: [Business]
+ *     parameters:
+ *       - in: path
+ *         name: businessId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Evento agregado al negocio
+ *       404:
+ *         description: Negocio no encontrado
+ */
+router.put('/:businessId/event/:eventId', addEventToBusiness);
+
+/**
+ * @swagger
+ * /api/business/{businessId}/event/{eventId}:
+ *   delete:
+ *     summary: Remover evento de un negocio
+ *     tags: [Business]
+ *     parameters:
+ *       - in: path
+ *         name: businessId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Evento removido del negocio
+ *       404:
+ *         description: Negocio no encontrado
+ */
+router.delete('/:businessId/event/:eventId', removeEventFromBusiness);
+
+/**
+ * @swagger
+ * /api/business/{businessId}/manager/{managerId}:
+ *   put:
+ *     summary: Agregar manager a un negocio
+ *     tags: [Business]
+ *     parameters:
+ *       - in: path
+ *         name: businessId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: managerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Manager agregado al negocio
+ *       404:
+ *         description: Negocio no encontrado
+ */
+router.put('/:businessId/manager/:managerId', addManagerToBusiness);
+
+/**
+ * @swagger
+ * /api/business/{businessId}/manager/{managerId}:
+ *   delete:
+ *     summary: Remover manager de un negocio
+ *     tags: [Business]
+ *     parameters:
+ *       - in: path
+ *         name: businessId
+ *         required: true
+ *         schema:
+ *           type: string
+ *       - in: path
+ *         name: managerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Manager removido del negocio
+ *       404:
+ *         description: Negocio no encontrado
+ */
+router.delete('/:businessId/manager/:managerId', removeManagerFromBusiness);
+
+/**
+ * @swagger
+ * /api/business/{id}:
+ *   put:
+ *     summary: Actualizar negocio por ID
  *     tags: [Business]
  *     parameters:
  *       - in: path
@@ -221,101 +337,13 @@ router.delete('/delete/:id', deleteBussinesById);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/Evento'
- *     responses:
- *       201:
- *         description: Event added to business
- *       404:
- *         description: Business not found
- */
-router.put('/:id/evento/add', addEventoToBussines);
-
-/**
- * @swagger
- * /api/business/{id}/evento/remove:
- *   put:
- *     summary: Remove event from a business
- *     tags: [Business]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Business ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               eventoId:
- *                 type: string
- *                 description: Event ID to remove
+ *             $ref: '#/components/schemas/BusinessCreate'
  *     responses:
  *       200:
- *         description: Event removed from business
+ *         description: Negocio actualizado
  *       404:
- *         description: Business or event not found
+ *         description: Negocio no encontrado
  */
-router.put('/:id/evento/remove', removeEventoFromBussines);
-
-/**
- * @swagger
- * /api/business/{bussinessId}/manager/add/{managerId}:
- *   put:
- *     summary: Add manager to a business
- *     tags: [Business]
- *     parameters:
- *       - in: path
- *         name: bussinessId
- *         required: true
- *         schema:
- *           type: string
- *         description: Business ID
- *       - in: path
- *         name: managerId
- *         required: true
- *         schema:
- *           type: string
- *         description: Manager ID to add
- *     responses:
- *       200:
- *         description: Manager added to business
- *       404:
- *         description: Business or manager not found
- */
-router.put('/:bussinessId/manager/add/:managerId', addManagerToBussines);
-
-/**
- * @swagger
- * /api/business/{bussinessId}/manager/remove/{managerId}:
- *   put:
- *     summary: Remove manager from a business
- *     tags: [Business]
- *     parameters:
- *       - in: path
- *         name: bussinessId
- *         required: true
- *         schema:
- *           type: string
- *         description: Business ID
- *       - in: path
- *         name: managerId
- *         required: true
- *         schema:
- *           type: string
- *         description: Manager ID to remove
- *     responses:
- *       200:
- *         description: Manager removed from business
- *       404:
- *         description: Business or manager not found
- */
-router.put('/:bussinessId/manager/remove/:managerId', removeManagerFromBussines);
-
-router.put('/update/:id', updateBussines);
+router.put('/:id', updateBusiness);
 
 export default router;
-

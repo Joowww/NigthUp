@@ -138,6 +138,7 @@ export async function deleteEventById(req: Request, res: Response): Promise<Resp
     return res.status(400).json({ message: (error as Error).message });
   }
 }
+
 export async function updateEvent(req: Request, res: Response): Promise<Response> {
   try {
     const { id } = req.params;
@@ -170,6 +171,7 @@ export async function getUsersByEventId(req: Request, res: Response): Promise<Re
     return res.status(400).json({ message: (error as Error).message });
   }
 }
+
 export async function addUserToEvent(req: Request, res: Response): Promise<Response> {
   try {
     const { eventId, userId } = req.params;
@@ -201,4 +203,3 @@ export async function removeUserFromEvent(req: Request, res: Response): Promise<
     return res.status(400).json({ message: (error as Error).message });
   }
 }
-
