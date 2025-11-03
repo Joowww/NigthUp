@@ -12,6 +12,8 @@ export interface IUser {
   role: string;
   comparePassword(candidatePassword: string): Promise<boolean>;
   isModified(path: string): boolean;
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 const userSchema = new Schema<IUser>({
@@ -23,12 +25,15 @@ const userSchema = new Schema<IUser>({
   active: { type: Boolean, default: true },
   role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' }
 }, {
-  timestamps: false,
+  timestamps: true, 
   versionKey: false
 });
 
 userSchema.pre<IUser>('save', async function (next) {
+  // Solo hashear si la contraseña fue modificada
   if (!this.isModified('password')) return next();
+  
+  console.log('🔐 Hasheando contraseña...');
   const salt = await bcrypt.genSalt();
   const hash = await bcrypt.hash(this.password, salt);
   this.password = hash;

@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { IBusiness } from '../models/business';
-import { BusinessService } from '../services/businessService';
+import { BusinessService } from '../services/businessServices';
 import { validationResult } from 'express-validator';
 
 const businessService = new BusinessService();

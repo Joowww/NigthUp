@@ -1,23 +1,18 @@
 import { Router } from 'express';
 import {
   createUser,
-  createAdminUser,
+  loginUser,
   getAllUsers,
   getAllUsersWithInactive,
-  getUserById,
-  getUserByUsername,
-  updateUserById,
-  updateUserByUsername,
-  disableUserById,
-  disableUserByUsername,
-  reactivateUserById,
-  reactivateUserByUsername,
-  makeUserAdmin,
-  removeUserAdmin,
-  deleteUserById,
-  deleteUserByUsername,
+  getUserByIdentifier,
+  updateUserByIdentifier,
+  disableUserByIdentifier,
+  reactivateUserByIdentifier,
+  makeUserAdminByIdentifier,
+  removeUserAdminByIdentifier,
+  deleteUserByIdentifier,
   addEventToUser,
-  loginUser
+  getUserStats
 } from '../controller/userController';
 
 const router = Router();
@@ -59,6 +54,12 @@ const router = Router();
  *           type: string
  *           enum: [admin, manager, user]
  *           example: "user"
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
  *     UserCreate:
  *       type: object
  *       required:
@@ -84,7 +85,28 @@ const router = Router();
  *           type: string
  *           enum: [manager, user]
  *           example: "user"
+ *     UserStats:
+ *       type: object
+ *       properties:
+ *         total:
+ *           type: integer
+ *           description: Total de usuarios en el sistema
+ *         active:
+ *           type: integer
+ *           description: Usuarios activos
+ *         inactive:
+ *           type: integer
+ *           description: Usuarios inactivos
+ *         newCount:
+ *           type: integer
+ *           description: Nuevos usuarios en los últimos 7 días
+ *         lastUpdated:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha de última actualización
  */
+
+// ==================== POST ====================
 
 /**
  * @swagger
@@ -116,43 +138,6 @@ router.post('/', createUser);
 
 /**
  * @swagger
- * /api/user/admin/create:
- *   post:
- *     summary: Create admin user
- *     tags: [Administration]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - username
- *               - email
- *               - password
- *               - birthday
- *             properties:
- *               username:
- *                 type: string
- *               email:
- *                 type: string
- *               password:
- *                 type: string
- *               birthday:
- *                 type: string
- *                 format: date
- *     responses:
- *       201:
- *         description: Admin user created successfully
- *       400:
- *         description: Error in user data
- *       500:
- *         description: Failed to create admin user
- */
-router.post('/admin/create', createAdminUser);
-
-/**
- * @swagger
  * /api/user/auth/login:
  *   post:
  *     summary: User login
@@ -181,18 +166,57 @@ router.post('/admin/create', createAdminUser);
  *             schema:
  *               type: object
  *               properties:
- *                 message:
- *                   type: string
  *                 user:
  *                   $ref: '#/components/schemas/User'
  *       400:
  *         description: Validation error
  *       401:
- *         description: Incorrect credentials or user disabled
+ *         description: Incorrect credentials or user inactive
  *       500:
  *         description: Login error
  */
 router.post('/auth/login', loginUser);
+
+/**
+ * @swagger
+ * /api/user/{identifier}/events:
+ *   post:
+ *     summary: Add event to a user by ID, username or email
+ *     tags: [Users]
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID, username or email
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - eventIdentifier
+ *             properties:
+ *               eventIdentifier:
+ *                 type: string
+ *                 description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Event added to user successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Missing eventIdentifier or event not found
+ *       404:
+ *         description: User not found
+ */
+router.post('/:identifier/events', addEventToUser);
+
+// ==================== GET ====================
 
 /**
  * @swagger
@@ -205,11 +229,13 @@ router.post('/auth/login', loginUser);
  *         name: skip
  *         schema:
  *           type: integer
+ *           default: 0
  *         description: Number of records to skip (pagination)
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           default: 5
  *         description: Number of records to return (pagination)
  *     responses:
  *       200:
@@ -241,7 +267,25 @@ router.get('/', getAllUsers);
 
 /**
  * @swagger
- * /api/user/all/inactive-included:
+ * /api/user/number-of-users:
+ *   get:
+ *     summary: Get number of users statistics
+ *     tags: [Users]
+ *     responses:
+ *       200:
+ *         description: User statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/UserStats'
+ *       500:
+ *         description: Failed to retrieve statistics
+ */
+router.get('/number-of-users', getUserStats);
+
+/**
+ * @swagger
+ * /api/user/with-inactive:
  *   get:
  *     summary: Get all users including inactive ones (paginated)
  *     tags: [Users]
@@ -250,33 +294,55 @@ router.get('/', getAllUsers);
  *         name: skip
  *         schema:
  *           type: integer
+ *           default: 0
  *         description: Number of records to skip (pagination)
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           default: 10
  *         description: Number of records to return (pagination)
  *     responses:
  *       200:
  *         description: List of all users obtained successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 users:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/User'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     skip:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     hasMore:
+ *                       type: boolean
  *       404:
  *         description: No users found
  */
-router.get('/all/inactive-included', getAllUsersWithInactive);
+router.get('/with-inactive', getAllUsersWithInactive);
 
 /**
  * @swagger
- * /api/user/{id}:
+ * /api/user/{identifier}:
  *   get:
- *     summary: Get an active user by ID
+ *     summary: Get a user by ID, username or email
  *     tags: [Users]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: User ID
+ *         description: User ID, username or email
  *     responses:
  *       200:
  *         description: User found
@@ -287,42 +353,23 @@ router.get('/all/inactive-included', getAllUsersWithInactive);
  *       404:
  *         description: User not found
  */
-router.get('/:id', getUserById);
+router.get('/:identifier', getUserByIdentifier);
+
+// ==================== PATCH ====================
 
 /**
  * @swagger
- * /api/user/username/{username}:
- *   get:
- *     summary: Get an active user by username
+ * /api/user/{identifier}:
+ *   patch:
+ *     summary: Update a user by ID, username or email
  *     tags: [Users]
  *     parameters:
  *       - in: path
- *         name: username
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: Username
- *     responses:
- *       200:
- *         description: User found
- *       404:
- *         description: User not found
- */
-router.get('/username/:username', getUserByUsername);
-
-/**
- * @swagger
- * /api/user/{id}:
- *   put:
- *     summary: Update an active user by ID
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
+ *         description: User ID, username or email
  *     requestBody:
  *       required: true
  *       content:
@@ -332,256 +379,182 @@ router.get('/username/:username', getUserByUsername);
  *             properties:
  *               email:
  *                 type: string
+ *                 example: "newemail@example.com"
  *               birthday:
  *                 type: string
  *                 format: date
- *               role:
- *                 type: string
- *                 enum: [manager, user]
+ *                 example: "2000-01-01"
  *     responses:
  *       200:
  *         description: User updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Invalid data or no valid fields to update
  *       404:
  *         description: User not found
  */
-router.put('/:id', updateUserById);
+router.patch('/:identifier', updateUserByIdentifier);
+
+// ==================== ADMINISTRATION - USERS ====================
 
 /**
  * @swagger
- * /api/user/username/{username}:
- *   put:
- *     summary: Update an active user by username
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: username
- *         required: true
- *         schema:
- *           type: string
- *         description: Username
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               email:
- *                 type: string
- *               birthday:
- *                 type: string
- *                 format: date
- *               role:
- *                 type: string
- *                 enum: [manager, user]
- *     responses:
- *       200:
- *         description: User updated successfully
- *       404:
- *         description: User not found
- */
-router.put('/username/:username', updateUserByUsername);
-
-/**
- * @swagger
- * /api/user/{id}/disable:
+ * /api/user/{identifier}/disable:
  *   patch:
- *     summary: Disable a user by ID
- *     tags: [Users]
+ *     summary: 'Disable a user by ID, username or email'
+ *     tags: [Administration - Users]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: User ID
+ *         description: User ID, username or email
  *     responses:
  *       200:
  *         description: User disabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *       404:
  *         description: User not found
  */
-router.patch('/:id/disable', disableUserById);
+router.patch('/:identifier/disable', disableUserByIdentifier);
 
 /**
  * @swagger
- * /api/user/username/{username}/disable:
+ * /api/user/{identifier}/reactivate:
  *   patch:
- *     summary: Disable a user by username
- *     tags: [Users]
+ *     summary: 'Reactivate a user by ID, username or email'
+ *     tags: [Administration - Users]
  *     parameters:
  *       - in: path
- *         name: username
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: Username
- *     responses:
- *       200:
- *         description: User disabled successfully
- *       404:
- *         description: User not found
- */
-router.patch('/username/:username/disable', disableUserByUsername);
-
-/**
- * @swagger
- * /api/user/{id}/reactivate:
- *   patch:
- *     summary: Reactivate a user by ID
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
+ *         description: User ID, username or email
  *     responses:
  *       200:
  *         description: User reactivated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *       404:
  *         description: User not found
  */
-router.patch('/:id/reactivate', reactivateUserById);
+router.patch('/:identifier/reactivate', reactivateUserByIdentifier);
 
 /**
  * @swagger
- * /api/user/username/{username}/reactivate:
+ * /api/user/{identifier}/make-admin:
  *   patch:
- *     summary: Reactivate a user by username
- *     tags: [Users]
+ *     summary: 'Convert user to administrator by ID, username or email'
+ *     tags: [Administration - Users]
  *     parameters:
  *       - in: path
- *         name: username
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: Username
- *     responses:
- *       200:
- *         description: User reactivated successfully
- *       404:
- *         description: User not found
- */
-router.patch('/username/:username/reactivate', reactivateUserByUsername);
-
-/**
- * @swagger
- * /api/user/{id}/make-admin:
- *   patch:
- *     summary: Convert user to administrator
- *     tags: [Administration]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
+ *         description: User ID, username or email
  *     responses:
  *       200:
  *         description: User converted to administrator successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *       404:
  *         description: User not found
  */
-router.patch('/:id/make-admin', makeUserAdmin);
+router.patch('/:identifier/make-admin', makeUserAdminByIdentifier);
 
 /**
  * @swagger
- * /api/user/{id}/remove-admin:
+ * /api/user/{identifier}/remove-admin:
  *   patch:
- *     summary: Remove administrator permissions
- *     tags: [Administration]
+ *     summary: 'Remove administrator permissions by ID, username or email'
+ *     tags: [Administration - Users]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: User ID
+ *         description: User ID, username or email
  *     responses:
  *       200:
  *         description: Administrator permissions removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *       404:
  *         description: User not found
  */
-router.patch('/:id/remove-admin', removeUserAdmin);
+router.patch('/:identifier/remove-admin', removeUserAdminByIdentifier);
+
+// ==================== DELETE ====================
 
 /**
  * @swagger
- * /api/user/{id}/addEvent:
- *   put:
- *     summary: Add event to a user
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             required:
- *               - eventId
- *             properties:
- *               eventId:
- *                 type: string
- *     responses:
- *       200:
- *         description: Event added to user successfully
- *       400:
- *         description: Missing eventId
- *       404:
- *         description: User not found
- */
-router.put('/:id/addEvent', addEventToUser);
-
-/**
- * @swagger
- * /api/user/hard/{id}:
+ * /api/user/hard/{identifier}:
  *   delete:
- *     summary: Permanently delete a user by ID
- *     tags: [Administration]
+ *     summary: 'Permanently delete a user by ID, username or email'
+ *     tags: [Administration - Users]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: User ID
+ *         description: User ID, username or email
  *     responses:
  *       200:
  *         description: User permanently deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
  *       404:
  *         description: User not found
  */
-router.delete('/hard/:id', deleteUserById);
-
-/**
- * @swagger
- * /api/user/hard/username/{username}:
- *   delete:
- *     summary: Permanently delete a user by username
- *     tags: [Administration]
- *     parameters:
- *       - in: path
- *         name: username
- *         required: true
- *         schema:
- *           type: string
- *         description: Username
- *     responses:
- *       200:
- *         description: User permanently deleted
- *       404:
- *         description: User not found
- */
-router.delete('/hard/username/:username', deleteUserByUsername);
+router.delete('/hard/:identifier', deleteUserByIdentifier);
 
 export default router;

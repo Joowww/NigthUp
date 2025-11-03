@@ -1,9 +1,31 @@
-import { Event, IEvent } from '../models/event';
+import Event, { IEvent } from '../models/event';
+import User from '../models/user';
+import mongoose from 'mongoose';
+
+export interface EventStats {
+  total: number;
+  active: number;
+  inactive: number;
+  newCount: number | null;
+  lastUpdated?: string | null;
+}
 
 export class EventService {
-  async createEvent(data: Partial<IEvent>): Promise<IEvent> {
-    const event = new Event(data);
-    return await event.save();
+  private buildEventIdentifierFilter(identifier: string) {
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      return { _id: new mongoose.Types.ObjectId(identifier) };
+    } else {
+      return { name: identifier };
+    }
+  }
+
+  async createEvent(eventData: Partial<IEvent>): Promise<IEvent | null> {
+    try {
+      const newEvent = new Event(eventData);
+      return await newEvent.save();
+    } catch (error) {
+      throw new Error((error as Error).message);
+    }
   }
 
   async getAllEvents(skip: number = 0, limit: number = 10): Promise<{events: IEvent[], total: number}> {
@@ -26,62 +48,137 @@ export class EventService {
     return { events, total };
   }
 
-  async getEventById(id: string): Promise<IEvent | null> {
-    return await Event.findOne({ _id: id, active: true })
+  async getEventByIdentifier(identifier: string): Promise<IEvent | null> {
+    const filter = this.buildEventIdentifierFilter(identifier);
+    return await Event.findOne({ ...filter, active: true })
       .populate('participants', 'username email');
   }
 
-  async disableEventById(id: string): Promise<IEvent | null> {
-    return await Event.findByIdAndUpdate(
-      id, 
+  async updateEventByIdentifier(identifier: string, eventData: Partial<IEvent>): Promise<IEvent | null> {
+    const filter = this.buildEventIdentifierFilter(identifier);
+    return await Event.findOneAndUpdate(
+      { ...filter, active: true }, 
+      eventData, 
+      { new: true }
+    ).populate('participants', 'username email');
+  }
+
+  async disableEventByIdentifier(identifier: string): Promise<IEvent | null> {
+    const filter = this.buildEventIdentifierFilter(identifier);
+    return await Event.findOneAndUpdate(
+      filter, 
       { active: false }, 
       { new: true }
     ).populate('participants', 'username email');
   }
 
-  async reactivateEventById(id: string): Promise<IEvent | null> {
-    return await Event.findByIdAndUpdate(
-      id, 
+  async reactivateEventByIdentifier(identifier: string): Promise<IEvent | null> {
+    const filter = this.buildEventIdentifierFilter(identifier);
+    return await Event.findOneAndUpdate(
+      filter, 
       { active: true }, 
       { new: true }
     ).populate('participants', 'username email');
   }
 
-  async deleteEventById(id: string): Promise<IEvent | null> {
-    return await Event.findByIdAndDelete(id);
+  async deleteEventByIdentifier(identifier: string): Promise<IEvent | null> {
+    const filter = this.buildEventIdentifierFilter(identifier);
+    return await Event.findOneAndDelete(filter);
   }
 
-  async updateEvent(id: string, data: Partial<IEvent>): Promise<IEvent | null> {
-    return await Event.findByIdAndUpdate(
-      id, 
-      data, 
+  async addUserToEvent(eventIdentifier: string, userIdentifier: string): Promise<IEvent | null> {
+    const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
+    
+    // Buscar usuario por ID, username o email
+    let userFilter;
+    if (mongoose.Types.ObjectId.isValid(userIdentifier)) {
+      userFilter = { _id: new mongoose.Types.ObjectId(userIdentifier) };
+    } else {
+      userFilter = { 
+        $or: [
+          { username: userIdentifier },
+          { email: userIdentifier }
+        ]
+      };
+    }
+
+    const user = await User.findOne(userFilter);
+    if (!user) {
+      throw new Error('USER NOT FOUND');
+    }
+
+    const updatedEvent = await Event.findOneAndUpdate(
+      eventFilter,
+      { $addToSet: { participants: user._id } },
       { new: true }
     ).populate('participants', 'username email');
+    
+    if (updatedEvent) {
+      await User.findByIdAndUpdate(
+        user._id,
+        { $addToSet: { events: updatedEvent._id } },
+        { new: true }
+      );
+    }
+    return updatedEvent;
   }
 
-  async getUsersByEventId(id: string): Promise<IEvent | null> {
-    return await Event.findById(id)
-      .populate('participants', 'username email birthday');
-  }
+  async removeUserFromEvent(eventIdentifier: string, userIdentifier: string): Promise<IEvent | null> {
+    const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
+    
+    // Buscar usuario por ID, username o email
+    let userFilter;
+    if (mongoose.Types.ObjectId.isValid(userIdentifier)) {
+      userFilter = { _id: new mongoose.Types.ObjectId(userIdentifier) };
+    } else {
+      userFilter = { 
+        $or: [
+          { username: userIdentifier },
+          { email: userIdentifier }
+        ]
+      };
+    }
 
-  async addUserToEvent(eventId: string, userId: string): Promise<IEvent | null> {
-    return await Event.findByIdAndUpdate(
-      eventId,
-      { $addToSet: { participants: userId } },
+    const user = await User.findOne(userFilter);
+    if (!user) {
+      throw new Error('USER NOT FOUND');
+    }
+
+    const updatedEvent = await Event.findOneAndUpdate(
+      eventFilter,
+      { $pull: { participants: user._id } },
       { new: true }
     ).populate('participants', 'username email');
+    
+    if (updatedEvent) {
+      await User.findByIdAndUpdate(
+        user._id,
+        { $pull: { events: updatedEvent._id } },
+        { new: true }
+      );
+    }
+    return updatedEvent;
   }
 
-  async removeUserFromEvent(eventId: string, userId: string): Promise<IEvent | null> {
-    return await Event.findByIdAndUpdate(
-      eventId,
-      { $pull: { participants: userId } },
-      { new: true }
-    ).populate('participants', 'username email');
-  }
+  async getEventStats(): Promise<EventStats> {
+    const total = await Event.countDocuments();
+    const active = await Event.countDocuments({ active: true });
+    const inactive = await Event.countDocuments({ active: false });
 
-  async getEventsByUserId(userId: string): Promise<IEvent[]> {
-    return await Event.find({ participants: userId, active: true })
-      .populate('participants', 'username email');
+    let newCount: number | null = null;
+    let lastUpdated: string | null = null;
+
+    // Verificar si el schema tiene el campo createdAt usando paths
+    const schemaPaths = Event.schema.paths;
+    if (schemaPaths['createdAt']) {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      newCount = await Event.countDocuments({ createdAt: { $gte: since } });
+
+      // Usar type assertion para evitar el error de TypeScript
+      const last = await Event.findOne().sort({ createdAt: -1 }).select('createdAt').lean() as any;
+      lastUpdated = last?.createdAt ? new Date(last.createdAt).toISOString() : null;
+    }
+
+    return { total, active, inactive, newCount, lastUpdated };
   }
 }

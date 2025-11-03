@@ -31,8 +31,16 @@ const options: swaggerJSDoc.Options = {
         description: 'Authentication and authorization endpoints'
       },
       {
-        name: 'Administration',
-        description: 'Admin-only management endpoints'
+        name: 'Administration - Users',
+        description: 'Admin-only user management endpoints'
+      },
+      {
+        name: 'Administration - Events',
+        description: 'Admin and manager event management endpoints'
+      },
+      {
+        name: 'Administration - Business',
+        description: 'Admin and manager business management endpoints'
       }
     ],
   },

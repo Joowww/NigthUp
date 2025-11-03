@@ -19,9 +19,8 @@ export async function createUser(req: Request, res: Response): Promise<Response>
   try {
     const { username, email, password, birthday, role } = req.body;
     
-    // Validar que no se pueda crear usuario con rol admin desde esta ruta
     if (role === 'admin') {
-      return res.status(403).json({ error: 'No se puede crear usuario admin desde esta ruta' });
+      return res.status(403).json({ error: 'Cannot create admin user from this route' });
     }
 
     const newUser: Partial<IUser> = { 
@@ -40,37 +39,6 @@ export async function createUser(req: Request, res: Response): Promise<Response>
     return res.status(201).json(removePassword(user));
   } catch (error) {
     return res.status(500).json({ error: 'FAILED TO CREATE USER', details: (error as Error).message });
-  }
-}
-
-export async function createAdminUser(req: Request, res: Response): Promise<Response> {
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-
-  try {
-    const { username, email, password, birthday } = req.body;
-
-    const newAdmin: Partial<IUser> = { 
-      username, 
-      email, 
-      password, 
-      birthday,
-      role: 'admin' 
-    };
-    
-    const adminUser = await userService.createUser(newAdmin);
-    if (!adminUser) {
-      return res.status(500).json({ error: 'FAILED TO CREATE ADMIN USER' });
-    }
-
-    return res.status(201).json({
-      message: 'Admin user created successfully',
-      user: removePassword(adminUser)
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'FAILED TO CREATE ADMIN USER', details: (error as Error).message });
   }
 }
 
@@ -114,10 +82,10 @@ export async function getAllUsersWithInactive(req: Request, res: Response): Prom
   }
 }
 
-export async function getUserById(req: Request, res: Response): Promise<Response> {
+export async function getUserByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const user = await userService.getUserById(id);
+    const { identifier } = req.params;
+    const user = await userService.getUserByIdentifier(identifier);
     if (!user) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json(user);
   } catch (error) {
@@ -125,57 +93,64 @@ export async function getUserById(req: Request, res: Response): Promise<Response
   }
 }
 
-export async function getUserByUsername(req: Request, res: Response): Promise<Response> {
+export async function updateUserByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { username } = req.params;
-    const user = await userService.getUserByUsername(username);
-    if (!user) return res.status(404).json({ message: 'USER NOT FOUND' });
-    return res.status(200).json(user);
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
-  }
-}
-
-export async function updateUserById(req: Request, res: Response): Promise<Response> {
-  try {
-    const { id } = req.params;
+    const { identifier } = req.params;
     const userData: Partial<IUser> = req.body;
     
+    // Solo permitir actualizar email y birthday
+    const filteredData: Partial<IUser> = {};
+    
+    // Manejar email
+    if (userData.email !== undefined && typeof userData.email === 'string') {
+      filteredData.email = userData.email;
+    }
+    
+    // Manejar birthday
+    if (userData.birthday !== undefined) {
+      if (userData.birthday instanceof Date) {
+        filteredData.birthday = userData.birthday;
+      } else if (typeof userData.birthday === 'string') {
+        const birthdayDate = new Date(userData.birthday);
+        if (!isNaN(birthdayDate.getTime())) {
+          filteredData.birthday = birthdayDate;
+        }
+      }
+    }
+
     // No permitir actualizar password desde aquí
     if (userData.password) {
       return res.status(400).json({ message: 'Password cannot be updated from this endpoint' });
     }
 
-    const updatedUser = await userService.updateUserById(id, userData);
-    if (!updatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-    return res.status(200).json(updatedUser);
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
-  }
-}
-
-export async function updateUserByUsername(req: Request, res: Response): Promise<Response> {
-  try {
-    const { username } = req.params;
-    const userData: Partial<IUser> = req.body;
-    
-    // No permitir actualizar password desde aquí
-    if (userData.password) {
-      return res.status(400).json({ message: 'Password cannot be updated from this endpoint' });
+    // No permitir actualizar role desde aquí
+    if (userData.role) {
+      return res.status(400).json({ message: 'Role cannot be updated from this endpoint' });
     }
 
-    const updatedUser = await userService.updateUserByUsername(username, userData);
+    // Verificar que al menos un campo permitido fue proporcionado
+    if (Object.keys(filteredData).length === 0) {
+      return res.status(400).json({ 
+        message: 'No valid fields to update. Only email and birthday are allowed.' 
+      });
+    }
+
+    const updatedUser = await userService.updateUserByIdentifier(identifier, filteredData);
     if (!updatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-    return res.status(200).json(updatedUser);
+    
+    return res.status(200).json({ 
+      message: 'User updated successfully',
+      user: updatedUser 
+    });
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }
 }
 
-export async function disableUserById(req: Request, res: Response): Promise<Response> {
+export async function disableUserByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const disabledUser = await userService.disableUserById(id);
+    const { identifier } = req.params;
+    const disabledUser = await userService.disableUserByIdentifier(identifier);
     if (!disabledUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
       message: 'User disabled successfully',
@@ -186,24 +161,10 @@ export async function disableUserById(req: Request, res: Response): Promise<Resp
   }
 }
 
-export async function disableUserByUsername(req: Request, res: Response): Promise<Response> {
+export async function reactivateUserByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { username } = req.params;
-    const disabledUser = await userService.disableUserByUsername(username);
-    if (!disabledUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-    return res.status(200).json({ 
-      message: 'User disabled successfully',
-      user: disabledUser 
-    });
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
-  }
-}
-
-export async function reactivateUserById(req: Request, res: Response): Promise<Response> {
-  try {
-    const { id } = req.params;
-    const reactivatedUser = await userService.reactivateUserById(id);
+    const { identifier } = req.params;
+    const reactivatedUser = await userService.reactivateUserByIdentifier(identifier);
     if (!reactivatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
       message: 'User reactivated successfully',
@@ -214,24 +175,10 @@ export async function reactivateUserById(req: Request, res: Response): Promise<R
   }
 }
 
-export async function reactivateUserByUsername(req: Request, res: Response): Promise<Response> {
+export async function makeUserAdminByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { username } = req.params;
-    const reactivatedUser = await userService.reactivateUserByUsername(username);
-    if (!reactivatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-    return res.status(200).json({ 
-      message: 'User reactivated successfully',
-      user: reactivatedUser 
-    });
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
-  }
-}
-
-export async function makeUserAdmin(req: Request, res: Response): Promise<Response> {
-  try {
-    const { id } = req.params;
-    const adminUser = await userService.makeUserAdmin(id);
+    const { identifier } = req.params;
+    const adminUser = await userService.makeUserAdminByIdentifier(identifier);
     if (!adminUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
       message: 'User converted to administrator',
@@ -242,10 +189,10 @@ export async function makeUserAdmin(req: Request, res: Response): Promise<Respon
   }
 }
 
-export async function removeUserAdmin(req: Request, res: Response): Promise<Response> {
+export async function removeUserAdminByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const normalUser = await userService.removeUserAdmin(id);
+    const { identifier } = req.params;
+    const normalUser = await userService.removeUserAdminByIdentifier(identifier);
     if (!normalUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
       message: 'Administrator permissions removed',
@@ -256,24 +203,10 @@ export async function removeUserAdmin(req: Request, res: Response): Promise<Resp
   }
 }
 
-export async function deleteUserById(req: Request, res: Response): Promise<Response> {
+export async function deleteUserByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const deletedUser = await userService.deleteUserById(id);
-    if (!deletedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-    return res.status(200).json({ 
-      message: 'User permanently deleted',
-      user: removePassword(deletedUser)
-    });
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
-  }
-}
-
-export async function deleteUserByUsername(req: Request, res: Response): Promise<Response> {
-  try {
-    const { username } = req.params;
-    const deletedUser = await userService.deleteUserByUsername(username);
+    const { identifier } = req.params;
+    const deletedUser = await userService.deleteUserByIdentifier(identifier);
     if (!deletedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json({ 
       message: 'User permanently deleted',
@@ -286,10 +219,10 @@ export async function deleteUserByUsername(req: Request, res: Response): Promise
 
 export async function addEventToUser(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const { eventId } = req.body;
-    if (!eventId) return res.status(400).json({ message: 'Missing eventId' });
-    const updated = await userService.addEventToUser(id, eventId);
+    const { identifier } = req.params;
+    const { eventIdentifier } = req.body; // Cambiado de eventId a eventIdentifier
+    if (!eventIdentifier) return res.status(400).json({ message: 'Missing eventIdentifier' });
+    const updated = await userService.addEventToUser(identifier, eventIdentifier);
     if (!updated) return res.status(404).json({ message: 'USER NOT FOUND' });
     return res.status(200).json(updated);
   } catch (error) {
@@ -297,28 +230,24 @@ export async function addEventToUser(req: Request, res: Response): Promise<Respo
   }
 }
 
-export async function loginUser(req: Request, res: Response): Promise<Response> {
-  console.log('user login');
-  const errors = validationResult(req);
-  if (!errors.isEmpty()) {
-    return res.status(400).json({ errors: errors.array() });
-  }
-  
+export const loginUser = async (req: Request, res: Response): Promise<Response> => {
   try {
     const { username, password } = req.body;
-    
     const user = await userService.loginUser(username, password);
-    if (!user) {
-      return res.status(401).json({ 
-        message: 'INCORRECT CREDENTIALS OR USER DISABLED' 
-      });
-    }
+    if (!user) return res.status(401).json({ message: 'Invalid credentials or user inactive' });
 
-    return res.status(200).json({
-      message: 'LOGIN SUCCESSFUL',
-      user: removePassword(user)
-    });
+    const safeUser = removePassword(user);
+    return res.status(200).json({ user: safeUser });
+  } catch (err) {
+    return res.status(500).json({ message: 'Login error' });
+  }
+};
+
+export async function getUserStats(req: Request, res: Response): Promise<Response> {
+  try {
+    const stats = await userService.getUserStats();
+    return res.status(200).json(stats);
   } catch (error) {
-    return res.status(500).json({ error: 'LOGIN ERROR', details: (error as Error).message });
+    return res.status(500).json({ message: (error as Error).message });
   }
 }

@@ -3,14 +3,16 @@ import {
   createEvent,
   getAllEvents,
   getAllEventsWithInactive,
-  getEventById,
-  disableEventById,
-  reactivateEventById,
-  deleteEventById,
-  updateEvent,
-  getUsersByEventId,
+  getEventByIdentifier,
+  updateEventByIdentifier,
+  disableEventByIdentifier,
+  reactivateEventByIdentifier,
+  deleteEventByIdentifier,
+  addUserToEvent,
   removeUserFromEvent,
-  addUserToEvent
+  getEventStats,
+  requireAdmin,
+  requireAdminOrManager
 } from '../controller/eventController';
 
 const router = Router();
@@ -24,68 +26,112 @@ const router = Router();
  *       required:
  *         - name
  *         - schedule
+ *         - location
+ *         - description
+ *         - category
+ *         - capacity
+ *         - price
  *       properties:
  *         _id:
  *           type: string
- *           description: ID generado por MongoDB
+ *           description: ID único generado por MongoDB
  *         name:
  *           type: string
- *           example: "Technology Conference"
+ *           example: "Noche de Techno en Matrix"
  *         schedule:
  *           type: string
- *           example: "2024-01-15T10:00:00Z"
- *         address:
+ *           format: date-time
+ *           example: "2025-11-15T23:00:00.000Z"
+ *         location:
  *           type: string
- *           example: "Main Auditorium"
+ *           example: "Matrix Club"
+ *         description:
+ *           type: string
+ *           example: "La mejor música techno con DJs internacionales"
+ *         category:
+ *           type: string
+ *           example: "Techno"
+ *         capacity:
+ *           type: integer
+ *           example: 500
+ *         price:
+ *           type: number
+ *           example: 25
  *         participants:
  *           type: array
  *           items:
- *             type: string
- *           description: Array de IDs de participantes
+ *             $ref: '#/components/schemas/User'
+ *           description: Array de usuarios participantes
  *         active:
  *           type: boolean
  *           example: true
+ *         createdAt:
+ *           type: string
+ *           format: date-time
+ *         updatedAt:
+ *           type: string
+ *           format: date-time
  *     EventCreate:
  *       type: object
  *       required:
  *         - name
  *         - schedule
+ *         - location
+ *         - description
+ *         - category
+ *         - capacity
+ *         - price
  *       properties:
  *         name:
  *           type: string
- *           example: "Technology Conference"
+ *           example: "Noche de Techno en Matrix"
  *         schedule:
  *           type: string
- *           example: "2024-01-15T10:00:00Z"
- *         address:
+ *           format: date-time
+ *           example: "2025-11-15T23:00:00.000Z"
+ *         location:
  *           type: string
- *           example: "Main Auditorium"
- *         participants:
- *           type: array
- *           items:
- *             type: string
- *           example: ["user_id_1", "user_id_2"]
+ *           example: "Matrix Club"
+ *         description:
+ *           type: string
+ *           example: "La mejor música techno con DJs internacionales"
+ *         category:
+ *           type: string
+ *           example: "Techno"
+ *         capacity:
+ *           type: integer
+ *           example: 500
+ *         price:
+ *           type: number
+ *           example: 25
+ *     EventStats:
+ *       type: object
+ *       properties:
+ *         total:
+ *           type: integer
+ *           description: Total de eventos en el sistema
+ *         active:
+ *           type: integer
+ *           description: Eventos activos
+ *         inactive:
+ *           type: integer
+ *           description: Eventos inactivos
+ *         newCount:
+ *           type: integer
+ *           description: Nuevos eventos en los últimos 7 días
+ *         lastUpdated:
+ *           type: string
+ *           format: date-time
+ *           description: Fecha de última actualización
+ *   securitySchemes:
+ *     userRole:
+ *       type: apiKey
+ *       in: header
+ *       name: user-role
+ *       description: Rol del usuario autenticado (admin, manager, user)
  */
 
-/**
- * @swagger
- * /api/event:
- *   post:
- *     summary: Create a new event
- *     tags: [Events]
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             $ref: '#/components/schemas/EventCreate'
- *     responses:
- *       201:
- *         description: Event created successfully
- *       400:
- *         description: Error in event data
- */
-router.post('/', createEvent);
+// ==================== GET ====================
 
 /**
  * @swagger
@@ -98,11 +144,13 @@ router.post('/', createEvent);
  *         name: skip
  *         schema:
  *           type: integer
+ *           default: 0
  *         description: Number of records to skip (pagination)
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           default: 10
  *         description: Number of records to return (pagination)
  *     responses:
  *       200:
@@ -127,12 +175,14 @@ router.post('/', createEvent);
  *                       type: integer
  *                     hasMore:
  *                       type: boolean
+ *       404:
+ *         description: No events found
  */
 router.get('/', getAllEvents);
 
 /**
  * @swagger
- * /api/event/all/inactive-included:
+ * /api/event/with-inactive:
  *   get:
  *     summary: Get all events including inactive ones (paginated)
  *     tags: [Events]
@@ -141,115 +191,95 @@ router.get('/', getAllEvents);
  *         name: skip
  *         schema:
  *           type: integer
+ *           default: 0
  *         description: Number of records to skip (pagination)
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
+ *           default: 10
  *         description: Number of records to return (pagination)
  *     responses:
  *       200:
  *         description: List of all events obtained successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Event'
+ *                 pagination:
+ *                   type: object
+ *                   properties:
+ *                     skip:
+ *                       type: integer
+ *                     limit:
+ *                       type: integer
+ *                     total:
+ *                       type: integer
+ *                     hasMore:
+ *                       type: boolean
+ *       404:
+ *         description: No events found
  */
-router.get('/all/inactive-included', getAllEventsWithInactive);
+router.get('/with-inactive', getAllEventsWithInactive);
 
 /**
  * @swagger
- * /api/event/{id}:
+ * /api/event/stats:
  *   get:
- *     summary: Get an active event by ID
+ *     summary: Get event statistics
+ *     tags: [Events]
+ *     responses:
+ *       200:
+ *         description: Event statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EventStats'
+ *       500:
+ *         description: Failed to retrieve statistics
+ */
+router.get('/stats', getEventStats);
+
+/**
+ * @swagger
+ * /api/event/{identifier}:
+ *   get:
+ *     summary: Get an active event by ID or name
  *     tags: [Events]
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: Event ID
+ *         description: Event ID or event name
  *     responses:
  *       200:
  *         description: Event found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
  *       404:
  *         description: Event not found
  */
-router.get('/:id', getEventById);
+router.get('/:identifier', getEventByIdentifier);
+
+// ==================== ADMINISTRATION - EVENTS ====================
 
 /**
  * @swagger
- * /api/event/{id}/disable:
- *   patch:
- *     summary: Disable an event by ID
- *     tags: [Events]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Event ID
- *     responses:
- *       200:
- *         description: Event disabled successfully
- *       404:
- *         description: Event not found
- */
-router.patch('/:id/disable', disableEventById);
-
-/**
- * @swagger
- * /api/event/{id}/reactivate:
- *   patch:
- *     summary: Reactivate an event by ID
- *     tags: [Events]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Event ID
- *     responses:
- *       200:
- *         description: Event reactivated successfully
- *       404:
- *         description: Event not found
- */
-router.patch('/:id/reactivate', reactivateEventById);
-
-/**
- * @swagger
- * /api/event/hard/{id}:
- *   delete:
- *     summary: Permanently delete an event by ID
- *     tags: [Events]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Event ID
- *     responses:
- *       200:
- *         description: Event permanently deleted
- *       404:
- *         description: Event not found
- */
-router.delete('/hard/:id', deleteEventById);
-
-/**
- * @swagger
- * /api/event/{id}:
- *   put:
- *     summary: Update event details by ID
- *     tags: [Events]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *         description: Event ID
+ * /api/event:
+ *   post:
+ *     summary: 'Create a new event (Admin only)'
+ *     tags: [Administration - Events]
+ *     security:
+ *       - userRole: []
  *     requestBody:
  *       required: true
  *       content:
@@ -257,86 +287,265 @@ router.delete('/hard/:id', deleteEventById);
  *           schema:
  *             $ref: '#/components/schemas/EventCreate'
  *     responses:
+ *       201:
+ *         description: Event created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Error in event data
+ *       403:
+ *         description: Admin privileges required
+ *       500:
+ *         description: Failed to create event
+ */
+router.post('/', requireAdmin, createEvent);
+
+/**
+ * @swagger
+ * /api/event/{identifier}/add-user:
+ *   post:
+ *     summary: 'Add user to an event by ID or name (Admin or Manager only)'
+ *     tags: [Administration - Events]
+ *     security:
+ *       - userRole: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userIdentifier
+ *             properties:
+ *               userIdentifier:
+ *                 type: string
+ *                 description: User ID, username or email
+ *     responses:
+ *       200:
+ *         description: User added to event successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Missing userIdentifier
+ *       403:
+ *         description: Admin or manager privileges required
+ *       404:
+ *         description: Event or user not found
+ */
+router.post('/:identifier/add-user', requireAdminOrManager, addUserToEvent);
+
+/**
+ * @swagger
+ * /api/event/{identifier}/remove-user:
+ *   post:
+ *     summary: 'Remove user from an event by ID or name (Admin or Manager only)'
+ *     tags: [Administration - Events]
+ *     security:
+ *       - userRole: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userIdentifier
+ *             properties:
+ *               userIdentifier:
+ *                 type: string
+ *                 description: User ID, username or email
+ *     responses:
+ *       200:
+ *         description: User removed from event successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Missing userIdentifier
+ *       403:
+ *         description: Admin or manager privileges required
+ *       404:
+ *         description: Event or user not found
+ */
+router.post('/:identifier/remove-user', requireAdminOrManager, removeUserFromEvent);
+
+/**
+ * @swagger
+ * /api/event/{identifier}:
+ *   patch:
+ *     summary: 'Update event details by ID or name (Admin or Manager only)'
+ *     tags: [Administration - Events]
+ *     security:
+ *       - userRole: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               name:
+ *                 type: string
+ *               schedule:
+ *                 type: string
+ *                 format: date-time
+ *               location:
+ *                 type: string
+ *               description:
+ *                 type: string
+ *               category:
+ *                 type: string
+ *               capacity:
+ *                 type: integer
+ *               price:
+ *                 type: number
+ *     responses:
  *       200:
  *         description: Event updated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: Invalid data
+ *       403:
+ *         description: Admin or manager privileges required
  *       404:
  *         description: Event not found
  */
-router.put('/:id', updateEvent);
+router.patch('/:identifier', requireAdminOrManager, updateEventByIdentifier);
 
 /**
  * @swagger
- * /api/event/{id}/users:
- *   get:
- *     summary: Get all users participating in an event
- *     tags: [Events]
+ * /api/event/{identifier}/disable:
+ *   patch:
+ *     summary: 'Disable an event by ID or name (Admin only)'
+ *     tags: [Administration - Events]
+ *     security:
+ *       - userRole: []
  *     parameters:
  *       - in: path
- *         name: id
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: Event ID
+ *         description: Event ID or event name
  *     responses:
  *       200:
- *         description: List of users in the event
+ *         description: Event disabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: Event not found
  */
-router.get('/:id/users', getUsersByEventId);
+router.patch('/:identifier/disable', requireAdmin, disableEventByIdentifier);
 
 /**
  * @swagger
- * /api/event/{eventId}/user/{userId}:
- *   put:
- *     summary: Add a user to an event
- *     tags: [Events]
+ * /api/event/{identifier}/reactivate:
+ *   patch:
+ *     summary: 'Reactivate an event by ID or name (Admin only)'
+ *     tags: [Administration - Events]
+ *     security:
+ *       - userRole: []
  *     parameters:
  *       - in: path
- *         name: eventId
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: Event ID
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
+ *         description: Event ID or event name
  *     responses:
  *       200:
- *         description: User added to event
+ *         description: Event reactivated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       403:
+ *         description: Admin privileges required
  *       404:
- *         description: Event or user not found
+ *         description: Event not found
  */
-router.put('/:eventId/user/:userId', addUserToEvent);
+router.patch('/:identifier/reactivate', requireAdmin, reactivateEventByIdentifier);
 
 /**
  * @swagger
- * /api/event/{eventId}/user/{userId}:
+ * /api/event/hard/{identifier}:
  *   delete:
- *     summary: Remove a user from an event
- *     tags: [Events]
+ *     summary: 'Permanently delete an event by ID or name (Admin only)'
+ *     tags: [Administration - Events]
+ *     security:
+ *       - userRole: []
  *     parameters:
  *       - in: path
- *         name: eventId
+ *         name: identifier
  *         required: true
  *         schema:
  *           type: string
- *         description: Event ID
- *       - in: path
- *         name: userId
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID
+ *         description: Event ID or event name
  *     responses:
  *       200:
- *         description: User removed from event
+ *         description: Event permanently deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       403:
+ *         description: Admin privileges required
  *       404:
- *         description: Event or user not found
+ *         description: Event not found
  */
-router.delete('/:eventId/user/:userId', removeUserFromEvent);
+router.delete('/hard/:identifier', requireAdmin, deleteEventByIdentifier);
 
 export default router;

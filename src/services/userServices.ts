@@ -1,7 +1,38 @@
-import { User, IUser } from '../models/user';
-import { Event } from '../models/event';
+import User, { IUser } from '../models/user';
+import EventModel from '../models/event';
+import mongoose from 'mongoose';
+
+export interface UserStats {
+  total: number;
+  active: number;
+  inactive: number;
+  newCount: number | null;
+  lastUpdated?: string | null;
+}
 
 export class UserService {
+  private buildIdentifierFilter(identifier: string) {
+    if (mongoose.Types.ObjectId.isValid(identifier)) {
+      return { _id: new mongoose.Types.ObjectId(identifier) };
+    } else {
+      return { 
+        $or: [
+          { username: identifier },
+          { email: identifier }
+        ]
+      };
+    }
+  }
+
+  // Función auxiliar para buscar evento por ID o nombre
+  private async findEventByIdentifier(eventIdentifier: string) {
+    if (mongoose.Types.ObjectId.isValid(eventIdentifier)) {
+      return await EventModel.findById(eventIdentifier);
+    } else {
+      return await EventModel.findOne({ name: eventIdentifier });
+    }
+  }
+
   async createUser(userData: Partial<IUser>): Promise<IUser | null> {
     try {
       const newUser = new User(userData);
@@ -33,20 +64,14 @@ export class UserService {
     return { users, total };
   }
 
-  async getUserById(id: string): Promise<IUser | null> {
-    return await User.findOne({ _id: id, active: true })
+  async getUserByIdentifier(identifier: string): Promise<IUser | null> {
+    const filter = this.buildIdentifierFilter(identifier);
+    return await User.findOne({ ...filter, active: true })
       .populate('events', 'name schedule')
       .select('-password');
   }
 
-  async getUserByUsername(username: string): Promise<IUser | null> {
-    return await User.findOne({ username, active: true })
-      .populate('events', 'name schedule')
-      .select('-password');
-  }
-
-  async updateUserById(id: string, userData: Partial<IUser>): Promise<IUser | null> {
-    // No permitir actualizar el rol a admin desde aquí
+  async updateUserByIdentifier(identifier: string, userData: Partial<IUser>): Promise<IUser | null> {
     if (userData.role === 'admin') {
       throw new Error('Cannot update role to admin from this service');
     }
@@ -55,134 +80,112 @@ export class UserService {
       throw new Error('Password cannot be updated from this service');
     }
 
+    const filter = this.buildIdentifierFilter(identifier);
     return await User.findOneAndUpdate(
-      { _id: id, active: true }, 
+      { ...filter, active: true }, 
       userData, 
       { new: true }
     ).populate('events', 'name schedule').select('-password');
   }
 
-  async updateUserByUsername(username: string, userData: Partial<IUser>): Promise<IUser | null> {
-    // No permitir actualizar el rol a admin desde aquí
-    if (userData.role === 'admin') {
-      throw new Error('Cannot update role to admin from this service');
-    }
-
-    if (userData.password) {
-      throw new Error('Password cannot be updated from this service');
-    }
-
+  async disableUserByIdentifier(identifier: string): Promise<IUser | null> {
+    const filter = this.buildIdentifierFilter(identifier);
     return await User.findOneAndUpdate(
-      { username, active: true }, 
-      userData, 
-      { new: true }
-    ).populate('events', 'name schedule').select('-password');
-  }
-
-  async disableUserById(id: string): Promise<IUser | null> {
-    return await User.findByIdAndUpdate(
-      id, 
+      filter, 
       { active: false }, 
       { new: true }
     ).populate('events', 'name schedule').select('-password');
   }
 
-  async disableUserByUsername(username: string): Promise<IUser | null> {
+  async reactivateUserByIdentifier(identifier: string): Promise<IUser | null> {
+    const filter = this.buildIdentifierFilter(identifier);
     return await User.findOneAndUpdate(
-      { username }, 
-      { active: false }, 
-      { new: true }
-    ).populate('events', 'name schedule').select('-password');
-  }
-
-  async reactivateUserById(id: string): Promise<IUser | null> {
-    return await User.findByIdAndUpdate(
-      id, 
+      filter, 
       { active: true }, 
       { new: true }
     ).populate('events', 'name schedule').select('-password');
   }
 
-  async reactivateUserByUsername(username: string): Promise<IUser | null> {
-    return await User.findOneAndUpdate(
-      { username }, 
-      { active: true }, 
-      { new: true }
-    ).populate('events', 'name schedule').select('-password');
+  async deleteUserByIdentifier(identifier: string): Promise<IUser | null> {
+    const filter = this.buildIdentifierFilter(identifier);
+    return await User.findOneAndDelete(filter);
   }
 
-  async deleteUserById(id: string): Promise<IUser | null> {
-    return await User.findByIdAndDelete(id);
-  }
+  async addEventToUser(identifier: string, eventIdentifier: string): Promise<IUser | null> {
+    const userFilter = this.buildIdentifierFilter(identifier);
+    
+    // Buscar el evento por ID o nombre
+    const event = await this.findEventByIdentifier(eventIdentifier);
+    if (!event) {
+      throw new Error('EVENT NOT FOUND');
+    }
 
-  async deleteUserByUsername(username: string): Promise<IUser | null> {
-    return await User.findOneAndDelete({ username });
-  }
-
-  async addEventToUser(userId: string, eventId: string): Promise<IUser | null> {
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { $addToSet: { events: eventId } },
+    const updatedUser = await User.findOneAndUpdate(
+      userFilter,
+      { $addToSet: { events: event._id } },
       { new: true }
     ).populate('events', 'name schedule').select('-password');
     
     if (updatedUser) {
-      await Event.findByIdAndUpdate(
-        eventId, 
-        { $addToSet: { participants: userId } }, 
+      await EventModel.findByIdAndUpdate(
+        event._id,
+        { $addToSet: { participants: updatedUser._id } },
         { new: true }
       );
     }
     return updatedUser;
   }
 
-  async loginUser(username: string, password: string): Promise<IUser | null> {
+  async loginUser(username: string, password: string): Promise<any | null> {
     try {
-      const user = await User.findOne({ username, active: true })
-        .populate('events', 'name schedule');
-      
-      if (!user) {
-        return null;
-      }
-      
-      const isPasswordValid = await user.comparePassword(password);
-      if (!isPasswordValid) {
-        return null;
-      }
-      
+      const userWithPass = await User.findOne({ username, active: true }).populate('events', 'name schedule');
+      if (!userWithPass) return null;
+      const valid = await (userWithPass as any).comparePassword(password);
+      if (!valid) return null;
+      const user = await User.findById(userWithPass._id).populate('events', 'name schedule').select('-password');
       return user;
     } catch (error) {
-      throw new Error((error as Error).message);
+      throw error;
     }
   }
 
-  async makeUserAdmin(userId: string): Promise<IUser | null> {
-    return await User.findByIdAndUpdate(
-      userId,
+  async makeUserAdminByIdentifier(identifier: string): Promise<IUser | null> {
+    const filter = this.buildIdentifierFilter(identifier);
+    return await User.findOneAndUpdate(
+      filter,
       { role: 'admin' },
       { new: true }
     ).populate('events', 'name schedule').select('-password');
   }
 
-  async removeUserAdmin(userId: string): Promise<IUser | null> {
-    return await User.findByIdAndUpdate(
-      userId,
+  async removeUserAdminByIdentifier(identifier: string): Promise<IUser | null> {
+    const filter = this.buildIdentifierFilter(identifier);
+    return await User.findOneAndUpdate(
+      filter,
       { role: 'user' },
       { new: true }
     ).populate('events', 'name schedule').select('-password');
   }
 
-  async removeEventFromUser(userId: string, eventId: string): Promise<IUser | null> {
-    const updatedUser = await User.findByIdAndUpdate(
-      userId,
-      { $pull: { events: eventId } },
+  async removeEventFromUser(identifier: string, eventIdentifier: string): Promise<IUser | null> {
+    const userFilter = this.buildIdentifierFilter(identifier);
+    
+    // Buscar el evento por ID o nombre
+    const event = await this.findEventByIdentifier(eventIdentifier);
+    if (!event) {
+      throw new Error('EVENT NOT FOUND');
+    }
+
+    const updatedUser = await User.findOneAndUpdate(
+      userFilter,
+      { $pull: { events: event._id } },
       { new: true }
     ).populate('events', 'name schedule').select('-password');
     
     if (updatedUser) {
-      await Event.findByIdAndUpdate(
-        eventId, 
-        { $pull: { participants: userId } }, 
+      await EventModel.findByIdAndUpdate(
+        event._id,
+        { $pull: { participants: updatedUser._id } },
         { new: true }
       );
     }
@@ -192,5 +195,24 @@ export class UserService {
   async hasAnyAdmin(): Promise<boolean> {
     const adminCount = await User.countDocuments({ role: 'admin', active: true });
     return adminCount > 0;
+  }
+
+  async getUserStats(): Promise<UserStats> {
+    const total = await User.countDocuments();
+    const active = await User.countDocuments({ active: true });
+    const inactive = await User.countDocuments({ active: false });
+
+    let newCount: number | null = null;
+    let lastUpdated: string | null = null;
+
+    if (User.schema.path('createdAt')) {
+      const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+      newCount = await User.countDocuments({ createdAt: { $gte: since } });
+
+      const last = await User.findOne().sort({ createdAt: -1 }).select('createdAt').lean();
+      lastUpdated = last?.createdAt ? new Date(last.createdAt).toISOString() : null;
+    }
+
+    return { total, active, inactive, newCount, lastUpdated };
   }
 }

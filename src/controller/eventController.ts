@@ -1,48 +1,48 @@
 import { Request, Response } from 'express';
+import { IEvent } from '../models/event';
 import { EventService } from '../services/eventServices';
-import { User } from '../models/user';
-import { Event } from '../models/event';
+import { validationResult } from 'express-validator';
 
 const eventService = new EventService();
 
-function normalizeSchedule(s: any): string {
-  if (Array.isArray(s)) return s[0] || '';
-  return s || '';
-}
+// Middleware para verificar si el usuario es administrador
+export const requireAdmin = (req: Request, res: Response, next: Function) => {
+  const userRole = req.headers['user-role'] as string;
+  
+  if (userRole !== 'admin') {
+    return res.status(403).json({ message: 'Admin privileges required' });
+  }
+  
+  next();
+};
 
-function normalizeParticipants(p: any): string[] {
-  if (Array.isArray(p)) return p.filter(Boolean);
-  if (Array.isArray((p || {}).participants)) return (p.participants as any[]).filter(Boolean) as string[];
-  return [];
-}
+// Middleware para verificar si el usuario es administrador o manager
+export const requireAdminOrManager = (req: Request, res: Response, next: Function) => {
+  const userRole = req.headers['user-role'] as string;
+  
+  if (userRole !== 'admin' && userRole !== 'manager') {
+    return res.status(403).json({ message: 'Admin or manager privileges required' });
+  }
+  
+  next();
+};
 
 export async function createEvent(req: Request, res: Response): Promise<Response> {
+  const errors = validationResult(req);
+  if (!errors.isEmpty()) {
+    return res.status(400).json({ errors: errors.array() });
+  }
   try {
-    const { name, schedule, address, participants } = req.body;
-    const scheduleStr = normalizeSchedule(schedule);
-    const participantIds = normalizeParticipants(participants);
-
-    const created = await eventService.createEvent({
-      name,
-      schedule: scheduleStr,
-      address,
-      participants: participantIds as any
-    });
-
-    if (participantIds.length > 0) {
-      await User.updateMany(
-        { _id: { $in: participantIds } },
-        { $addToSet: { events: created._id } }
-      ).exec();
+    const eventData: Partial<IEvent> = req.body;
+    
+    const event = await eventService.createEvent(eventData);
+    if (!event) {
+      return res.status(500).json({ error: 'FAILED TO CREATE EVENT' });
     }
-
-    const populated = await Event.findById(created._id)
-      .populate('participants', 'username email')
-      .exec();
-
-    return res.status(201).json(populated ?? created);
+    
+    return res.status(201).json(event);
   } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
+    return res.status(500).json({ error: 'FAILED TO CREATE EVENT', details: (error as Error).message });
   }
 }
 
@@ -62,7 +62,7 @@ export async function getAllEvents(req: Request, res: Response): Promise<Respons
       }
     });
   } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
+    return res.status(404).json({ message: (error as Error).message });
   }
 }
 
@@ -82,14 +82,14 @@ export async function getAllEventsWithInactive(req: Request, res: Response): Pro
       }
     });
   } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
+    return res.status(404).json({ message: (error as Error).message });
   }
 }
 
-export async function getEventById(req: Request, res: Response): Promise<Response> {
+export async function getEventByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const event = await eventService.getEventById(id);
+    const { identifier } = req.params;
+    const event = await eventService.getEventByIdentifier(identifier);
     if (!event) return res.status(404).json({ message: 'EVENT NOT FOUND' });
     return res.status(200).json(event);
   } catch (error) {
@@ -97,10 +97,27 @@ export async function getEventById(req: Request, res: Response): Promise<Respons
   }
 }
 
-export async function disableEventById(req: Request, res: Response): Promise<Response> {
+export async function updateEventByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const disabledEvent = await eventService.disableEventById(id);
+    const { identifier } = req.params;
+    const eventData: Partial<IEvent> = req.body;
+
+    const updatedEvent = await eventService.updateEventByIdentifier(identifier, eventData);
+    if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
+    
+    return res.status(200).json({ 
+      message: 'Event updated successfully',
+      event: updatedEvent 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function disableEventByIdentifier(req: Request, res: Response): Promise<Response> {
+  try {
+    const { identifier } = req.params;
+    const disabledEvent = await eventService.disableEventByIdentifier(identifier);
     if (!disabledEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
     return res.status(200).json({ 
       message: 'Event disabled successfully',
@@ -111,10 +128,10 @@ export async function disableEventById(req: Request, res: Response): Promise<Res
   }
 }
 
-export async function reactivateEventById(req: Request, res: Response): Promise<Response> {
+export async function reactivateEventByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const reactivatedEvent = await eventService.reactivateEventById(id);
+    const { identifier } = req.params;
+    const reactivatedEvent = await eventService.reactivateEventByIdentifier(identifier);
     if (!reactivatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
     return res.status(200).json({ 
       message: 'Event reactivated successfully',
@@ -125,10 +142,10 @@ export async function reactivateEventById(req: Request, res: Response): Promise<
   }
 }
 
-export async function deleteEventById(req: Request, res: Response): Promise<Response> {
+export async function deleteEventByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
-    const { id } = req.params;
-    const deletedEvent = await eventService.deleteEventById(id);
+    const { identifier } = req.params;
+    const deletedEvent = await eventService.deleteEventByIdentifier(identifier);
     if (!deletedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
     return res.status(200).json({ 
       message: 'Event permanently deleted',
@@ -139,67 +156,37 @@ export async function deleteEventById(req: Request, res: Response): Promise<Resp
   }
 }
 
-export async function updateEvent(req: Request, res: Response): Promise<Response> {
-  try {
-    const { id } = req.params;
-    const { name, schedule, address, participants } = req.body;
-    const scheduleStr = normalizeSchedule(schedule);
-    const participantIds = normalizeParticipants(participants);
-    const updatedEvent = await eventService.updateEvent(id, {
-      name,
-      schedule: scheduleStr,
-      address,
-      participants: participantIds as any
-    });
-    if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
-    return res.status(200).json({ 
-      message: 'Event updated successfully',
-      event: updatedEvent 
-    });
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
-  }
-}
-
-export async function getUsersByEventId(req: Request, res: Response): Promise<Response> {
-  try {
-    const { id } = req.params;
-    const eventWithUsers = await eventService.getUsersByEventId(id);
-    if (!eventWithUsers) return res.status(404).json({ message: 'EVENT NOT FOUND' });
-    return res.status(200).json(eventWithUsers);
-  } catch (error) {
-    return res.status(400).json({ message: (error as Error).message });
-  }
-}
-
 export async function addUserToEvent(req: Request, res: Response): Promise<Response> {
   try {
-    const { eventId, userId } = req.params;
-    const updatedEvent = await eventService.addUserToEvent(eventId, userId);
-    if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
-    await User.findByIdAndUpdate(
-      userId,
-      { $addToSet: { events: eventId } },
-      { new: true }
-    ).exec();
-    return res.status(200).json(updatedEvent);
+    const { identifier } = req.params;
+    const { userIdentifier } = req.body;
+    if (!userIdentifier) return res.status(400).json({ message: 'Missing userIdentifier' });
+    const updated = await eventService.addUserToEvent(identifier, userIdentifier);
+    if (!updated) return res.status(404).json({ message: 'EVENT NOT FOUND' });
+    return res.status(200).json(updated);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
   }
 }
 
-export async function removeUserFromEvent(req: Request, res: Response): Promise<Response> { 
+export async function removeUserFromEvent(req: Request, res: Response): Promise<Response> {
   try {
-    const { eventId, userId } = req.params;
-    const updatedEvent = await eventService.removeUserFromEvent(eventId, userId);
-    if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
-    await User.findByIdAndUpdate(
-      userId,
-      { $pull: { events: eventId } },
-      { new: true }
-    ).exec();
-    return res.status(200).json(updatedEvent);
+    const { identifier } = req.params;
+    const { userIdentifier } = req.body;
+    if (!userIdentifier) return res.status(400).json({ message: 'Missing userIdentifier' });
+    const updated = await eventService.removeUserFromEvent(identifier, userIdentifier);
+    if (!updated) return res.status(404).json({ message: 'EVENT NOT FOUND' });
+    return res.status(200).json(updated);
   } catch (error) {
     return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function getEventStats(req: Request, res: Response): Promise<Response> {
+  try {
+    const stats = await eventService.getEventStats();
+    return res.status(200).json(stats);
+  } catch (error) {
+    return res.status(500).json({ message: (error as Error).message });
   }
 }
