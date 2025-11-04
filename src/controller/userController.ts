@@ -97,45 +97,26 @@ export async function updateUserByIdentifier(req: Request, res: Response): Promi
   try {
     const { identifier } = req.params;
     const userData: Partial<IUser> = req.body;
-    
-    // Solo permitir actualizar email y birthday
-    const filteredData: Partial<IUser> = {};
-    
-    // Manejar email
-    if (userData.email !== undefined && typeof userData.email === 'string') {
-      filteredData.email = userData.email;
-    }
-    
-    // Manejar birthday
-    if (userData.birthday !== undefined) {
-      if (userData.birthday instanceof Date) {
-        filteredData.birthday = userData.birthday;
-      } else if (typeof userData.birthday === 'string') {
-        const birthdayDate = new Date(userData.birthday);
-        if (!isNaN(birthdayDate.getTime())) {
-          filteredData.birthday = birthdayDate;
-        }
-      }
-    }
 
     // No permitir actualizar password desde aquí
     if (userData.password) {
       return res.status(400).json({ message: 'Password cannot be updated from this endpoint' });
     }
 
-    // No permitir actualizar role desde aquí
-    if (userData.role) {
-      return res.status(400).json({ message: 'Role cannot be updated from this endpoint' });
+    // ✅ MODIFICADO: Permitir actualizar role si el usuario que hace la petición es admin
+    const userRole = req.headers['user-role'] as string;
+    if (userData.role && userRole !== 'admin') {
+      return res.status(403).json({ message: 'Only admins can update user roles' });
     }
 
-    // Verificar que al menos un campo permitido fue proporcionado
-    if (Object.keys(filteredData).length === 0) {
+    // Verificar que al menos un campo fue proporcionado
+    if (Object.keys(userData).length === 0) {
       return res.status(400).json({ 
-        message: 'No valid fields to update. Only email and birthday are allowed.' 
+        message: 'No fields to update provided' 
       });
     }
 
-    const updatedUser = await userService.updateUserByIdentifier(identifier, filteredData);
+    const updatedUser = await userService.updateUserByIdentifier(identifier, userData);
     if (!updatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
     
     return res.status(200).json({ 
@@ -203,6 +184,36 @@ export async function removeUserAdminByIdentifier(req: Request, res: Response): 
   }
 }
 
+// ✅ NUEVO: Endpoint específico para hacer manager
+export async function makeUserManagerByIdentifier(req: Request, res: Response): Promise<Response> {
+  try {
+    const { identifier } = req.params;
+    const managerUser = await userService.makeUserManagerByIdentifier(identifier);
+    if (!managerUser) return res.status(404).json({ message: 'USER NOT FOUND' });
+    return res.status(200).json({ 
+      message: 'User converted to manager',
+      user: managerUser 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+// ✅ NUEVO: Endpoint específico para quitar manager
+export async function removeUserManagerByIdentifier(req: Request, res: Response): Promise<Response> {
+  try {
+    const { identifier } = req.params;
+    const normalUser = await userService.removeUserManagerByIdentifier(identifier);
+    if (!normalUser) return res.status(404).json({ message: 'USER NOT FOUND' });
+    return res.status(200).json({ 
+      message: 'Manager permissions removed',
+      user: normalUser 
+    });
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
 export async function deleteUserByIdentifier(req: Request, res: Response): Promise<Response> {
   try {
     const { identifier } = req.params;
@@ -220,7 +231,7 @@ export async function deleteUserByIdentifier(req: Request, res: Response): Promi
 export async function addEventToUser(req: Request, res: Response): Promise<Response> {
   try {
     const { identifier } = req.params;
-    const { eventIdentifier } = req.body; // Cambiado de eventId a eventIdentifier
+    const { eventIdentifier } = req.body;
     if (!eventIdentifier) return res.status(400).json({ message: 'Missing eventIdentifier' });
     const updated = await userService.addEventToUser(identifier, eventIdentifier);
     if (!updated) return res.status(404).json({ message: 'USER NOT FOUND' });

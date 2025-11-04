@@ -12,8 +12,11 @@ import {
   removeUserAdminByIdentifier,
   deleteUserByIdentifier,
   addEventToUser,
-  getUserStats
+  getUserStats,
+  makeUserManagerByIdentifier,
+  removeUserManagerByIdentifier
 } from '../controller/userController';
+import { requireAdmin } from '../controller/eventController';
 
 const router = Router();
 
@@ -355,14 +358,16 @@ router.get('/with-inactive', getAllUsersWithInactive);
  */
 router.get('/:identifier', getUserByIdentifier);
 
-// ==================== PATCH ====================
+// ==================== ADMINISTRATION - USERS ====================
 
 /**
  * @swagger
  * /api/user/{identifier}:
  *   patch:
- *     summary: Update a user by ID, username or email
- *     tags: [Users]
+ *     summary: 'Update any user field by ID, username or email (Admin only)'
+ *     tags: [Administration - Users]
+ *     security:
+ *       - userRole: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -377,6 +382,9 @@ router.get('/:identifier', getUserByIdentifier);
  *           schema:
  *             type: object
  *             properties:
+ *               username:
+ *                 type: string
+ *                 example: "newUsername"
  *               email:
  *                 type: string
  *                 example: "newemail@example.com"
@@ -384,6 +392,13 @@ router.get('/:identifier', getUserByIdentifier);
  *                 type: string
  *                 format: date
  *                 example: "2000-01-01"
+ *               role:
+ *                 type: string
+ *                 enum: [admin, manager, user]
+ *                 example: "manager"
+ *               active:
+ *                 type: boolean
+ *                 example: true
  *     responses:
  *       200:
  *         description: User updated successfully
@@ -397,13 +412,13 @@ router.get('/:identifier', getUserByIdentifier);
  *                 user:
  *                   $ref: '#/components/schemas/User'
  *       400:
- *         description: Invalid data or no valid fields to update
+ *         description: Invalid data or password update attempted
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.patch('/:identifier', updateUserByIdentifier);
-
-// ==================== ADMINISTRATION - USERS ====================
+router.patch('/:identifier', requireAdmin, updateUserByIdentifier);
 
 /**
  * @swagger
@@ -524,6 +539,74 @@ router.patch('/:identifier/make-admin', makeUserAdminByIdentifier);
  *         description: User not found
  */
 router.patch('/:identifier/remove-admin', removeUserAdminByIdentifier);
+
+/**
+ * @swagger
+ * /api/user/{identifier}/make-manager:
+ *   patch:
+ *     summary: 'Convert user to manager by ID, username or email (Admin only)'
+ *     tags: [Administration - Users]
+ *     security:
+ *       - userRole: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID, username or email
+ *     responses:
+ *       200:
+ *         description: User converted to manager successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       403:
+ *         description: Admin privileges required
+ *       404:
+ *         description: User not found
+ */
+router.patch('/:identifier/make-manager', requireAdmin, makeUserManagerByIdentifier);
+
+/**
+ * @swagger
+ * /api/user/{identifier}/remove-manager:
+ *   patch:
+ *     summary: 'Remove manager permissions by ID, username or email (Admin only)'
+ *     tags: [Administration - Users]
+ *     security:
+ *       - userRole: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID, username or email
+ *     responses:
+ *       200:
+ *         description: Manager permissions removed successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       403:
+ *         description: Admin privileges required
+ *       404:
+ *         description: User not found
+ */
+router.patch('/:identifier/remove-manager', requireAdmin, removeUserManagerByIdentifier);
 
 // ==================== DELETE ====================
 

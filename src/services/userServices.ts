@@ -46,8 +46,7 @@ export class UserService {
     const users = await User.find({ active: true })
       .skip(skip)
       .limit(limit)
-      .populate('events', 'name schedule')
-      .select('-password');
+      .populate('events', 'username email');
     
     const total = await User.countDocuments({ active: true });
     return { users, total };
@@ -57,8 +56,7 @@ export class UserService {
     const users = await User.find()
       .skip(skip)
       .limit(limit)
-      .populate('events', 'name schedule')
-      .select('-password');
+      .populate('events', 'username email');
     
     const total = await User.countDocuments();
     return { users, total };
@@ -67,25 +65,23 @@ export class UserService {
   async getUserByIdentifier(identifier: string): Promise<IUser | null> {
     const filter = this.buildIdentifierFilter(identifier);
     return await User.findOne({ ...filter, active: true })
-      .populate('events', 'name schedule')
+      .populate('events', 'username email')
       .select('-password');
   }
 
   async updateUserByIdentifier(identifier: string, userData: Partial<IUser>): Promise<IUser | null> {
-    if (userData.role === 'admin') {
-      throw new Error('Cannot update role to admin from this service');
-    }
-
+    // No permitir actualizar password desde este servicio
     if (userData.password) {
       throw new Error('Password cannot be updated from this service');
     }
 
+    // ✅ MODIFICADO: Permitir actualizar role sin restricciones (la validación está en el controller)
     const filter = this.buildIdentifierFilter(identifier);
     return await User.findOneAndUpdate(
-      { ...filter, active: true }, 
+      filter,
       userData, 
       { new: true }
-    ).populate('events', 'name schedule').select('-password');
+    ).populate('events', 'username email').select('-password');
   }
 
   async disableUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -94,7 +90,7 @@ export class UserService {
       filter, 
       { active: false }, 
       { new: true }
-    ).populate('events', 'name schedule').select('-password');
+    ).populate('events', 'username email').select('-password');
   }
 
   async reactivateUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -103,7 +99,7 @@ export class UserService {
       filter, 
       { active: true }, 
       { new: true }
-    ).populate('events', 'name schedule').select('-password');
+    ).populate('events', 'username email').select('-password');
   }
 
   async deleteUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -124,7 +120,7 @@ export class UserService {
       userFilter,
       { $addToSet: { events: event._id } },
       { new: true }
-    ).populate('events', 'name schedule').select('-password');
+    ).populate('events', 'username email').select('-password');
     
     if (updatedUser) {
       await EventModel.findByIdAndUpdate(
@@ -138,11 +134,11 @@ export class UserService {
 
   async loginUser(username: string, password: string): Promise<any | null> {
     try {
-      const userWithPass = await User.findOne({ username, active: true }).populate('events', 'name schedule');
+      const userWithPass = await User.findOne({ username, active: true }).populate('events', 'username email');
       if (!userWithPass) return null;
       const valid = await (userWithPass as any).comparePassword(password);
       if (!valid) return null;
-      const user = await User.findById(userWithPass._id).populate('events', 'name schedule').select('-password');
+      const user = await User.findById(userWithPass._id).populate('events', 'username email').select('-password');
       return user;
     } catch (error) {
       throw error;
@@ -155,7 +151,7 @@ export class UserService {
       filter,
       { role: 'admin' },
       { new: true }
-    ).populate('events', 'name schedule').select('-password');
+    ).populate('events', 'username email').select('-password');
   }
 
   async removeUserAdminByIdentifier(identifier: string): Promise<IUser | null> {
@@ -164,7 +160,27 @@ export class UserService {
       filter,
       { role: 'user' },
       { new: true }
-    ).populate('events', 'name schedule').select('-password');
+    ).populate('events', 'username email').select('-password');
+  }
+
+  // ✅ NUEVO: Método para hacer manager
+  async makeUserManagerByIdentifier(identifier: string): Promise<IUser | null> {
+    const filter = this.buildIdentifierFilter(identifier);
+    return await User.findOneAndUpdate(
+      filter,
+      { role: 'manager' },
+      { new: true }
+    ).populate('events', 'username email').select('-password');
+  }
+
+  // ✅ NUEVO: Método para quitar manager
+  async removeUserManagerByIdentifier(identifier: string): Promise<IUser | null> {
+    const filter = this.buildIdentifierFilter(identifier);
+    return await User.findOneAndUpdate(
+      filter,
+      { role: 'user' },
+      { new: true }
+    ).populate('events', 'username email').select('-password');
   }
 
   async removeEventFromUser(identifier: string, eventIdentifier: string): Promise<IUser | null> {
@@ -180,7 +196,7 @@ export class UserService {
       userFilter,
       { $pull: { events: event._id } },
       { new: true }
-    ).populate('events', 'name schedule').select('-password');
+    ).populate('events', 'username email').select('-password');
     
     if (updatedUser) {
       await EventModel.findByIdAndUpdate(
