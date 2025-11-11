@@ -1,19 +1,19 @@
 import { Router } from 'express';
 import {
-  createEvent,
-  getAllEvents,
-  getAllEventsWithInactive,
-  getEventByIdentifier,
-  updateEventByIdentifier,
-  disableEventByIdentifier,
-  reactivateEventByIdentifier,
-  deleteEventByIdentifier,
-  addUserToEvent,
-  removeUserFromEvent,
-  getEventStats,
-  requireAdmin,
-  requireAdminOrManager
+    createEvent,
+    getAllEvents,
+    getAllEventsWithInactive,
+    getEventByIdentifier,
+    updateEventByIdentifier,
+    disableEventByIdentifier,
+    reactivateEventByIdentifier,
+    deleteEventByIdentifier,
+    addUserToEvent,
+    removeUserFromEvent,
+    getEventStats
 } from '../controller/eventController';
+import { authenticateToken } from '../auth/middleware';
+import { requireAdmin, requireAdminOrManager } from '../middleware/roleMiddleware';
 
 const router = Router();
 
@@ -60,8 +60,8 @@ const router = Router();
  *         participants:
  *           type: array
  *           items:
- *             $ref: '#/components/schemas/User'
- *           description: Array de usuarios participantes
+ *             type: string
+ *           description: Array de IDs de usuarios participantes
  *         active:
  *           type: boolean
  *           example: true
@@ -123,22 +123,15 @@ const router = Router();
  *           type: string
  *           format: date-time
  *           description: Fecha de última actualización
- *   securitySchemes:
- *     userRole:
- *       type: apiKey
- *       in: header
- *       name: user-role
- *       description: Rol del usuario autenticado (admin, manager, user)
  */
 
-// ==================== GET ====================
-
+// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/event:
  *   get:
  *     summary: Get all active events (paginated)
- *     tags: [Events]
+ *     tags: [Events - Public]
  *     parameters:
  *       - in: query
  *         name: skip
@@ -182,10 +175,56 @@ router.get('/', getAllEvents);
 
 /**
  * @swagger
+ * /api/event/stats:
+ *   get:
+ *     summary: Get event statistics
+ *     tags: [Events - Public]
+ *     responses:
+ *       200:
+ *         description: Event statistics retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/EventStats'
+ *       500:
+ *         description: Failed to retrieve statistics
+ */
+router.get('/stats', getEventStats);
+
+/**
+ * @swagger
+ * /api/event/{identifier}:
+ *   get:
+ *     summary: Get an active event by ID or name
+ *     tags: [Events - Public]
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Event found
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/Event'
+ *       404:
+ *         description: Event not found
+ */
+router.get('/:identifier', getEventByIdentifier);
+
+// --- RUTAS ADMIN ONLY ---
+/**
+ * @swagger
  * /api/event/with-inactive:
  *   get:
- *     summary: Get all events including inactive ones (paginated)
- *     tags: [Events]
+ *     summary: Get all events including inactive ones (paginated) - Admin only
+ *     tags: [Events - Admin Only]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: skip
@@ -222,64 +261,23 @@ router.get('/', getAllEvents);
  *                       type: integer
  *                     hasMore:
  *                       type: boolean
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: No events found
  */
-router.get('/with-inactive', getAllEventsWithInactive);
-
-/**
- * @swagger
- * /api/event/stats:
- *   get:
- *     summary: Get event statistics
- *     tags: [Events]
- *     responses:
- *       200:
- *         description: Event statistics retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/EventStats'
- *       500:
- *         description: Failed to retrieve statistics
- */
-router.get('/stats', getEventStats);
-
-/**
- * @swagger
- * /api/event/{identifier}:
- *   get:
- *     summary: Get an active event by ID or name
- *     tags: [Events]
- *     parameters:
- *       - in: path
- *         name: identifier
- *         required: true
- *         schema:
- *           type: string
- *         description: Event ID or event name
- *     responses:
- *       200:
- *         description: Event found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Event'
- *       404:
- *         description: Event not found
- */
-router.get('/:identifier', getEventByIdentifier);
-
-// ==================== ADMINISTRATION - EVENTS ====================
+router.get('/with-inactive', authenticateToken, requireAdmin, getAllEventsWithInactive);
 
 /**
  * @swagger
  * /api/event:
  *   post:
- *     summary: 'Create a new event (Admin only)'
- *     tags: [Administration - Events]
+ *     summary: Create a new event - Admin only
+ *     tags: [Events - Admin Only]
  *     security:
- *       - userRole: []
+ *       - bearerAuth: []
  *     requestBody:
  *       required: true
  *       content:
@@ -295,21 +293,132 @@ router.get('/:identifier', getEventByIdentifier);
  *               $ref: '#/components/schemas/Event'
  *       400:
  *         description: Error in event data
+ *       401:
+ *         description: Unauthorized - Token required
  *       403:
  *         description: Admin privileges required
  *       500:
  *         description: Failed to create event
  */
-router.post('/', requireAdmin, createEvent);
+router.post('/', authenticateToken, requireAdmin, createEvent);
 
+/**
+ * @swagger
+ * /api/event/{identifier}/disable:
+ *   patch:
+ *     summary: Disable an event by ID or name - Admin only
+ *     tags: [Events - Admin Only]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Event disabled successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
+ *       404:
+ *         description: Event not found
+ */
+router.patch('/:identifier/disable', authenticateToken, requireAdmin, disableEventByIdentifier);
+
+/**
+ * @swagger
+ * /api/event/{identifier}/reactivate:
+ *   patch:
+ *     summary: Reactivate an event by ID or name - Admin only
+ *     tags: [Events - Admin Only]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Event reactivated successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
+ *       404:
+ *         description: Event not found
+ */
+router.patch('/:identifier/reactivate', authenticateToken, requireAdmin, reactivateEventByIdentifier);
+
+/**
+ * @swagger
+ * /api/event/hard/{identifier}:
+ *   delete:
+ *     summary: Permanently delete an event by ID or name - Admin only
+ *     tags: [Events - Admin Only]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Event permanently deleted
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
+ *       404:
+ *         description: Event not found
+ */
+router.delete('/hard/:identifier', authenticateToken, requireAdmin, deleteEventByIdentifier);
+
+// --- RUTAS ADMIN/MANAGER ---
 /**
  * @swagger
  * /api/event/{identifier}/add-user:
  *   post:
- *     summary: 'Add user to an event by ID or name (Admin or Manager only)'
- *     tags: [Administration - Events]
+ *     summary: Add user to an event by ID or name - Admin or Manager only
+ *     tags: [Events - Admin/Manager]
  *     security:
- *       - userRole: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -338,21 +447,23 @@ router.post('/', requireAdmin, createEvent);
  *               $ref: '#/components/schemas/Event'
  *       400:
  *         description: Missing userIdentifier
+ *       401:
+ *         description: Unauthorized - Token required
  *       403:
  *         description: Admin or manager privileges required
  *       404:
  *         description: Event or user not found
  */
-router.post('/:identifier/add-user', requireAdminOrManager, addUserToEvent);
+router.post('/:identifier/add-user', authenticateToken, requireAdminOrManager, addUserToEvent);
 
 /**
  * @swagger
  * /api/event/{identifier}/remove-user:
  *   post:
- *     summary: 'Remove user from an event by ID or name (Admin or Manager only)'
- *     tags: [Administration - Events]
+ *     summary: Remove user from an event by ID or name - Admin or Manager only
+ *     tags: [Events - Admin/Manager]
  *     security:
- *       - userRole: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -381,21 +492,23 @@ router.post('/:identifier/add-user', requireAdminOrManager, addUserToEvent);
  *               $ref: '#/components/schemas/Event'
  *       400:
  *         description: Missing userIdentifier
+ *       401:
+ *         description: Unauthorized - Token required
  *       403:
  *         description: Admin or manager privileges required
  *       404:
  *         description: Event or user not found
  */
-router.post('/:identifier/remove-user', requireAdminOrManager, removeUserFromEvent);
+router.post('/:identifier/remove-user', authenticateToken, requireAdminOrManager, removeUserFromEvent);
 
 /**
  * @swagger
  * /api/event/{identifier}:
  *   patch:
- *     summary: 'Update event details by ID or name (Admin or Manager only)'
- *     tags: [Administration - Events]
+ *     summary: Update event details by ID or name - Admin or Manager only
+ *     tags: [Events - Admin/Manager]
  *     security:
- *       - userRole: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -439,113 +552,13 @@ router.post('/:identifier/remove-user', requireAdminOrManager, removeUserFromEve
  *                   $ref: '#/components/schemas/Event'
  *       400:
  *         description: Invalid data
+ *       401:
+ *         description: Unauthorized - Token required
  *       403:
  *         description: Admin or manager privileges required
  *       404:
  *         description: Event not found
  */
-router.patch('/:identifier', requireAdminOrManager, updateEventByIdentifier);
-
-/**
- * @swagger
- * /api/event/{identifier}/disable:
- *   patch:
- *     summary: 'Disable an event by ID or name (Admin only)'
- *     tags: [Administration - Events]
- *     security:
- *       - userRole: []
- *     parameters:
- *       - in: path
- *         name: identifier
- *         required: true
- *         schema:
- *           type: string
- *         description: Event ID or event name
- *     responses:
- *       200:
- *         description: Event disabled successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 event:
- *                   $ref: '#/components/schemas/Event'
- *       403:
- *         description: Admin privileges required
- *       404:
- *         description: Event not found
- */
-router.patch('/:identifier/disable', requireAdmin, disableEventByIdentifier);
-
-/**
- * @swagger
- * /api/event/{identifier}/reactivate:
- *   patch:
- *     summary: 'Reactivate an event by ID or name (Admin only)'
- *     tags: [Administration - Events]
- *     security:
- *       - userRole: []
- *     parameters:
- *       - in: path
- *         name: identifier
- *         required: true
- *         schema:
- *           type: string
- *         description: Event ID or event name
- *     responses:
- *       200:
- *         description: Event reactivated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 event:
- *                   $ref: '#/components/schemas/Event'
- *       403:
- *         description: Admin privileges required
- *       404:
- *         description: Event not found
- */
-router.patch('/:identifier/reactivate', requireAdmin, reactivateEventByIdentifier);
-
-/**
- * @swagger
- * /api/event/hard/{identifier}:
- *   delete:
- *     summary: 'Permanently delete an event by ID or name (Admin only)'
- *     tags: [Administration - Events]
- *     security:
- *       - userRole: []
- *     parameters:
- *       - in: path
- *         name: identifier
- *         required: true
- *         schema:
- *           type: string
- *         description: Event ID or event name
- *     responses:
- *       200:
- *         description: Event permanently deleted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 event:
- *                   $ref: '#/components/schemas/Event'
- *       403:
- *         description: Admin privileges required
- *       404:
- *         description: Event not found
- */
-router.delete('/hard/:identifier', requireAdmin, deleteEventByIdentifier);
+router.patch('/:identifier', authenticateToken, requireAdminOrManager, updateEventByIdentifier);
 
 export default router;

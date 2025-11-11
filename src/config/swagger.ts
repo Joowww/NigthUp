@@ -1,56 +1,111 @@
-import swaggerJSDoc, { Options } from 'swagger-jsdoc';
+import swaggerJSDoc from 'swagger-jsdoc';
+import swaggerUi from 'swagger-ui-express';
+import { Application } from 'express';
 
 const options: swaggerJSDoc.Options = {
-  definition: {
-    openapi: '3.0.0',
-    info: {
-      title: 'RESTful API with Node, Express, TypeScript and MongoDB',
-      version: '1.0.0',
-      description: 'API documentation for Users, Events and Business management',
+    definition: {
+        openapi: '3.0.0',
+        info: {
+            title: 'NightUp API with Node, Express, TypeScript and MongoDB',
+            version: '1.0.0',
+            description: 'API documentation for NightUp - Event and User management',
+        },
+        servers: [
+            {
+                url: 'http://localhost:3000',
+            },
+        ],
+        components: {
+            securitySchemes: {
+                bearerAuth: {
+                    type: 'http',
+                    scheme: 'bearer',
+                    bearerFormat: 'JWT',
+                },
+            },
+        },
+        security: [{
+            bearerAuth: []
+        }],
+        tags: [
+            {
+                name: 'Users - Public',
+                description: 'Public user endpoints (no auth required)'
+            },
+            {
+                name: 'Users - Authenticated',
+                description: 'User endpoints for authenticated users'
+            },
+            {
+                name: 'Users - Admin',
+                description: 'User management endpoints (admin only)'
+            },
+            {
+                name: 'Authentication',
+                description: 'Authentication and token management'
+            },
+            {
+                name: 'Events - Public',
+                description: 'Public event endpoints (no auth required)'
+            },
+            {
+                name: 'Events - Admin/Manager',
+                description: 'Event management endpoints (admin or manager required)'
+            },
+            {
+                name: 'Events - Admin Only',
+                description: 'Event administration endpoints (admin only)'
+            },
+            {
+                name: 'Business - Public',
+                description: 'Public business endpoints (no auth required)'
+            },
+            {
+                name: 'Business - Admin/Manager',
+                description: 'Business management endpoints (admin or manager required)'
+            },
+            {
+                name: 'Business - Admin Only',
+                description: 'Business administration endpoints (admin only)'
+            },
+            {
+                name: 'Ratings - Public',
+                description: 'Public rating endpoints (no auth required)'
+            },
+            {
+                name: 'Tags',
+                description: 'Tag endpoints'
+            },
+            {
+                name: 'User Interests',
+                description: 'User interest endpoints'
+            },
+            {
+                name: 'User Trust',
+                description: 'User trust endpoints'
+            }
+        ],
     },
-    servers: [
-      {
-        url: 'http://localhost:3000',
-      },
+    apis: [
+        './src/routes/userRoutes.ts',
+        './src/routes/eventRoutes.ts',
+        './src/routes/businessRoutes.ts',
+        './src/routes/ratingRoutes.ts',
+        './src/routes/tagRoutes.ts',
+        './src/routes/userInterestRoutes.ts',
+        './src/routes/userTrustRoutes.ts',
     ],
-    tags: [
-      {
-        name: 'Users',
-        description: 'User management endpoints'
-      },
-      {
-        name: 'Events',
-        description: 'Event management endpoints'
-      },
-      {
-        name: 'Business',
-        description: 'Business management endpoints'
-      },
-      {
-        name: 'Authentication',
-        description: 'Authentication and authorization endpoints'
-      },
-      {
-        name: 'Administration - Users',
-        description: 'Admin-only user management endpoints'
-      },
-      {
-        name: 'Administration - Events',
-        description: 'Admin and manager event management endpoints'
-      },
-      {
-        name: 'Administration - Business',
-        description: 'Admin and manager business management endpoints'
-      }
-    ],
-  },
-  apis: [
-    './src/routes/userRoutes.ts',
-    './src/routes/eventRoutes.ts',
-    './src/routes/businessRoutes.ts'
-  ],
 };
 
 const swaggerSpec = swaggerJSDoc(options);
 
 export default swaggerSpec;
+
+export function setupSwagger(app: Application): void {
+    console.log('Setting up Swagger');
+    app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
+        swaggerOptions: {
+            persistAuthorization: true,
+        },
+    }));
+}

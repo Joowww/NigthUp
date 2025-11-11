@@ -75,7 +75,7 @@ export class UserService {
       throw new Error('Password cannot be updated from this service');
     }
 
-    // ✅ MODIFICADO: Permitir actualizar role sin restricciones (la validación está en el controller)
+    // MODIFICADO: Permitir actualizar role sin restricciones (la validación está en el controller)
     const filter = this.buildIdentifierFilter(identifier);
     return await User.findOneAndUpdate(
       filter,
@@ -83,6 +83,8 @@ export class UserService {
       { new: true }
     ).populate('events', 'username email').select('-password');
   }
+
+  
 
   async disableUserByIdentifier(identifier: string): Promise<IUser | null> {
     const filter = this.buildIdentifierFilter(identifier);

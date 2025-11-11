@@ -1,22 +1,31 @@
 import { Router } from 'express';
 import {
-  createUser,
-  loginUser,
-  getAllUsers,
-  getAllUsersWithInactive,
-  getUserByIdentifier,
-  updateUserByIdentifier,
-  disableUserByIdentifier,
-  reactivateUserByIdentifier,
-  makeUserAdminByIdentifier,
-  removeUserAdminByIdentifier,
-  deleteUserByIdentifier,
-  addEventToUser,
-  getUserStats,
-  makeUserManagerByIdentifier,
-  removeUserManagerByIdentifier
+    createUser,
+    loginUser,
+    refreshAccessToken,
+    changePassword,
+    changeEmail,
+    getAllUsers,
+    getAllUsersWithInactive,
+    getUserByIdentifier,
+    updateUserByIdentifier,
+    disableUserByIdentifier,
+    reactivateUserByIdentifier,
+    forgotPassword,
+    makeUserAdminByIdentifier,
+    removeUserAdminByIdentifier,
+    deleteUserByIdentifier,
+    addEventToUser,
+    getUserStats,
+    makeUserManagerByIdentifier,
+    removeUserManagerByIdentifier,
+    getMyProfile,
+    updateMyProfile,
+    verifyTokenHandler
 } from '../controller/userController';
-import { requireAdmin } from '../controller/eventController';
+
+import { authenticateToken, authenticateRefreshToken } from '../auth/middleware';
+import { requireAdmin, requireAdminOrManager, requireUser } from '../middleware/roleMiddleware';
 
 const router = Router();
 
@@ -107,16 +116,56 @@ const router = Router();
  *           type: string
  *           format: date-time
  *           description: Fecha de última actualización
+ *     LoginRequest:
+ *       type: object
+ *       required:
+ *         - username
+ *         - password
+ *       properties:
+ *         username:
+ *           type: string
+ *           example: "userExample"
+ *         password:
+ *           type: string
+ *           example: "123456"
+ *     LoginResponse:
+ *       type: object
+ *       properties:
+ *         user:
+ *           $ref: '#/components/schemas/User'
+ *         message:
+ *           type: string
+ *           example: "LOGIN EXITOSO"
+ *         token:
+ *           type: string
+ *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         refreshToken:
+ *           type: string
+ *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *     RefreshTokenRequest:
+ *       type: object
+ *       required:
+ *         - refreshToken
+ *         - userId
+ *       properties:
+ *         refreshToken:
+ *           type: string
+ *         userId:
+ *           type: string
+ *   securitySchemes:
+ *     bearerAuth:
+ *       type: http
+ *       scheme: bearer
+ *       bearerFormat: JWT
  */
 
-// ==================== POST ====================
-
+// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/user:
  *   post:
  *     summary: Create a new user
- *     tags: [Users]
+ *     tags: [Users - Public]
  *     requestBody:
  *       required: true
  *       content:
@@ -126,10 +175,6 @@ const router = Router();
  *     responses:
  *       201:
  *         description: User created successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
  *       400:
  *         description: Error in user data
  *       403:
@@ -150,27 +195,10 @@ router.post('/', createUser);
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - username
- *               - password
- *             properties:
- *               username:
- *                 type: string
- *                 example: "userExample"
- *               password:
- *                 type: string
- *                 example: "123456"
+ *             $ref: '#/components/schemas/LoginRequest'
  *     responses:
  *       200:
  *         description: Login successful
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 user:
- *                   $ref: '#/components/schemas/User'
  *       400:
  *         description: Validation error
  *       401:
@@ -182,17 +210,10 @@ router.post('/auth/login', loginUser);
 
 /**
  * @swagger
- * /api/user/{identifier}/events:
+ * /api/user/forgot-password:
  *   post:
- *     summary: Add event to a user by ID, username or email
- *     tags: [Users]
- *     parameters:
- *       - in: path
- *         name: identifier
- *         required: true
- *         schema:
- *           type: string
- *         description: User ID, username or email
+ *     summary: Solicitar restablecimiento de contraseña
+ *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
@@ -200,33 +221,187 @@ router.post('/auth/login', loginUser);
  *           schema:
  *             type: object
  *             required:
- *               - eventIdentifier
+ *               - email
  *             properties:
- *               eventIdentifier:
+ *               email:
  *                 type: string
- *                 description: Event ID or event name
+ *                 format: email
  *     responses:
  *       200:
- *         description: Event added to user successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
+ *         description: Si el email existe, se envía un enlace de restablecimiento
  *       400:
- *         description: Missing eventIdentifier or event not found
+ *         description: Email no proporcionado
+ *       500:
+ *         description: Error del servidor
+ */
+router.post('/forgot-password', forgotPassword);
+
+/**
+ * @swagger
+ * /api/user/auth/refresh:
+ *   post:
+ *     summary: Refresh access token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/RefreshTokenRequest'
+ *     responses:
+ *       200:
+ *         description: New token generated successfully
+ *       401:
+ *         description: Invalid or expired refresh token
+ *       500:
+ *         description: Internal server error
+ */
+router.post('/auth/refresh', authenticateRefreshToken, refreshAccessToken);
+
+/**
+ * @swagger
+ * /api/user/change-password:
+ *   post:
+ *     summary: Change user password
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - currentPassword
+ *               - newPassword
+ *             properties:
+ *               currentPassword:
+ *                 type: string
+ *               newPassword:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Password changed successfully
+ *       400:
+ *         description: Invalid current password or weak new password
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/change-password', authenticateToken, changePassword);
+
+/**
+ * @swagger
+ * /api/user/change-email:
+ *   post:
+ *     summary: Change user email
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - newEmail
+ *               - password
+ *             properties:
+ *               newEmail:
+ *                 type: string
+ *                 format: email
+ *               password:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Email changed successfully
+ *       400:
+ *         description: Invalid password or email already in use
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/change-email', authenticateToken, changeEmail);
+
+
+// --- RUTAS AUTENTICADAS ---
+/**
+ * @swagger
+ * /api/user/auth/verify:
+ *   get:
+ *     summary: Verify JWT token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token is valid
+ *       401:
+ *         description: Invalid token
+ */
+router.get('/auth/verify', authenticateToken, verifyTokenHandler);
+
+/**
+ * @swagger
+ * /api/user/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *       401:
+ *         description: Unauthorized - Token required
  *       404:
  *         description: User not found
  */
-router.post('/:identifier/events', addEventToUser);
+router.get('/me', authenticateToken, getMyProfile);
 
-// ==================== GET ====================
+/**
+ * @swagger
+ * /api/user/me:
+ *   patch:
+ *     summary: Update current user profile
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               birthday:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       400:
+ *         description: Invalid data or password/role update attempted
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: User not found
+ */
+router.patch('/me', authenticateToken, updateMyProfile);
 
+// --- RUTAS ADMIN ---
 /**
  * @swagger
  * /api/user:
  *   get:
- *     summary: Get all active users (paginated)
- *     tags: [Users]
+ *     summary: Get all active users (paginated) - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: skip
@@ -243,55 +418,43 @@ router.post('/:identifier/events', addEventToUser);
  *     responses:
  *       200:
  *         description: List of active users obtained successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 users:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/User'
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     skip:
- *                       type: integer
- *                     limit:
- *                       type: integer
- *                     total:
- *                       type: integer
- *                     hasMore:
- *                       type: boolean
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: No users found
  */
-router.get('/', getAllUsers);
+router.get('/', authenticateToken, requireAdmin, getAllUsers);
 
 /**
  * @swagger
  * /api/user/number-of-users:
  *   get:
- *     summary: Get number of users statistics
- *     tags: [Users]
+ *     summary: Get number of users statistics - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     responses:
  *       200:
  *         description: User statistics retrieved successfully
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/UserStats'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       500:
  *         description: Failed to retrieve statistics
  */
-router.get('/number-of-users', getUserStats);
+router.get('/number-of-users', authenticateToken, requireAdmin, getUserStats);
 
 /**
  * @swagger
  * /api/user/with-inactive:
  *   get:
- *     summary: Get all users including inactive ones (paginated)
- *     tags: [Users]
+ *     summary: Get all users including inactive ones (paginated) - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: query
  *         name: skip
@@ -308,37 +471,23 @@ router.get('/number-of-users', getUserStats);
  *     responses:
  *       200:
  *         description: List of all users obtained successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 users:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/User'
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     skip:
- *                       type: integer
- *                     limit:
- *                       type: integer
- *                     total:
- *                       type: integer
- *                     hasMore:
- *                       type: boolean
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: No users found
  */
-router.get('/with-inactive', getAllUsersWithInactive);
+router.get('/with-inactive', authenticateToken, requireAdmin, getAllUsersWithInactive);
 
 /**
  * @swagger
  * /api/user/{identifier}:
  *   get:
- *     summary: Get a user by ID, username or email
- *     tags: [Users]
+ *     summary: Get a user by ID, username or email - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -349,25 +498,23 @@ router.get('/with-inactive', getAllUsersWithInactive);
  *     responses:
  *       200:
  *         description: User found
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.get('/:identifier', getUserByIdentifier);
-
-// ==================== ADMINISTRATION - USERS ====================
+router.get('/:identifier', authenticateToken, requireAdmin, getUserByIdentifier);
 
 /**
  * @swagger
  * /api/user/{identifier}:
  *   patch:
- *     summary: 'Update any user field by ID, username or email (Admin only)'
- *     tags: [Administration - Users]
+ *     summary: Update any user field by ID, username or email - Admin only
+ *     tags: [Users - Admin]
  *     security:
- *       - userRole: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -384,48 +531,38 @@ router.get('/:identifier', getUserByIdentifier);
  *             properties:
  *               username:
  *                 type: string
- *                 example: "newUsername"
  *               email:
  *                 type: string
- *                 example: "newemail@example.com"
  *               birthday:
  *                 type: string
  *                 format: date
- *                 example: "2000-01-01"
  *               role:
  *                 type: string
  *                 enum: [admin, manager, user]
- *                 example: "manager"
  *               active:
  *                 type: boolean
- *                 example: true
  *     responses:
  *       200:
  *         description: User updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
  *       400:
  *         description: Invalid data or password update attempted
+ *       401:
+ *         description: Unauthorized - Token required
  *       403:
  *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.patch('/:identifier', requireAdmin, updateUserByIdentifier);
+router.patch('/:identifier', authenticateToken, requireAdmin, updateUserByIdentifier);
 
 /**
  * @swagger
  * /api/user/{identifier}/disable:
  *   patch:
- *     summary: 'Disable a user by ID, username or email'
- *     tags: [Administration - Users]
+ *     summary: Disable a user by ID, username or email - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -436,26 +573,23 @@ router.patch('/:identifier', requireAdmin, updateUserByIdentifier);
  *     responses:
  *       200:
  *         description: User disabled successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.patch('/:identifier/disable', disableUserByIdentifier);
+router.patch('/:identifier/disable', authenticateToken, requireAdmin, disableUserByIdentifier);
 
 /**
  * @swagger
  * /api/user/{identifier}/reactivate:
  *   patch:
- *     summary: 'Reactivate a user by ID, username or email'
- *     tags: [Administration - Users]
+ *     summary: Reactivate a user by ID, username or email - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -466,26 +600,23 @@ router.patch('/:identifier/disable', disableUserByIdentifier);
  *     responses:
  *       200:
  *         description: User reactivated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.patch('/:identifier/reactivate', reactivateUserByIdentifier);
+router.patch('/:identifier/reactivate', authenticateToken, requireAdmin, reactivateUserByIdentifier);
 
 /**
  * @swagger
  * /api/user/{identifier}/make-admin:
  *   patch:
- *     summary: 'Convert user to administrator by ID, username or email'
- *     tags: [Administration - Users]
+ *     summary: Convert user to administrator by ID, username or email - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -496,26 +627,23 @@ router.patch('/:identifier/reactivate', reactivateUserByIdentifier);
  *     responses:
  *       200:
  *         description: User converted to administrator successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.patch('/:identifier/make-admin', makeUserAdminByIdentifier);
+router.patch('/:identifier/make-admin', authenticateToken, requireAdmin, makeUserAdminByIdentifier);
 
 /**
  * @swagger
  * /api/user/{identifier}/remove-admin:
  *   patch:
- *     summary: 'Remove administrator permissions by ID, username or email'
- *     tags: [Administration - Users]
+ *     summary: Remove administrator permissions by ID, username or email - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -526,28 +654,23 @@ router.patch('/:identifier/make-admin', makeUserAdminByIdentifier);
  *     responses:
  *       200:
  *         description: Administrator permissions removed successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.patch('/:identifier/remove-admin', removeUserAdminByIdentifier);
+router.patch('/:identifier/remove-admin', authenticateToken, requireAdmin, removeUserAdminByIdentifier);
 
 /**
  * @swagger
  * /api/user/{identifier}/make-manager:
  *   patch:
- *     summary: 'Convert user to manager by ID, username or email (Admin only)'
- *     tags: [Administration - Users]
+ *     summary: Convert user to manager by ID, username or email - Admin only
+ *     tags: [Users - Admin]
  *     security:
- *       - userRole: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -558,30 +681,23 @@ router.patch('/:identifier/remove-admin', removeUserAdminByIdentifier);
  *     responses:
  *       200:
  *         description: User converted to manager successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Token required
  *       403:
  *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.patch('/:identifier/make-manager', requireAdmin, makeUserManagerByIdentifier);
+router.patch('/:identifier/make-manager', authenticateToken, requireAdmin, makeUserManagerByIdentifier);
 
 /**
  * @swagger
  * /api/user/{identifier}/remove-manager:
  *   patch:
- *     summary: 'Remove manager permissions by ID, username or email (Admin only)'
- *     tags: [Administration - Users]
+ *     summary: Remove manager permissions by ID, username or email - Admin only
+ *     tags: [Users - Admin]
  *     security:
- *       - userRole: []
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -592,30 +708,23 @@ router.patch('/:identifier/make-manager', requireAdmin, makeUserManagerByIdentif
  *     responses:
  *       200:
  *         description: Manager permissions removed successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Token required
  *       403:
  *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.patch('/:identifier/remove-manager', requireAdmin, removeUserManagerByIdentifier);
-
-// ==================== DELETE ====================
+router.patch('/:identifier/remove-manager', authenticateToken, requireAdmin, removeUserManagerByIdentifier);
 
 /**
  * @swagger
  * /api/user/hard/{identifier}:
  *   delete:
- *     summary: 'Permanently delete a user by ID, username or email'
- *     tags: [Administration - Users]
+ *     summary: Permanently delete a user by ID, username or email - Admin only
+ *     tags: [Users - Admin]
+ *     security:
+ *       - bearerAuth: []
  *     parameters:
  *       - in: path
  *         name: identifier
@@ -626,18 +735,13 @@ router.patch('/:identifier/remove-manager', requireAdmin, removeUserManagerByIde
  *     responses:
  *       200:
  *         description: User permanently deleted
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                 user:
- *                   $ref: '#/components/schemas/User'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       403:
+ *         description: Admin privileges required
  *       404:
  *         description: User not found
  */
-router.delete('/hard/:identifier', deleteUserByIdentifier);
+router.delete('/hard/:identifier', authenticateToken, requireAdmin, deleteUserByIdentifier);
 
 export default router;
