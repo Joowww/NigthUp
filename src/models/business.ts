@@ -9,6 +9,7 @@ export interface IBusiness {
   events: Types.ObjectId[];
   managers: Types.ObjectId[];
   active: boolean;
+  avatar?: string;
 }
 
 const businessSchema = new Schema<IBusiness>({
@@ -18,7 +19,8 @@ const businessSchema = new Schema<IBusiness>({
   email: { type: String },
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   managers: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
-  active: { type: Boolean, default: true } 
+  active: { type: Boolean, default: true },
+  avatar: { type: String, default: '' } 
 }, { 
   timestamps: false, 
   versionKey: false 
