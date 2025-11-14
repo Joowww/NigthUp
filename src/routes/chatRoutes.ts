@@ -10,15 +10,22 @@ const router = Router();
 
 /**
  * @swagger
+ * tags:
+ *   name: Chat
+ *   description: Endpoints para gestión del chat entre usuarios
+ */
+
+/**
+ * @swagger
  * /api/chat:
  *   get:
- *     summary: Obtener todas las conversaciones del usuario logueado
+ *     summary: Obtener todas las conversaciones del usuario autenticado
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
  *     responses:
- *       '200':
- *         description: Lista de conversaciones
+ *       200:
+ *         description: Lista de conversaciones del usuario
  *         content:
  *           application/json:
  *             schema:
@@ -26,26 +33,29 @@ const router = Router();
  *               items:
  *                 type: object
  *                 properties:
- *                   id:
+ *                   _id:
  *                     type: string
- *                   name:
- *                     type: string
- *                   avatar:
- *                     type: string
- *                   type:
- *                     type: string
- *                     example: "user"
+ *                   participants:
+ *                     type: array
+ *                     items:
+ *                       type: string
  *                   lastMessage:
- *                     type: string
- *                   lastMessageTime:
- *                     type: string
- *                     format: date-time
+ *                     type: object
+ *                     properties:
+ *                       message:
+ *                         type: string
+ *                       senderId:
+ *                         type: string
+ *                       createdAt:
+ *                         type: string
+ *                         format: date-time
  *                   unreadCount:
  *                     type: integer
- *                   isPinned:
- *                     type: boolean
- *       '401':
- *         description: Unauthorized
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       401:
+ *         description: Token inválido o no enviado
  */
 router.get('/', authenticateToken, httpGetConversations);
 
@@ -53,7 +63,7 @@ router.get('/', authenticateToken, httpGetConversations);
  * @swagger
  * /api/chat/messages/{conversationId}:
  *   get:
- *     summary: Obtener los mensajes de una conversación específica
+ *     summary: Obtener los mensajes de una conversación
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
@@ -63,13 +73,31 @@ router.get('/', authenticateToken, httpGetConversations);
  *         required: true
  *         schema:
  *           type: string
- *         description: ID de la conversación
+ *         description: ID de la conversación existente
  *     responses:
- *       '200':
+ *       200:
  *         description: Lista de mensajes
- *       '401':
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                   conversationId:
+ *                     type: string
+ *                   senderId:
+ *                     type: string
+ *                   message:
+ *                     type: string
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *       401:
  *         description: Unauthorized
- *       '404':
+ *       404:
  *         description: Conversation not found
  */
 router.get('/messages/:conversationId', authenticateToken, httpGetMessages);
@@ -78,7 +106,7 @@ router.get('/messages/:conversationId', authenticateToken, httpGetMessages);
  * @swagger
  * /api/chat:
  *   post:
- *     summary: Crear o encontrar una conversación con otro usuario o negocio
+ *     summary: Crear o encontrar una conversación entre el usuario y otro usuario o negocio
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
@@ -88,17 +116,21 @@ router.get('/messages/:conversationId', authenticateToken, httpGetMessages);
  *         application/json:
  *           schema:
  *             type: object
+ *             required:
+ *               - recipientId
+ *               - recipientModel
  *             properties:
  *               recipientId:
  *                 type: string
  *                 example: "60c72b2f9b1d8c001f8e4d2a"
  *               recipientModel:
  *                 type: string
- *                 example: "Business"
- *                 description: Puede ser 'User' o 'Business'
+ *                 example: "User"
+ *                 enum: [User, Business]
+ *                 description: Modelo del destinatario
  *     responses:
- *       '201':
- *         description: Conversación encontrada o creada
+ *       201:
+ *         description: Conversación encontrada o creada correctamente
  *         content:
  *           application/json:
  *             schema:
@@ -106,9 +138,9 @@ router.get('/messages/:conversationId', authenticateToken, httpGetMessages);
  *               properties:
  *                 conversationId:
  *                   type: string
- *       '400':
- *         description: Faltan parámetros
- *       '401':
+ *       400:
+ *         description: Parámetros faltantes
+ *       401:
  *         description: Unauthorized
  */
 router.post('/', authenticateToken, httpCreateConversation);
