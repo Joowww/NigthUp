@@ -83,7 +83,12 @@ const options: swaggerJSDoc.Options = {
             {
                 name: 'User Trust',
                 description: 'User trust endpoints'
-            }
+            },
+            {
+                name: 'Chat',
+                description: 'Chat and messaging endpoints'
+            },
+
         ],
     },
     apis: [
@@ -94,6 +99,7 @@ const options: swaggerJSDoc.Options = {
         './src/routes/tagRoutes.ts',
         './src/routes/userInterestRoutes.ts',
         './src/routes/userTrustRoutes.ts',
+        './src/routes/chatRoutes.ts', 
     ],
 };
 

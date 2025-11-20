@@ -14,6 +14,7 @@ export interface IUser {
   isModified(path: string): boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  avatar?: string;
 }
 
 const userSchema = new Schema<IUser>({
@@ -23,7 +24,8 @@ const userSchema = new Schema<IUser>({
   birthday: { type: Date, required: true },
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   active: { type: Boolean, default: true },
-  role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' }
+  role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' },
+  avatar: { type: String, default: '' }
 }, {
   timestamps: true, 
   versionKey: false
