@@ -4,7 +4,10 @@ export interface IEvent {
   _id: Types.ObjectId;
   name: string;
   schedule: Date;
-  location: string;
+  location: {
+    type: string;
+    coordinates: [number, number];
+  };
   description: string;
   category: string;
   capacity: number;
@@ -18,7 +21,17 @@ export interface IEvent {
 const eventSchema = new Schema<IEvent>({
   name: { type: String, required: true, unique: true },
   schedule: { type: Date, required: true },
-  location: { type: String, required: true },
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      required: true
+    },
+    coordinates: {
+      type: [Number],
+      required: true
+    }
+  },
   description: { type: String, required: true },
   category: { type: String, required: true },
   capacity: { type: Number, required: true },
@@ -29,6 +42,9 @@ const eventSchema = new Schema<IEvent>({
   timestamps: true,
   versionKey: false
 });
+
+// Índice para geolocalización
+eventSchema.index({ location: '2dsphere' });
 
 export const Event = model<IEvent>('Event', eventSchema);
 export default Event;

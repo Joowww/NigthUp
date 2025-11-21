@@ -10,6 +10,28 @@ export interface IUser {
   events: Types.ObjectId[];
   active: boolean;
   role: string;
+  // Nuevos campos para Google Auth
+  googleId?: string;
+  googleProfile?: {
+    name?: string;
+    picture?: string;
+    locale?: string;
+  };
+  authProvider: 'local' | 'google';
+  
+  // NUEVOS CAMPOS AÑADIDOS
+  isOnline: boolean;
+  lastSeen: Date;
+  emergencyContacts: string[];
+  location?: {
+    type: string;
+    coordinates: [number, number];
+  };
+  isVisibleOnMap: boolean;
+  lastLocationUpdate?: Date;
+  profilePicture?: string;
+  bio?: string;
+  
   comparePassword(candidatePassword: string): Promise<boolean>;
   isModified(path: string): boolean;
   createdAt?: Date;
@@ -23,17 +45,52 @@ const userSchema = new Schema<IUser>({
   birthday: { type: Date, required: true },
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   active: { type: Boolean, default: true },
-  role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' }
+  role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' },
+  googleId: {
+    type: String,
+    sparse: true
+  },
+  googleProfile: {
+    name: String,
+    picture: String,
+    locale: String
+  },
+  authProvider: {
+    type: String,
+    enum: ['local', 'google'],
+    default: 'local'
+  },
+  
+  // NUEVOS CAMPOS
+  isOnline: { type: Boolean, default: false },
+  lastSeen: { type: Date, default: Date.now },
+  emergencyContacts: [{ type: String, default: [] }],
+  location: {
+    type: {
+      type: String,
+      enum: ['Point'],
+      default: 'Point'
+    },
+    coordinates: {
+      type: [Number],
+      default: [0, 0]
+    }
+  },
+  isVisibleOnMap: { type: Boolean, default: true },
+  lastLocationUpdate: { type: Date },
+  profilePicture: { type: String },
+  bio: { type: String, maxlength: 500 }
 }, {
-  timestamps: true, 
+  timestamps: true,
   versionKey: false
 });
 
+// Índice para geolocalización
+userSchema.index({ location: '2dsphere' });
+
 userSchema.pre<IUser>('save', async function (next) {
-  // Solo hashear si la contraseña fue modificada
   if (!this.isModified('password')) return next();
-  
-  console.log('🔐 Hasheando contraseña...');
+  console.log('  Hasheando contraseña...');
   const salt = await bcrypt.genSalt();
   const hash = await bcrypt.hash(this.password, salt);
   this.password = hash;

@@ -49,6 +49,10 @@ const options: swaggerJSDoc.Options = {
                 description: 'Public event endpoints (no auth required)'
             },
             {
+                name: 'Events - Authenticated',
+                description: 'Event endpoints for authenticated users'
+            },
+            {
                 name: 'Events - Admin/Manager',
                 description: 'Event management endpoints (admin or manager required)'
             },
@@ -83,6 +87,35 @@ const options: swaggerJSDoc.Options = {
             {
                 name: 'User Trust',
                 description: 'User trust endpoints'
+            },
+            // NUEVAS TAGS PARA LAS NUEVAS FUNCIONALIDADES
+            {
+                name: 'Friendship',
+                description: 'Friend request and friendship management endpoints'
+            },
+            {
+                name: 'User Status',
+                description: 'User online status and presence endpoints'
+            },
+            {
+                name: 'Map',
+                description: 'Map and location-based endpoints'
+            },
+            {
+                name: 'Panic Button',
+                description: 'Emergency panic button endpoints'
+            },
+            {
+                name: 'Calendar Events',
+                description: 'Calendar event management endpoints'
+            },
+            {
+                name: 'Polls',
+                description: 'Poll creation and voting endpoints'
+            },
+            {
+                name: 'Event Tinder',
+                description: 'Event-based matching system endpoints'
             }
         ],
     },
@@ -94,6 +127,13 @@ const options: swaggerJSDoc.Options = {
         './src/routes/tagRoutes.ts',
         './src/routes/userInterestRoutes.ts',
         './src/routes/userTrustRoutes.ts',
+        './src/routes/friendshipRoutes.ts',
+        './src/routes/userStatusRoutes.ts',
+        './src/routes/mapRoutes.ts',
+        './src/routes/panicButtonRoutes.ts',
+        './src/routes/calendarEventRoutes.ts',
+        './src/routes/pollRoutes.ts',
+        './src/routes/eventTinderRoutes.ts',
     ],
 };
 

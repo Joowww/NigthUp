@@ -192,4 +192,56 @@ export class EventService {
         }
         return { total, active, inactive, newCount, lastUpdated };
     }
+
+    // NUEVO: Añadir usuario autenticado a un evento
+    async addSelfToEvent(eventIdentifier: string, userId: string): Promise<IEvent | null> {
+        const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
+        
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new Error('USER NOT FOUND');
+        }
+
+        const updatedEvent = await Event.findOneAndUpdate(
+            eventFilter,
+            { $addToSet: { participants: user._id } },
+            { new: true }
+        ).populate('participants', 'username email');
+
+        if (updatedEvent) {
+            await User.findByIdAndUpdate(
+                user._id,
+                { $addToSet: { events: updatedEvent._id } },
+                { new: true }
+            );
+        }
+
+        return updatedEvent;
+    }
+
+    // NUEVO: Remover usuario autenticado de un evento
+    async removeSelfFromEvent(eventIdentifier: string, userId: string): Promise<IEvent | null> {
+        const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
+        
+        const user = await User.findById(userId);
+        if (!user) {
+            throw new Error('USER NOT FOUND');
+        }
+
+        const updatedEvent = await Event.findOneAndUpdate(
+            eventFilter,
+            { $pull: { participants: user._id } },
+            { new: true }
+        ).populate('participants', 'username email');
+
+        if (updatedEvent) {
+            await User.findByIdAndUpdate(
+                user._id,
+                { $pull: { events: updatedEvent._id } },
+                { new: true }
+            );
+        }
+
+        return updatedEvent;
+    }
 }

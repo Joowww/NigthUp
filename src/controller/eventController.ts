@@ -181,3 +181,53 @@ export async function getEventStats(req: Request, res: Response): Promise<Respon
         return res.status(500).json({ message: (error as Error).message });
     }
 }
+
+// NUEVO: Unirse a un evento como usuario autenticado
+export async function joinEvent(req: Request, res: Response): Promise<Response> {
+    try {
+        const { identifier } = req.params;
+        const userId = (req as any).user.id;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID not found in token' });
+        }
+
+        const updated = await eventService.addSelfToEvent(identifier, userId);
+
+        if (!updated) {
+            return res.status(404).json({ message: 'EVENT NOT FOUND' });
+        }
+
+        return res.status(200).json({
+            message: 'Successfully joined the event',
+            event: updated
+        });
+    } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+    }
+}
+
+// NUEVO: Salir de un evento como usuario autenticado
+export async function leaveEvent(req: Request, res: Response): Promise<Response> {
+    try {
+        const { identifier } = req.params;
+        const userId = (req as any).user.id;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID not found in token' });
+        }
+
+        const updated = await eventService.removeSelfFromEvent(identifier, userId);
+
+        if (!updated) {
+            return res.status(404).json({ message: 'EVENT NOT FOUND' });
+        }
+
+        return res.status(200).json({
+            message: 'Successfully left the event',
+            event: updated
+        });
+    } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+    }
+}

@@ -14,6 +14,14 @@ import tagRoutes from './routes/tagRoutes';
 import userInterestRoutes from './routes/userInterestRoutes';
 import userTrustRoutes from './routes/userTrustRoutes';
 
+// Importar nuevas rutas
+import friendshipRoutes from './routes/friendshipRoutes';
+import mapRoutes from './routes/mapRoutes';
+import panicButtonRoutes from './routes/panicButtonRoutes';
+import calendarEventRoutes from './routes/calendarEventRoutes';
+import pollRoutes from './routes/pollRoutes';
+import eventTinderRoutes from './routes/eventTinderRoutes';
+
 import User from './models/user';
 
 dotenv.config();
@@ -79,7 +87,16 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     app.use('/api/tag', tagRoutes);
     app.use('/api/user-interest', userInterestRoutes);
     app.use('/api/user-trust', userTrustRoutes);
-    console.log('All routes registered');
+
+    // Nuevas rutas
+    app.use('/api/friendship', friendshipRoutes);
+    app.use('/api/map', mapRoutes);
+    app.use('/api/panic', panicButtonRoutes);
+    app.use('/api/calendar', calendarEventRoutes);
+    app.use('/api/poll', pollRoutes);
+    app.use('/api/event-tinder', eventTinderRoutes);
+
+    console.log('All routes registered including new features');
 
     // Configurar Swagger
     setupSwagger(app);

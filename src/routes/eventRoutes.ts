@@ -10,7 +10,9 @@ import {
     deleteEventByIdentifier,
     addUserToEvent,
     removeUserFromEvent,
-    getEventStats
+    getEventStats,
+    joinEvent,
+    leaveEvent
 } from '../controller/eventController';
 import { authenticateToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager } from '../middleware/roleMiddleware';
@@ -215,6 +217,79 @@ router.get('/stats', getEventStats);
  *         description: Event not found
  */
 router.get('/:identifier', getEventByIdentifier);
+
+// --- RUTAS AUTENTICADAS (CUALQUIER USUARIO) ---
+/**
+ * @swagger
+ * /api/event/{identifier}/join:
+ *   post:
+ *     summary: Join an event as authenticated user
+ *     tags: [Events - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Successfully joined the event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: User ID not found in token
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: Event not found
+ */
+router.post('/:identifier/join', authenticateToken, joinEvent);
+
+/**
+ * @swagger
+ * /api/event/{identifier}/leave:
+ *   post:
+ *     summary: Leave an event as authenticated user
+ *     tags: [Events - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Successfully left the event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *       400:
+ *         description: User ID not found in token
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: Event not found
+ */
+router.post('/:identifier/leave', authenticateToken, leaveEvent);
 
 // --- RUTAS ADMIN ONLY ---
 /**

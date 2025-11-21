@@ -24,6 +24,9 @@ import {
     verifyTokenHandler
 } from '../controller/userController';
 
+// Importa el nuevo controlador
+import { googleAuth, connectGoogleAccount } from '../controller/googleAuthController';
+
 import { authenticateToken, authenticateRefreshToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager, requireUser } from '../middleware/roleMiddleware';
 
@@ -210,6 +213,34 @@ router.post('/auth/login', loginUser);
 
 /**
  * @swagger
+ * /api/user/auth/google:
+ *   post:
+ *     summary: Authenticate with Google
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Google ID token
+ *     responses:
+ *       200:
+ *         description: Google authentication successful
+ *       400:
+ *         description: Invalid Google token
+ *       500:
+ *         description: Google authentication failed
+ */
+router.post('/auth/google', googleAuth);
+
+/**
+ * @swagger
  * /api/user/forgot-password:
  *   post:
  *     summary: Solicitar restablecimiento de contraseña
@@ -323,6 +354,35 @@ router.post('/change-password', authenticateToken, changePassword);
  */
 router.post('/change-email', authenticateToken, changeEmail);
 
+/**
+ * @swagger
+ * /api/user/connect/google:
+ *   post:
+ *     summary: Connect existing account to Google
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - token
+ *             properties:
+ *               token:
+ *                 type: string
+ *                 description: Google ID token
+ *     responses:
+ *       200:
+ *         description: Google account connected successfully
+ *       400:
+ *         description: Invalid token or email mismatch
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/connect/google', authenticateToken, connectGoogleAccount);
 
 // --- RUTAS AUTENTICADAS ---
 /**
@@ -398,7 +458,7 @@ router.patch('/me', authenticateToken, updateMyProfile);
  * @swagger
  * /api/user:
  *   get:
- *     summary: Get all active users (paginated) - Admin only
+ *     summary: Get all active users (paginated)
  *     tags: [Users - Admin]
  *     security:
  *       - bearerAuth: []
@@ -425,7 +485,7 @@ router.patch('/me', authenticateToken, updateMyProfile);
  *       404:
  *         description: No users found
  */
-router.get('/', authenticateToken, requireAdmin, getAllUsers);
+router.get('/', authenticateToken, getAllUsers);
 
 /**
  * @swagger
