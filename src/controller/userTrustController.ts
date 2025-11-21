@@ -12,7 +12,7 @@ export async function createTrustRating(req: Request, res: Response): Promise<Re
         return res.status(400).json({ errors: errors.array() });
     }
     try {
-        const rater = (req as any).user?.id; // igual que tags/userInterest
+        const rater = (req as any).user?.id; 
         const { rated, score, comment, context } = req.body;
 
         if (!rater) {
@@ -27,7 +27,6 @@ export async function createTrustRating(req: Request, res: Response): Promise<Re
             return res.status(400).json({ error: 'Score must be between 1 and 5' });
         }
 
-        // Verificar si el usuario ya calificó a este usuario en este contexto
         const hasRated = await userTrustService.hasUserRated(rater, rated, context);
         if (hasRated) {
             return res.status(400).json({
@@ -36,7 +35,7 @@ export async function createTrustRating(req: Request, res: Response): Promise<Re
         }
 
         const newTrust: Partial<IUserTrust> = {
-            rater, // igual que tags/userInterest
+            rater, 
             rated,
             score,
             comment,

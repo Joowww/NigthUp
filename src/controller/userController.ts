@@ -106,18 +106,15 @@ export async function updateUserByIdentifier(req: Request, res: Response): Promi
         const { identifier } = req.params;
         const userData: Partial<IUser> = req.body;
 
-        // No permitir actualizar password desde aqui
         if (userData.password) {
             return res.status(400).json({ message: 'Password cannot be updated from this endpoint' });
         }
 
-        // MODIFICADO: Permitir actualizar role si el usuario que hace la petición es admin
         const userRole = (req as any).user?.role;
         if (userData.role && userRole !== 'admin') {
             return res.status(403).json({ message: 'Only admins can update user roles' });
         }
 
-        // Verificar que al menos un campo fue proporcionado
         if (Object.keys(userData).length === 0) {
             return res.status(400).json({ message: 'No fields to update provided' });
         }
@@ -194,7 +191,6 @@ export async function removeUserAdminByIdentifier(req: Request, res: Response): 
     }
 }
 
-// NUEVO: Endpoint específico para hacer manager
 export async function makeUserManagerByIdentifier(req: Request, res: Response): Promise<Response> {
     try {
         const { identifier } = req.params;
@@ -210,7 +206,6 @@ export async function makeUserManagerByIdentifier(req: Request, res: Response): 
     }
 }
 
-// NUEVO: Endpoint específico para quitar manager
 export async function removeUserManagerByIdentifier(req: Request, res: Response): Promise<Response> {
     try {
         const { identifier } = req.params;
@@ -256,7 +251,6 @@ export async function addEventToUser(req: Request, res: Response): Promise<Respo
     }
 }
 
-// NUEVO: Login con JWT
 export const loginUser = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { username, password } = req.body;
@@ -281,7 +275,6 @@ export const loginUser = async (req: Request, res: Response): Promise<Response> 
     }
 };
 
-// NUEVO: Refresh token
 export const refreshAccessToken = async (req: Request, res: Response): Promise<Response> => {
     try {
         const userId = (req as any).user.id;
@@ -310,7 +303,6 @@ export async function getUserStats(req: Request, res: Response): Promise<Respons
     }
 }
 
-// NUEVO: Obtener perfil del usuario autenticado
 export async function getMyProfile(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
@@ -326,20 +318,17 @@ export async function getMyProfile(req: Request, res: Response): Promise<Respons
     }
 }
 
-// NUEVO: Actualizar perfil del usuario autenticado
 export async function updateMyProfile(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
         const userData = req.body;
 
-        // No permitir actualizar password, role desde aquí
         if (userData.password || userData.role) {
             return res.status(400).json({ 
                 message: 'Password and role cannot be updated from this endpoint' 
             });
         }
 
-        // SOLUCIÓN: Extraer solo los campos permitidos de forma explícita
         const filteredData: Partial<IUser> = {};
         
         if (userData.username !== undefined && typeof userData.username === 'string') {
@@ -351,7 +340,6 @@ export async function updateMyProfile(req: Request, res: Response): Promise<Resp
         }
         
         if (userData.birthday !== undefined) {
-            // Validar que sea una fecha válida
             const birthday = new Date(userData.birthday);
             if (!isNaN(birthday.getTime())) {
                 filteredData.birthday = birthday;
@@ -374,7 +362,6 @@ export async function updateMyProfile(req: Request, res: Response): Promise<Resp
     }
 }
 
-// NUEVO: Verificar token
 export const verifyTokenHandler = async (req: Request, res: Response): Promise<Response> => {
     try {
         const user = (req as any).user;
@@ -391,7 +378,6 @@ export const verifyTokenHandler = async (req: Request, res: Response): Promise<R
     }
 };
 
-// Añadir en userController.ts
 export const forgotPassword = async (req: Request, res: Response): Promise<Response> => {
     try {
         const { email } = req.body;
@@ -399,14 +385,11 @@ export const forgotPassword = async (req: Request, res: Response): Promise<Respo
             return res.status(400).json({ error: 'Email is required' });
         }
 
-        // Buscar usuario por email
         const user = await User.findOne({ email });
         if (!user) {
-            // Por seguridad, no revelar si el email existe o no
             return res.status(200).json({ message: 'If the email exists, a reset link has been sent.' });
         }
 
-        // Generar token de restablecimiento (usando JWT con expiración de 1 hora)
         const resetToken = generateResetToken(user);
         
         // En producción, aquí enviarías un email real
@@ -440,19 +423,16 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
       return res.status(400).json({ error: 'New password must be at least 6 characters long' });
     }
 
-    // Get user with password
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Verify current password
     const isCurrentPasswordValid = await (user as any).comparePassword(currentPassword);
     if (!isCurrentPasswordValid) {
       return res.status(400).json({ error: 'Current password is incorrect' });
     }
 
-    // Update password
     user.password = newPassword;
     await user.save();
 
@@ -472,35 +452,29 @@ export const changeEmail = async (req: Request, res: Response): Promise<Response
       return res.status(400).json({ error: 'New email and password are required' });
     }
 
-    // Validate email format
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(newEmail)) {
       return res.status(400).json({ error: 'Invalid email format' });
     }
 
-    // Get user with password
     const user = await User.findById(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Verify password
     const isPasswordValid = await (user as any).comparePassword(password);
     if (!isPasswordValid) {
       return res.status(400).json({ error: 'Password is incorrect' });
     }
 
-    // Check if email already exists
     const existingUser = await User.findOne({ email: newEmail });
     if (existingUser && existingUser._id.toString() !== userId) {
       return res.status(400).json({ error: 'Email is already in use' });
     }
 
-    // Update email
     user.email = newEmail;
     await user.save();
 
-    // Return user without password
     const safeUser = removePassword(user);
 
     return res.status(200).json({ 

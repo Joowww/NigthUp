@@ -14,12 +14,11 @@ export class PanicButtonService {
         type: 'Point',
         coordinates
       },
-      emergencyContacts: ['112'], // Número de emergencia por defecto
+      emergencyContacts: ['112'], 
       message
     });
 
-    // En una implementación real, aquí enviarías notificaciones a contactos de emergencia
-    console.log('🚨 PANIC BUTTON ACTIVATED');
+    console.log('PANIC BUTTON ACTIVATED');
     console.log('User:', user.username);
     console.log('Location:', coordinates);
     console.log('Emergency contacts to notify:', panicButton.emergencyContacts);

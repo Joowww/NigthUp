@@ -40,7 +40,7 @@ export class EventService {
     }
 
     async getAllEventsWithInactive(skip: number = 0, limit: number = 10): Promise<{events: IEvent[], total: number}> {
-        console.log('🔍 [DEBUG SERVICE] getAllEventsWithInactive - Buscando eventos...');
+        console.log('[DEBUG SERVICE] getAllEventsWithInactive - Buscando eventos...');
         
         try {
             const events = await Event.find()
@@ -51,11 +51,11 @@ export class EventService {
 
             const total = await Event.countDocuments();
             
-            console.log(`🔍 [DEBUG SERVICE] Encontrados ${events.length} eventos de ${total} totales`);
+            console.log(`[DEBUG SERVICE] Encontrados ${events.length} eventos de ${total} totales`);
             
             return { events, total };
         } catch (error) {
-            console.error('❌ [DEBUG SERVICE] Error en getAllEventsWithInactive:', error);
+            console.error('[DEBUG SERVICE] Error en getAllEventsWithInactive:', error);
             throw error;
         }
     }
@@ -101,7 +101,6 @@ export class EventService {
     async addUserToEvent(eventIdentifier: string, userIdentifier: string): Promise<IEvent | null> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
 
-        // Buscar usuario por ID, username o email
         let userFilter;
         if (mongoose.Types.ObjectId.isValid(userIdentifier)) {
             userFilter = { _id: new mongoose.Types.ObjectId(userIdentifier) };
@@ -139,7 +138,6 @@ export class EventService {
     async removeUserFromEvent(eventIdentifier: string, userIdentifier: string): Promise<IEvent | null> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
 
-        // Buscar usuario por ID, username o email
         let userFilter;
         if (mongoose.Types.ObjectId.isValid(userIdentifier)) {
             userFilter = { _id: new mongoose.Types.ObjectId(userIdentifier) };
@@ -181,19 +179,16 @@ export class EventService {
         let newCount: number | null = null;
         let lastUpdated: string | null = null;
 
-        // Verificar si el schema tiene el campo createdAt usando paths
         const schemaPaths = Event.schema.paths;
         if (schemaPaths['createdAt']) {
             const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
             newCount = await Event.countDocuments({ createdAt: { $gte: since } });
-            // Usar type assertion para evitar el error de TypeScript
             const last = await Event.findOne().sort({ createdAt: -1 }).select('createdAt').lean() as any;
             lastUpdated = last?.createdAt ? new Date(last.createdAt).toISOString() : null;
         }
         return { total, active, inactive, newCount, lastUpdated };
     }
 
-    // NUEVO: Añadir usuario autenticado a un evento
     async addSelfToEvent(eventIdentifier: string, userId: string): Promise<IEvent | null> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
         
@@ -219,7 +214,6 @@ export class EventService {
         return updatedEvent;
     }
 
-    // NUEVO: Remover usuario autenticado de un evento
     async removeSelfFromEvent(eventIdentifier: string, userId: string): Promise<IEvent | null> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
         

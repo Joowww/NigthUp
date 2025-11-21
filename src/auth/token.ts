@@ -38,7 +38,6 @@ export const verifyRefreshToken = (refreshToken: string) => {
   }
 };
 
-// Añadir en token.ts
 export const generateResetToken = (user: IUser): string => {
     const payload = {
         id: user._id.toString(),

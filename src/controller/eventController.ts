@@ -50,17 +50,17 @@ export async function getAllEvents(req: Request, res: Response): Promise<Respons
 }
 
 export async function getAllEventsWithInactive(req: Request, res: Response): Promise<Response> {
-    console.log('🔍 [DEBUG] getAllEventsWithInactive - INICIANDO');
+    console.log('[DEBUG] getAllEventsWithInactive - INICIANDO');
     
     try {
         const skip = parseInt(req.query.skip as string) || 0;
         const limit = parseInt(req.query.limit as string) || 10;
         
-        console.log(`🔍 [DEBUG] Params - skip: ${skip}, limit: ${limit}`);
+        console.log(`[DEBUG] Params - skip: ${skip}, limit: ${limit}`);
         
         const result = await eventService.getAllEventsWithInactive(skip, limit);
         
-        console.log(`🔍 [DEBUG] Encontrados ${result.events.length} eventos de ${result.total} totales`);
+        console.log(`[DEBUG] Encontrados ${result.events.length} eventos de ${result.total} totales`);
         
         return res.status(200).json({
             events: result.events,
@@ -72,7 +72,7 @@ export async function getAllEventsWithInactive(req: Request, res: Response): Pro
             }
         });
     } catch (error) {
-        console.error('❌ [DEBUG] Error en getAllEventsWithInactive:', error);
+        console.error('[DEBUG] Error en getAllEventsWithInactive:', error);
         return res.status(404).json({ message: (error as Error).message });
     }
 }
@@ -182,7 +182,6 @@ export async function getEventStats(req: Request, res: Response): Promise<Respon
     }
 }
 
-// NUEVO: Unirse a un evento como usuario autenticado
 export async function joinEvent(req: Request, res: Response): Promise<Response> {
     try {
         const { identifier } = req.params;
@@ -207,7 +206,6 @@ export async function joinEvent(req: Request, res: Response): Promise<Response> 
     }
 }
 
-// NUEVO: Salir de un evento como usuario autenticado
 export async function leaveEvent(req: Request, res: Response): Promise<Response> {
     try {
         const { identifier } = req.params;

@@ -21,7 +21,6 @@ const friendshipSchema = new Schema<IFriendship>(
   }
 );
 
-// Índice compuesto para evitar duplicados
 friendshipSchema.index({ requester: 1, recipient: 1 }, { unique: true });
 
 export const Friendship = model<IFriendship>('Friendship', friendshipSchema);

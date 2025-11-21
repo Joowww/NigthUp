@@ -39,7 +39,6 @@ export class CalendarEventService {
       throw new Error('Event not found or you are not the owner');
     }
 
-    // Verificar si ya está compartido
     const alreadyShared = event.sharedWith.some(share => 
       share.userId.toString() === targetUserId
     );
@@ -79,18 +78,15 @@ export class CalendarEventService {
   }
 
   async syncUserEvents(userId: string): Promise<ICalendarEvent[]> {
-    // SINCRONIZACIÓN REAL con eventos del sistema
     const user = await User.findById(userId).populate('events');
     
     if (!user) {
       throw new Error('User not found');
     }
 
-    // Sincronizar eventos a los que el usuario está inscrito
     const userEvents = user.events || [];
     
     for (const event of userEvents) {
-      // Verificar si ya existe en el calendario
       const existingCalendarEvent = await CalendarEvent.findOne({
         userId,
         relatedEvent: event._id,
@@ -98,20 +94,18 @@ export class CalendarEventService {
       });
 
       if (!existingCalendarEvent) {
-        // Convertir location GeoJSON a string para el calendario
         let locationString = '';
         if ((event as any).location && (event as any).location.coordinates) {
           const [lng, lat] = (event as any).location.coordinates;
           locationString = `${lat}, ${lng}`;
         }
 
-        // Crear evento en el calendario
         await this.createCalendarEvent({
           userId: new Types.ObjectId(userId),
           title: (event as any).name,
           description: (event as any).description,
           start: (event as any).schedule,
-          end: new Date((event as any).schedule.getTime() + 3 * 60 * 60 * 1000), // +3 horas
+          end: new Date((event as any).schedule.getTime() + 3 * 60 * 60 * 1000), 
           allDay: false,
           type: 'event',
           relatedEvent: (event as any)._id,
@@ -120,8 +114,6 @@ export class CalendarEventService {
         });
       }
     }
-
-    // Devolver todos los eventos del usuario
     return await CalendarEvent.find({ 
       $or: [
         { userId },
@@ -140,7 +132,6 @@ export class CalendarEventService {
       throw new Error('Event not found');
     }
 
-    // Verificar permisos
     const canEdit = event.userId.toString() === userId || 
       event.sharedWith.some(share => 
         share.userId.toString() === userId && 

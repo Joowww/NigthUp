@@ -88,7 +88,6 @@ const options: swaggerJSDoc.Options = {
                 name: 'User Trust',
                 description: 'User trust endpoints'
             },
-            // NUEVAS TAGS PARA LAS NUEVAS FUNCIONALIDADES
             {
                 name: 'Friendship',
                 description: 'Friend request and friendship management endpoints'
@@ -116,7 +115,12 @@ const options: swaggerJSDoc.Options = {
             {
                 name: 'Event Tinder',
                 description: 'Event-based matching system endpoints'
-            }
+            },
+            {
+                name: 'Chat',
+                description: 'Chat and messaging endpoints'
+            },
+
         ],
     },
     apis: [
@@ -134,6 +138,7 @@ const options: swaggerJSDoc.Options = {
         './src/routes/calendarEventRoutes.ts',
         './src/routes/pollRoutes.ts',
         './src/routes/eventTinderRoutes.ts',
+        './src/routes/chatRoutes.ts', 
     ],
 };
 

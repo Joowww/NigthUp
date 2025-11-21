@@ -6,6 +6,10 @@ import dotenv from 'dotenv';
 import swaggerSpec from './config/swagger';
 import { setupSwagger } from './config/swagger';
 
+import http from 'http';
+import { Server } from 'socket.io';
+import { initializeSocket } from './socket/socketHandler';
+
 import userRoutes from './routes/userRoutes';
 import eventRoutes from './routes/eventRoutes';
 import businessRoutes from './routes/businessRoutes';
@@ -13,8 +17,6 @@ import ratingRoutes from './routes/ratingRoutes';
 import tagRoutes from './routes/tagRoutes';
 import userInterestRoutes from './routes/userInterestRoutes';
 import userTrustRoutes from './routes/userTrustRoutes';
-
-// Importar nuevas rutas
 import friendshipRoutes from './routes/friendshipRoutes';
 import mapRoutes from './routes/mapRoutes';
 import panicButtonRoutes from './routes/panicButtonRoutes';
@@ -31,6 +33,15 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+const httpServer = http.createServer(app);
+const io = new Server(httpServer, {
+  cors: {
+    origin: process.env.FRONTEND_URL || "http://localhost:4200", 
+    methods: ["GET", "POST", "PUT", "DELETE"],
+  }
+});
+initializeSocket(io);
 
 // CONEXION A MONGODB
 mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
@@ -87,8 +98,6 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     app.use('/api/tag', tagRoutes);
     app.use('/api/user-interest', userInterestRoutes);
     app.use('/api/user-trust', userTrustRoutes);
-
-    // Nuevas rutas
     app.use('/api/friendship', friendshipRoutes);
     app.use('/api/map', mapRoutes);
     app.use('/api/panic', panicButtonRoutes);
@@ -111,8 +120,14 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
         res.json({ message: 'API is working!', allRoutes: ['/api/user', '/api/event', '/api/business', '/api/rating'] });
     });
 
-    app.listen(PORT, () => {
+   /*app.listen(PORT, () => {
         console.log(`SERVER URL http://localhost:${PORT}`);
+        console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
+        console.log('Server is running!');
+    });*/
+
+    httpServer.listen(PORT, () => { 
+        console.log(`🚀 SERVER URL http://localhost:${PORT}`);
         console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
         console.log('Server is running!');
     });

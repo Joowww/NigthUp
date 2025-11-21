@@ -2,11 +2,11 @@ import { Schema, model, Types } from 'mongoose';
 
 export interface IUserTrust {
   _id: Types.ObjectId;
-  rater: Types.ObjectId;        // Usuario que califica
-  rated: Types.ObjectId;        // Usuario calificado
-  score: number;               // Puntuación de confianza (1-5)
-  comment?: string;            // Comentario opcional
-  context: string;             // Contexto de la interacción (evento, transacción, etc.)
+  rater: Types.ObjectId;        
+  rated: Types.ObjectId;        
+  score: number;               
+  comment?: string;            
+  context: string;             
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -44,7 +44,6 @@ const userTrustSchema = new Schema<IUserTrust>(
   }
 );
 
-// Índice compuesto para evitar valoraciones duplicadas
 userTrustSchema.index({ rater: 1, rated: 1, context: 1 }, { unique: true });
 
 export const UserTrust = model<IUserTrust>('UserTrust', userTrustSchema);

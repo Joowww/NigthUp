@@ -12,8 +12,6 @@ export interface ICalendarEvent {
   relatedEvent?: Types.ObjectId;
   location?: string;
   reminders: Date[];
-  
-  // NUEVO: Para eventos compartidos
   sharedWith: {
     userId: Types.ObjectId;
     permission: 'view' | 'edit';
@@ -38,8 +36,6 @@ const calendarEventSchema = new Schema<ICalendarEvent>(
     relatedEvent: { type: Schema.Types.ObjectId, ref: 'Event' },
     location: { type: String },
     reminders: [{ type: Date }],
-    
-    // NUEVO: Para eventos compartidos
     sharedWith: [{
       userId: { type: Schema.Types.ObjectId, ref: 'User', required: true },
       permission: { type: String, enum: ['view', 'edit'], default: 'view' },

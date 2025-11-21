@@ -5,7 +5,6 @@ async function seedDemoBusinesses() {
   await mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD');
   console.log('Connected to MongoDB');
 
-  // Seed 15 Businesses
   const businesses = [];
   const businessTypes = ['Bar', 'Club', 'Restaurant', 'Cafe', 'Pub'];
   const cities = ['Barcelona', 'Madrid', 'Valencia', 'Sevilla', 'Bilbao'];

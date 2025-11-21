@@ -109,7 +109,6 @@ export class UserTrustService {
       return { average: 0, count: 0, distribution: [] };
     }
 
-    // Calcular distribución
     const distribution = [1, 2, 3, 4, 5].map(score => ({
       score,
       count: result[0].distribution.filter((s: number) => s === score).length
@@ -143,10 +142,9 @@ export class UserTrustService {
     if (stats.average >= 4) trustLevel = 'high';
     else if (stats.average <= 2) trustLevel = 'low';
 
-    // En una implementación real, aquí obtendrías el username de la base de datos
     return {
       userId,
-      username: 'User', // Esto se debería poblar desde la base de datos
+      username: 'User', 
       averageTrust: stats.average,
       totalRatings: stats.count,
       trustLevel
@@ -154,7 +152,6 @@ export class UserTrustService {
   }
 
   async getAllUsersTrustSummary(): Promise<UserTrustSummary[]> {
-    // Agregación para obtener resumen de confianza de todos los usuarios
     const trustSummary = await UserTrust.aggregate([
       {
         $group: {

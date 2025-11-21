@@ -39,7 +39,6 @@ const ratingSchema = new Schema<IRating>(
   }
 );
 
-// Índice compuesto para evitar valoraciones duplicadas de un mismo usuario en un evento
 ratingSchema.index({ event: 1, username: 1 }, { unique: true });
 
 export const Rating = model<IRating>('Rating', ratingSchema);

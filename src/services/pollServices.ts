@@ -46,28 +46,22 @@ export class PollService {
       throw new Error('Poll not found');
     }
 
-    // Verificar si la encuesta está activa
     if (!poll.isActive) {
       throw new Error('Poll is not active');
     }
 
-    // Verificar si ha expirado
     if (poll.expiresAt && poll.expiresAt < new Date()) {
       throw new Error('Poll has expired');
     }
-
-    // Verificar si el usuario puede votar
     if (!poll.isPublic && !poll.allowedVoters?.includes(userId as any) && poll.creator.toString() !== userId) {
       throw new Error('You are not allowed to vote in this poll');
     }
 
-    // Verificar si el usuario ya votó
     const hasVoted = poll.options.some(option => option.voters.includes(userId as any));
     if (hasVoted) {
       throw new Error('You have already voted in this poll');
     }
 
-    // Agregar voto
     poll.options[optionIndex].voters.push(userId as any);
     return await poll.save();
   }

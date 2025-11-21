@@ -62,7 +62,6 @@ export class TagService {
     return await Tag.findById(id).populate('events', 'name schedule');
   }
 
-  // NUEVO MÉTODO: Obtener tags por evento
   async getTagsByEvent(eventId: string): Promise<ITag[]> {
     try {
       return await Tag.find({ 
@@ -124,8 +123,6 @@ export class TagService {
     const total = await Tag.countDocuments();
     const active = await Tag.countDocuments({ active: true });
     const inactive = await Tag.countDocuments({ active: false });
-
-    // Obtener etiquetas más usadas
     const mostUsed = await Tag.aggregate([
       {
         $project: {

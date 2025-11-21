@@ -10,7 +10,6 @@ export interface IUser {
   events: Types.ObjectId[];
   active: boolean;
   role: string;
-  // Nuevos campos para Google Auth
   googleId?: string;
   googleProfile?: {
     name?: string;
@@ -19,7 +18,6 @@ export interface IUser {
   };
   authProvider: 'local' | 'google';
   
-  // NUEVOS CAMPOS AÑADIDOS
   isOnline: boolean;
   lastSeen: Date;
   emergencyContacts: string[];
@@ -36,6 +34,7 @@ export interface IUser {
   isModified(path: string): boolean;
   createdAt?: Date;
   updatedAt?: Date;
+  avatar?: string;
 }
 
 const userSchema = new Schema<IUser>({
@@ -46,6 +45,7 @@ const userSchema = new Schema<IUser>({
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   active: { type: Boolean, default: true },
   role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' },
+  avatar: { type: String, default: '' },
   googleId: {
     type: String,
     sparse: true
@@ -60,8 +60,6 @@ const userSchema = new Schema<IUser>({
     enum: ['local', 'google'],
     default: 'local'
   },
-  
-  // NUEVOS CAMPOS
   isOnline: { type: Boolean, default: false },
   lastSeen: { type: Date, default: Date.now },
   emergencyContacts: [{ type: String, default: [] }],
@@ -85,7 +83,6 @@ const userSchema = new Schema<IUser>({
   versionKey: false
 });
 
-// Índice para geolocalización
 userSchema.index({ location: '2dsphere' });
 
 userSchema.pre<IUser>('save', async function (next) {

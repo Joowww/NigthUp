@@ -4,7 +4,6 @@ import mongoose from 'mongoose';
 
 export class FriendshipService {
   async sendFriendRequest(requesterId: string, recipientId: string): Promise<IFriendship> {
-    // Verificar que no exista una solicitud previa
     const existing = await Friendship.findOne({
       $or: [
         { requester: requesterId, recipient: recipientId },
@@ -38,7 +37,6 @@ export class FriendshipService {
   }
 
   async blockUser(requesterId: string, recipientId: string): Promise<IFriendship> {
-    // Si existe una amistad, actualizar a bloqueado, sino crear una nueva
     let friendship = await Friendship.findOne({
       requester: requesterId,
       recipient: recipientId

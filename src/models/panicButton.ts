@@ -26,7 +26,7 @@ const panicButtonSchema = new Schema<IPanicButton>({
     }
   },
   activatedAt: { type: Date, default: Date.now },
-  emergencyContacts: [{ type: String }], // Teléfonos de emergencia
+  emergencyContacts: [{ type: String }], 
   message: { type: String, default: '¡Necesito ayuda!' }
 });
 

@@ -6,7 +6,6 @@ import { UserService } from '../services/userServices';
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const userService = new UserService();
 
-// Función auxiliar para remover password de forma segura
 function removePassword(user: any) {
     const userObj = user.toObject ? user.toObject() : user;
     const { password, ...userWithoutPassword } = userObj;
@@ -21,14 +20,12 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
             return res.status(400).json({ error: 'Google token is required' });
         }
 
-        // Verificar que las variables de entorno estén configuradas
         if (!process.env.GOOGLE_CLIENT_ID) {
             throw new Error('GOOGLE_CLIENT_ID not configured in environment variables');
         }
 
-        console.log('🔐 [GOOGLE AUTH] Verifying Google token...');
+        console.log('[GOOGLE AUTH] Verifying Google token...');
 
-        // Verificar el token de Google
         const ticket = await client.verifyIdToken({
             idToken: token,
             audience: process.env.GOOGLE_CLIENT_ID,
@@ -37,7 +34,7 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
         const payload = ticket.getPayload();
         
         if (!payload) {
-            console.error('❌ [GOOGLE AUTH] Invalid Google token payload');
+            console.error('[GOOGLE AUTH] Invalid Google token payload');
             return res.status(400).json({ error: 'Invalid Google token' });
         }
 
@@ -49,7 +46,6 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
             name: name?.substring(0, 20) + '...' 
         });
 
-        // Buscar o crear usuario usando el servicio
         const user = await userService.findOrCreateUserByGoogle({
             googleId,
             email,
@@ -58,16 +54,14 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
             locale
         });
 
-        console.log('✅ [GOOGLE AUTH] User found/created:', user._id);
+        console.log('[GOOGLE AUTH] User found/created:', user._id);
 
-        // Generar tokens JWT
         const jwtToken = generateToken(user);
         const refreshToken = generateRefreshToken(user);
 
-        // Remover password del response de forma segura
         const safeUser = removePassword(user);
 
-        console.log('🎉 [GOOGLE AUTH] Google authentication successful');
+        console.log('[GOOGLE AUTH] Google authentication successful');
 
         return res.status(200).json({
             user: safeUser,
@@ -77,7 +71,7 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
         });
 
     } catch (error) {
-        console.error('❌ [GOOGLE AUTH] Error:', error);
+        console.error('[GOOGLE AUTH] Error:', error);
         return res.status(500).json({ 
             error: 'Google authentication failed',
             details: (error as Error).message 
@@ -85,7 +79,6 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
     }
 };
 
-// Opcional: Endpoint para conectar cuenta existente con Google
 export const connectGoogleAccount = async (req: Request, res: Response): Promise<Response> => {
     try {
         const userId = (req as any).user.id;
@@ -112,7 +105,6 @@ export const connectGoogleAccount = async (req: Request, res: Response): Promise
 
         const { sub: googleId, email, name, picture, locale } = payload;
 
-        // Conectar cuenta usando el servicio
         const user = await userService.connectGoogleAccount(userId, {
             googleId,
             email,
@@ -137,7 +129,6 @@ export const connectGoogleAccount = async (req: Request, res: Response): Promise
     }
 };
 
-// Opcional: Endpoint para desconectar cuenta de Google
 export const disconnectGoogleAccount = async (req: Request, res: Response): Promise<Response> => {
     try {
         const userId = (req as any).user.id;

@@ -18,7 +18,7 @@ export async function createRating(req: Request, res: Response): Promise<Respons
 
   try {
     const { event, username, score, comment } = req.body;
-    console.log('📥 Datos recibidos:', { event, username, score, comment });
+    console.log('Datos recibidos:', { event, username, score, comment });
 
 
     if (score < 1 || score > 5) {
@@ -129,7 +129,6 @@ export async function updateRating(req: Request, res: Response): Promise<Respons
 
     console.log(`Actualizando valoración ${id}:`, { score, comment });
 
-    // Validar score si se proporciona
     if (score && (score < 1 || score > 5)) {
       console.log('Score inválido:', score);
       return res.status(400).json({ error: 'La puntuación debe estar entre 1 y 5' });

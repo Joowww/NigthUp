@@ -24,7 +24,6 @@ export class UserService {
         }
     }
 
-    // Function auxiliar para buscar evento por ID o nombre
     private async findEventByIdentifier(eventIdentifier: string) {
         if (mongoose.Types.ObjectId.isValid(eventIdentifier)) {
             return await EventModel.findById(eventIdentifier);
@@ -70,11 +69,9 @@ export class UserService {
     }
 
     async updateUserByIdentifier(identifier: string, userData: Partial<IUser>): Promise<IUser | null> {
-        // No permitir actualizar password desde este servicio
         if (userData.password) {
             throw new Error('Password cannot be updated from this service');
         }
-        // MODIFICADO: Permitir actualizar role sin restricciones (la validacion esta en el controller)
         const filter = this.buildIdentifierFilter(identifier);
         return await User.findOneAndUpdate(
             filter,
@@ -109,7 +106,6 @@ export class UserService {
     async addEventToUser(identifier: string, eventIdentifier: string): Promise<IUser | null> {
         const userFilter = this.buildIdentifierFilter(identifier);
 
-        // Buscar el evento por ID o nombre
         const event = await this.findEventByIdentifier(eventIdentifier);
         if (!event) {
             throw new Error('EVENT NOT FOUND');
@@ -131,7 +127,6 @@ export class UserService {
         return updatedUser;
     }
 
-    // MODIFICADO: Método loginUser actualizado para manejar usuarios de Google
     async loginUser(username: string, password: string): Promise<any | null> {
         try {
             const userWithPass = await User.findOne({
@@ -143,7 +138,6 @@ export class UserService {
 
             if (!userWithPass) return null;
 
-            // Si el usuario se autentica con Google, no permitir login con contraseña
             if (userWithPass.authProvider === 'google') {
                 throw new Error('This account uses Google authentication. Please sign in with Google.');
             }
@@ -160,7 +154,6 @@ export class UserService {
         }
     }
 
-    // NUEVO: Método para buscar o crear usuario por Google ID
     async findOrCreateUserByGoogle(googleData: {
         googleId: string;
         email?: string;
@@ -170,7 +163,6 @@ export class UserService {
     }): Promise<IUser> {
         const { googleId, email, name, picture, locale } = googleData;
 
-        // Buscar usuario por googleId o email
         let user = await User.findOne({
             $or: [
                 { googleId },
@@ -179,7 +171,6 @@ export class UserService {
         });
 
         if (user) {
-            // Actualizar usuario existente con información de Google
             user.googleId = googleId;
             user.googleProfile = {
                 name: name || user.googleProfile?.name,
@@ -191,10 +182,8 @@ export class UserService {
             await user.save();
             return user;
         } else {
-            // Crear nuevo usuario con Google
             const username = email ? email.split('@')[0] : `user_${Date.now()}`;
-            
-            // Verificar si el username ya existe
+        
             let finalUsername = username;
             let counter = 1;
             while (await User.findOne({ username: finalUsername })) {
@@ -205,7 +194,7 @@ export class UserService {
             user = new User({
                 username: finalUsername,
                 email: email || '',
-                password: 'google_auth_' + Math.random().toString(36), // Contraseña dummy, no se usará
+                password: 'google_auth_' + Math.random().toString(36), // Contraseña dummy
                 birthday: new Date('2000-01-01'), // Fecha por defecto
                 googleId,
                 googleProfile: {
@@ -223,7 +212,6 @@ export class UserService {
         }
     }
 
-    // NUEVO: Método para conectar cuenta existente con Google
     async connectGoogleAccount(userId: string, googleData: {
         googleId: string;
         email?: string;
@@ -238,12 +226,10 @@ export class UserService {
 
         const { googleId, email, name, picture, locale } = googleData;
 
-        // Verificar que el email coincide con el usuario autenticado
         if (email && user.email !== email) {
             throw new Error('Google account email does not match user email');
         }
 
-        // Verificar que el googleId no está siendo usado por otro usuario
         const existingUserWithGoogleId = await User.findOne({ 
             googleId, 
             _id: { $ne: userId } 
@@ -252,7 +238,6 @@ export class UserService {
             throw new Error('Google account is already connected to another user');
         }
 
-        // Actualizar usuario con información de Google
         user.googleId = googleId;
         user.googleProfile = {
             name: name || user.googleProfile?.name,
@@ -265,14 +250,12 @@ export class UserService {
         return user;
     }
 
-    // NUEVO: Método para desconectar cuenta de Google
     async disconnectGoogleAccount(userId: string): Promise<IUser> {
         const user = await User.findById(userId);
         if (!user) {
             throw new Error('USER NOT FOUND');
         }
 
-        // Si el usuario solo tiene autenticación con Google, requerir que establezca una contraseña primero
         if (user.authProvider === 'google' && !user.password) {
             throw new Error('Please set a password before disconnecting Google account');
         }
@@ -303,7 +286,6 @@ export class UserService {
         ).populate('events', 'username email').select('-password');
     }
 
-    // NUEVO: Método para hacer manager
     async makeUserManagerByIdentifier(identifier: string): Promise<IUser | null> {
         const filter = this.buildIdentifierFilter(identifier);
         return await User.findOneAndUpdate(
@@ -313,7 +295,6 @@ export class UserService {
         ).populate('events', 'username email').select('-password');
     }
 
-    // NUEVO: Método para quitar manager
     async removeUserManagerByIdentifier(identifier: string): Promise<IUser | null> {
         const filter = this.buildIdentifierFilter(identifier);
         return await User.findOneAndUpdate(
@@ -325,8 +306,6 @@ export class UserService {
 
     async removeEventFromUser(identifier: string, eventIdentifier: string): Promise<IUser | null> {
         const userFilter = this.buildIdentifierFilter(identifier);
-
-        // Buscar el evento por ID o nombre
         const event = await this.findEventByIdentifier(eventIdentifier);
         if (!event) {
             throw new Error('EVENT NOT FOUND');
@@ -371,7 +350,6 @@ export class UserService {
         return { total, active, inactive, newCount, lastUpdated };
     }
 
-    // NUEVO: Método para obtener estadísticas de proveedores de autenticación
     async getAuthProviderStats(): Promise<{ local: number; google: number }> {
         const localCount = await User.countDocuments({ authProvider: 'local' });
         const googleCount = await User.countDocuments({ authProvider: 'google' });

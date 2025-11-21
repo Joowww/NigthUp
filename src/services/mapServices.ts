@@ -84,7 +84,6 @@ export class MapService {
       return [];
     }
 
-    // Obtener amigos usando el servicio real de amigos
     const friendIds = await this.getUserFriendIds(userId);
 
     return await User.find({

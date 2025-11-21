@@ -43,7 +43,6 @@ const eventSchema = new Schema<IEvent>({
   versionKey: false
 });
 
-// Índice para geolocalización
 eventSchema.index({ location: '2dsphere' });
 
 export const Event = model<IEvent>('Event', eventSchema);

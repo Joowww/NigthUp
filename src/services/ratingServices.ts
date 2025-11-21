@@ -1,16 +1,8 @@
 import { Rating, IRating } from '../models/rating';
 import mongoose from 'mongoose';
 
-/**
- * Servicio para gestionar todas las operaciones de valoraciones
- */
 export class RatingService {
   
-  /**
-   * Crear una nueva valoración
-   * @param ratingData Datos de la valoración
-   * @returns Promise con la valoración creada
-   */
   async createRating(ratingData: Partial<IRating>): Promise<IRating> {
     try {
       console.log('Creando nueva valoración:', ratingData);
@@ -24,13 +16,6 @@ export class RatingService {
     }
   }
 
-  /**
-   * Obtener valoraciones con paginación y búsqueda
-   * @param skip Número de registros a saltar
-   * @param limit Límite de registros por página
-   * @param search Término de búsqueda opcional
-   * @returns Promise con array de valoraciones y total
-   */
   async getRatings(skip: number = 0, limit: number = 10, search?: string): Promise<{ ratings: IRating[], total: number }> {
     try {
       console.log(`Buscando valoraciones - skip: ${skip}, limit: ${limit}, search: ${search}`);
@@ -69,11 +54,6 @@ export class RatingService {
     }
   }
 
-  /**
-   * Obtener una valoración por ID
-   * @param id ID de la valoración
-   * @returns Promise con la valoración encontrada o null
-   */
   async getRatingById(id: string): Promise<IRating | null> {
     try {
       console.log(`Buscando valoración por ID: ${id}`);
@@ -92,12 +72,6 @@ export class RatingService {
     }
   }
 
-  /**
-   * Actualizar una valoración
-   * @param id ID de la valoración a actualizar
-   * @param ratingData Nuevos datos de la valoración
-   * @returns Promise con la valoración actualizada
-   */
   async updateRating(id: string, ratingData: Partial<IRating>): Promise<IRating | null> {
     try {
       console.log(`Actualizando valoración ${id}:`, ratingData);
@@ -120,14 +94,9 @@ export class RatingService {
     }
   }
 
-  /**
-   * Eliminar una valoración
-   * @param id ID de la valoración a eliminar
-   * @returns Promise con la valoración eliminada
-   */
   async deleteRating(id: string): Promise<IRating | null> {
     try {
-      console.log(`🗑️ Eliminando valoración: ${id}`);
+      console.log(`Eliminando valoración: ${id}`);
       const deletedRating = await Rating.findByIdAndDelete(id);
       
       if (!deletedRating) {
@@ -142,11 +111,6 @@ export class RatingService {
     }
   }
 
-  /**
-   * Obtener estadísticas de valoraciones para un evento
-   * @param eventId ID del evento
-   * @returns Promise con promedio y cantidad de valoraciones
-   */
   async getEventRatingStats(eventId: string): Promise<{ average: number, count: number }> {
     try {
       console.log(`Obteniendo estadísticas para evento: ${eventId}`);
@@ -180,12 +144,6 @@ export class RatingService {
     }
   }
 
-  /**
-   * Obtener valoración de un usuario específico para un evento
-   * @param username Username del usuario
-   * @param eventId ID del evento
-   * @returns Promise con la valoración encontrada o null
-   */
   async getUserEventRating(username: string, eventId: string): Promise<IRating | null> {
     try {
       console.log(`Buscando valoración de usuario ${username} para evento ${eventId}`);
@@ -207,11 +165,6 @@ export class RatingService {
     }
   }
 
-  /**
-   * Obtener todas las valoraciones de un evento específico
-   * @param eventId ID del evento
-   * @returns Promise con array de valoraciones del evento
-   */
   async getRatingsByEvent(eventId: string): Promise<IRating[]> {
     try {
       console.log(`Obteniendo valoraciones para evento: ${eventId}`);
@@ -227,14 +180,9 @@ export class RatingService {
     }
   }
 
-  /**
-   * Obtener todas las valoraciones de un usuario específico
-   * @param username Username del usuario
-   * @returns Promise con array de valoraciones del usuario
-   */
   async getRatingsByUser(username: string): Promise<IRating[]> {
     try {
-      console.log(`🔍 Obteniendo valoraciones para usuario: ${username}`);
+      console.log(`Obteniendo valoraciones para usuario: ${username}`);
       const ratings = await Rating.find({ username: username })
         .populate('event', 'name schedule location')
         .sort({ createdAt: -1 });

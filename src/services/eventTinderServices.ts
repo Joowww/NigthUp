@@ -12,7 +12,6 @@ export class EventTinderService {
       });
     }
 
-    // Verificar si el usuario ya está participando
     const existingParticipant = eventTinder.participants.find(p => p.userId.toString() === userId);
     if (existingParticipant) {
       existingParticipant.isParticipating = true;
@@ -54,7 +53,6 @@ export class EventTinderService {
       throw new Error('User is not participating in this event tinder');
     }
 
-    // Verificar si ya likeó o dislikeó
     if (participant.likes.includes(likedUserId as any)) {
       throw new Error('User already liked this user');
     }
@@ -64,12 +62,10 @@ export class EventTinderService {
 
     participant.likes.push(likedUserId as any);
 
-    // Verificar si es un match
     const likedUser = eventTinder.participants.find(p => p.userId.toString() === likedUserId);
     let isMatch = false;
 
     if (likedUser && likedUser.likes.includes(userId as any)) {
-      // Es un match!
       participant.matches.push(likedUserId as any);
       likedUser.matches.push(userId as any);
       isMatch = true;
@@ -90,7 +86,6 @@ export class EventTinderService {
       throw new Error('User is not participating in this event tinder');
     }
 
-    // Verificar si ya likeó o dislikeó
     if (participant.likes.includes(dislikedUserId as any)) {
       throw new Error('User already liked this user');
     }
@@ -132,7 +127,6 @@ export class EventTinderService {
       throw new Error('User is not participating in this event tinder');
     }
 
-    // Encontrar un usuario que no haya sido likeado ni dislikeado
     const nextUser = eventTinder.participants.find(p => 
       p.userId._id.toString() !== userId &&
       p.isParticipating &&
