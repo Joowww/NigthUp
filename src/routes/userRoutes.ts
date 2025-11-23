@@ -11,7 +11,6 @@ import {
     updateUserByIdentifier,
     disableUserByIdentifier,
     reactivateUserByIdentifier,
-    forgotPassword,
     makeUserAdminByIdentifier,
     removeUserAdminByIdentifier,
     deleteUserByIdentifier,
@@ -21,12 +20,15 @@ import {
     removeUserManagerByIdentifier,
     getMyProfile,
     updateMyProfile,
-    verifyTokenHandler
+    verifyTokenHandler,
+    getSecurityQuestions,
+    setSecurityQuestion,
+    forgotPassword,
+    verifySecurityAnswer,
+    resetPasswordWithToken
 } from '../controller/userController';
 
-// Importa el nuevo controlador
 import { googleAuth, connectGoogleAccount } from '../controller/googleAuthController';
-
 import { authenticateToken, authenticateRefreshToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager, requireUser } from '../middleware/roleMiddleware';
 
@@ -43,6 +45,7 @@ const router = Router();
  *         - email
  *         - password
  *         - birthday
+ *         - phoneNumber
  *       properties:
  *         _id:
  *           type: string
@@ -53,6 +56,9 @@ const router = Router();
  *         email:
  *           type: string
  *           example: "user@example.com"
+ *         phoneNumber:
+ *           type: string
+ *           example: "+34 612 345 678"
  *         birthday:
  *           type: string
  *           format: date
@@ -69,6 +75,10 @@ const router = Router();
  *           type: string
  *           enum: [admin, manager, user]
  *           example: "user"
+ *         securityQuestion:
+ *           type: string
+ *           description: Clave de la pregunta de seguridad
+ *           example: "security.question.pet_name"
  *         createdAt:
  *           type: string
  *           format: date-time
@@ -82,6 +92,9 @@ const router = Router();
  *         - email
  *         - password
  *         - birthday
+ *         - phoneNumber
+ *         - securityQuestionKey
+ *         - securityAnswer
  *       properties:
  *         username:
  *           type: string
@@ -96,70 +109,77 @@ const router = Router();
  *           type: string
  *           format: date
  *           example: "2000-01-01"
+ *         phoneNumber:
+ *           type: string
+ *           description: Número de teléfono - mínimo 9 dígitos
+ *           example: "+34 612 345 678"
  *         role:
  *           type: string
  *           enum: [manager, user]
  *           example: "user"
- *     UserStats:
- *       type: object
- *       properties:
- *         total:
- *           type: integer
- *           description: Total de usuarios en el sistema
- *         active:
- *           type: integer
- *           description: Usuarios activos
- *         inactive:
- *           type: integer
- *           description: Usuarios inactivos
- *         newCount:
- *           type: integer
- *           description: Nuevos usuarios en los últimos 7 días
- *         lastUpdated:
+ *         securityQuestionKey:
  *           type: string
- *           format: date-time
- *           description: Fecha de última actualización
- *     LoginRequest:
+ *           description: Clave de pregunta de seguridad 
+ *           example: "security.question.pet_name"
+ *         securityAnswer:
+ *           type: string
+ *           description: Respuesta de seguridad 
+ *           example: "Fluffy"s
+ *     SecurityQuestionRequest:
  *       type: object
  *       required:
- *         - username
- *         - password
+ *         - securityQuestionKey
+ *         - securityAnswer
+ *         - currentPassword
  *       properties:
- *         username:
+ *         securityQuestionKey:
  *           type: string
- *           example: "userExample"
- *         password:
+ *           description: Clave de la pregunta de seguridad
+ *           example: "security.question.pet_name"
+ *         securityAnswer:
  *           type: string
- *           example: "123456"
- *     LoginResponse:
- *       type: object
- *       properties:
- *         user:
- *           $ref: '#/components/schemas/User'
- *         message:
+ *           description: Respuesta a la pregunta de seguridad
+ *           example: "Fluffy"
+ *         currentPassword:
  *           type: string
- *           example: "LOGIN EXITOSO"
- *         token:
- *           type: string
- *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *         refreshToken:
- *           type: string
- *           example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
- *     RefreshTokenRequest:
+ *           description: Contraseña actual del usuario
+ *           example: "currentPass123"
+ *     ForgotPasswordRequest:
  *       type: object
  *       required:
- *         - refreshToken
- *         - userId
+ *         - email
  *       properties:
- *         refreshToken:
+ *         email:
  *           type: string
- *         userId:
+ *           format: email
+ *           example: "user@example.com"
+ *     VerifySecurityAnswerRequest:
+ *       type: object
+ *       required:
+ *         - email
+ *         - securityAnswer
+ *       properties:
+ *         email:
  *           type: string
- *   securitySchemes:
- *     bearerAuth:
- *       type: http
- *       scheme: bearer
- *       bearerFormat: JWT
+ *           format: email
+ *           example: "user@example.com"
+ *         securityAnswer:
+ *           type: string
+ *           description: Respuesta a la pregunta de seguridad
+ *           example: "Fluffy"
+ *     ResetPasswordRequest:
+ *       type: object
+ *       required:
+ *         - resetToken
+ *         - newPassword
+ *       properties:
+ *         resetToken:
+ *           type: string
+ *           description: Token de reseteo obtenido tras verificar la respuesta de seguridad
+ *         newPassword:
+ *           type: string
+ *           description: Nueva contraseña
+ *           example: "newSecurePass123"
  */
 
 // --- RUTAS PÚBLICAS ---
@@ -167,7 +187,7 @@ const router = Router();
  * @swagger
  * /api/user:
  *   post:
- *     summary: Create a new user
+ *     summary: Create a new user (security question and answer required)
  *     tags: [Users - Public]
  *     requestBody:
  *       required: true
@@ -178,8 +198,12 @@ const router = Router();
  *     responses:
  *       201:
  *         description: User created successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/User'
  *       400:
- *         description: Error in user data
+ *         description: Missing required fields (security question/answer required) or invalid data
  *       403:
  *         description: Cannot create admin user from this route
  *       500:
@@ -198,14 +222,20 @@ router.post('/', createUser);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/LoginRequest'
+ *             type: object
+ *             required:
+ *               - username
+ *               - password
+ *             properties:
+ *               username:
+ *                 type: string
+ *               password:
+ *                 type: string
  *     responses:
  *       200:
  *         description: Login successful
- *       400:
- *         description: Validation error
  *       401:
- *         description: Incorrect credentials or user inactive
+ *         description: Incorrect credentials
  *       500:
  *         description: Login error
  */
@@ -228,7 +258,6 @@ router.post('/auth/login', loginUser);
  *             properties:
  *               token:
  *                 type: string
- *                 description: Google ID token
  *     responses:
  *       200:
  *         description: Google authentication successful
@@ -241,31 +270,123 @@ router.post('/auth/google', googleAuth);
 
 /**
  * @swagger
+ * /api/user/security-questions:
+ *   get:
+ *     summary: Get available security questions
+ *     tags: [Authentication]
+ *     responses:
+ *       200:
+ *         description: List of security question keys
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 securityQuestionKeys:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: [
+ *                     "security.question.pet_name",
+ *                     "security.question.birth_city",
+ *                     "security.question.mother_maiden_name"
+ *                   ]
+ *                 fallbackTexts:
+ *                   type: object
+ *                   description: Textos de fallback (solo en desarrollo)
+ */
+router.get('/security-questions', getSecurityQuestions);
+
+/**
+ * @swagger
  * /api/user/forgot-password:
  *   post:
- *     summary: Solicitar restablecimiento de contraseña
+ *     summary: Iniciar proceso de recuperación de contraseña
  *     tags: [Authentication]
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
- *             type: object
- *             required:
- *               - email
- *             properties:
- *               email:
- *                 type: string
- *                 format: email
+ *             $ref: '#/components/schemas/ForgotPasswordRequest'
  *     responses:
  *       200:
- *         description: Si el email existe, se envía un enlace de restablecimiento
+ *         description: Si el email existe, se muestra la clave de la pregunta de seguridad
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 securityQuestionKey:
+ *                   type: string
+ *                   example: "security.question.pet_name"
+ *                 email:
+ *                   type: string
  *       400:
- *         description: Email no proporcionado
+ *         description: Email no proporcionado o usuario sin pregunta de seguridad
  *       500:
  *         description: Error del servidor
  */
 router.post('/forgot-password', forgotPassword);
+
+/**
+ * @swagger
+ * /api/user/verify-security-answer:
+ *   post:
+ *     summary: Verificar respuesta de seguridad
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/VerifySecurityAnswerRequest'
+ *     responses:
+ *       200:
+ *         description: Respuesta correcta, token de reseteo generado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 resetToken:
+ *                   type: string
+ *       400:
+ *         description: Respuesta incorrecta o datos faltantes
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.post('/verify-security-answer', verifySecurityAnswer);
+
+/**
+ * @swagger
+ * /api/user/reset-password:
+ *   post:
+ *     summary: Resetear contraseña con token
+ *     tags: [Authentication]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/ResetPasswordRequest'
+ *     responses:
+ *       200:
+ *         description: Contraseña reseteada exitosamente
+ *       400:
+ *         description: Token inválido o contraseña débil
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.post('/reset-password', resetPasswordWithToken);
 
 /**
  * @swagger
@@ -278,16 +399,90 @@ router.post('/forgot-password', forgotPassword);
  *       content:
  *         application/json:
  *           schema:
- *             $ref: '#/components/schemas/RefreshTokenRequest'
+ *             type: object
+ *             required:
+ *               - refreshToken
+ *               - userId
+ *             properties:
+ *               refreshToken:
+ *                 type: string
+ *               userId:
+ *                 type: string
  *     responses:
  *       200:
- *         description: New token generated successfully
+ *         description: New token generated
  *       401:
- *         description: Invalid or expired refresh token
- *       500:
- *         description: Internal server error
+ *         description: Invalid refresh token
  */
 router.post('/auth/refresh', authenticateRefreshToken, refreshAccessToken);
+
+// ===== RUTAS AUTENTICADAS =====
+
+/**
+ * @swagger
+ * /api/user/auth/verify:
+ *   get:
+ *     summary: Verify JWT token
+ *     tags: [Authentication]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token is valid
+ *       401:
+ *         description: Invalid token
+ */
+router.get('/auth/verify', authenticateToken, verifyTokenHandler);
+
+/**
+ * @swagger
+ * /api/user/me:
+ *   get:
+ *     summary: Get current user profile
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: User profile retrieved
+ *       401:
+ *         description: Unauthorized
+ *       404:
+ *         description: User not found
+ */
+router.get('/me', authenticateToken, getMyProfile);
+
+/**
+ * @swagger
+ * /api/user/me:
+ *   patch:
+ *     summary: Update current user profile
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               username:
+ *                 type: string
+ *               email:
+ *                 type: string
+ *               birthday:
+ *                 type: string
+ *                 format: date
+ *     responses:
+ *       200:
+ *         description: Profile updated
+ *       400:
+ *         description: Invalid data
+ *       401:
+ *         description: Unauthorized
+ */
+router.patch('/me', authenticateToken, updateMyProfile);
 
 /**
  * @swagger
@@ -313,9 +508,9 @@ router.post('/auth/refresh', authenticateRefreshToken, refreshAccessToken);
  *                 type: string
  *     responses:
  *       200:
- *         description: Password changed successfully
+ *         description: Password changed
  *       400:
- *         description: Invalid current password or weak new password
+ *         description: Invalid password
  *       401:
  *         description: Unauthorized
  */
@@ -346,9 +541,9 @@ router.post('/change-password', authenticateToken, changePassword);
  *                 type: string
  *     responses:
  *       200:
- *         description: Email changed successfully
+ *         description: Email changed
  *       400:
- *         description: Invalid password or email already in use
+ *         description: Invalid data
  *       401:
  *         description: Unauthorized
  */
@@ -356,9 +551,35 @@ router.post('/change-email', authenticateToken, changeEmail);
 
 /**
  * @swagger
+ * /api/user/security-question:
+ *   post:
+ *     summary: Establecer pregunta y respuesta de seguridad
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/SecurityQuestionRequest'
+ *     responses:
+ *       200:
+ *         description: Pregunta de seguridad establecida
+ *       400:
+ *         description: Datos inválidos
+ *       401:
+ *         description: No autorizado
+ *       404:
+ *         description: Usuario no encontrado
+ */
+router.post('/security-question', authenticateToken, setSecurityQuestion);
+
+/**
+ * @swagger
  * /api/user/connect/google:
  *   post:
- *     summary: Connect existing account to Google
+ *     summary: Connect Google account
  *     tags: [Users - Authenticated]
  *     security:
  *       - bearerAuth: []
@@ -373,87 +594,18 @@ router.post('/change-email', authenticateToken, changeEmail);
  *             properties:
  *               token:
  *                 type: string
- *                 description: Google ID token
  *     responses:
  *       200:
- *         description: Google account connected successfully
+ *         description: Google account connected
  *       400:
- *         description: Invalid token or email mismatch
+ *         description: Invalid token
  *       401:
  *         description: Unauthorized
  */
 router.post('/connect/google', authenticateToken, connectGoogleAccount);
 
-// --- RUTAS AUTENTICADAS ---
-/**
- * @swagger
- * /api/user/auth/verify:
- *   get:
- *     summary: Verify JWT token
- *     tags: [Authentication]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Token is valid
- *       401:
- *         description: Invalid token
- */
-router.get('/auth/verify', authenticateToken, verifyTokenHandler);
+// ===== RUTAS ADMIN =====
 
-/**
- * @swagger
- * /api/user/me:
- *   get:
- *     summary: Get current user profile
- *     tags: [Users - Authenticated]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User profile retrieved successfully
- *       401:
- *         description: Unauthorized - Token required
- *       404:
- *         description: User not found
- */
-router.get('/me', authenticateToken, getMyProfile);
-
-/**
- * @swagger
- * /api/user/me:
- *   patch:
- *     summary: Update current user profile
- *     tags: [Users - Authenticated]
- *     security:
- *       - bearerAuth: []
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               username:
- *                 type: string
- *               email:
- *                 type: string
- *               birthday:
- *                 type: string
- *                 format: date
- *     responses:
- *       200:
- *         description: Profile updated successfully
- *       400:
- *         description: Invalid data or password/role update attempted
- *       401:
- *         description: Unauthorized - Token required
- *       404:
- *         description: User not found
- */
-router.patch('/me', authenticateToken, updateMyProfile);
-
-// --- RUTAS ADMIN ---
 /**
  * @swagger
  * /api/user:

@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { IUser } from '../models/user';
+import { IUser, SECURITY_QUESTION_KEYS, SECURITY_QUESTIONS_FALLBACK } from '../models/user';
 import User from '../models/user'; 
 import { UserService } from '../services/userServices';
 import { validationResult } from 'express-validator';
@@ -10,6 +10,7 @@ const userService = new UserService();
 function removePassword(user: any) {
     const userObj = user.toObject ? user.toObject() : user;
     delete userObj.password;
+    delete userObj.securityAnswer;
     return userObj;
 }
 
@@ -20,10 +21,44 @@ export async function createUser(req: Request, res: Response): Promise<Response>
     }
 
     try {
-        const { username, email, password, birthday, role } = req.body;
+        const { username, email, password, birthday, phoneNumber, role, securityQuestionKey, securityAnswer } = req.body;
 
         if (role === 'admin') {
             return res.status(403).json({ error: 'Cannot create admin user from this route' });
+        }
+
+        // VALIDACIÓN OBLIGATORIA DE TELÉFONO
+        if (!phoneNumber) {
+            return res.status(400).json({ error: 'Phone number is required' });
+        }
+
+        // Validación de formato de teléfono
+        const phoneRegex = /^[\d\s\-\+\(\)]+$/;
+        if (!phoneRegex.test(phoneNumber)) {
+            return res.status(400).json({ error: 'Invalid phone number format' });
+        }
+
+        if (phoneNumber.replace(/[\s\-\+\(\)]/g, '').length < 9) {
+            return res.status(400).json({ error: 'Phone number must have at least 9 digits' });
+        }
+
+        // VALIDACIÓN OBLIGATORIA DE PREGUNTA Y RESPUESTA DE SEGURIDAD
+        if (!securityQuestionKey) {
+            return res.status(400).json({ error: 'Security question is required' });
+        }
+
+        if (!securityAnswer) {
+            return res.status(400).json({ error: 'Security answer is required' });
+        }
+
+        if (!SECURITY_QUESTION_KEYS.includes(securityQuestionKey)) {
+            return res.status(400).json({ error: 'Invalid security question key' });
+        }
+
+        if (securityAnswer.trim().length < 2) {
+            return res.status(400).json({ 
+                error: 'Security answer must be at least 2 characters long' 
+            });
         }
 
         const newUser: Partial<IUser> = {
@@ -31,7 +66,10 @@ export async function createUser(req: Request, res: Response): Promise<Response>
             email,
             password,
             birthday,
-            role: role || 'user'
+            phoneNumber,
+            role: role || 'user',
+            securityQuestion: securityQuestionKey,
+            securityAnswer: securityAnswer
         };
 
         const user = await userService.createUser(newUser);
@@ -378,38 +416,6 @@ export const verifyTokenHandler = async (req: Request, res: Response): Promise<R
     }
 };
 
-export const forgotPassword = async (req: Request, res: Response): Promise<Response> => {
-    try {
-        const { email } = req.body;
-        if (!email) {
-            return res.status(400).json({ error: 'Email is required' });
-        }
-
-        const user = await User.findOne({ email });
-        if (!user) {
-            return res.status(200).json({ message: 'If the email exists, a reset link has been sent.' });
-        }
-
-        const resetToken = generateResetToken(user);
-        
-        // En producción, aquí enviarías un email real
-        console.log(`Reset password link: http://localhost:4200/reset-password?token=${resetToken}`);
-        
-        // En un entorno real, guardarías el token en la base de datos
-        // user.resetToken = resetToken;
-        // user.resetTokenExpiry = Date.now() + 3600000; // 1 hora
-        // await user.save();
-
-        return res.status(200).json({ 
-            message: 'If the email exists, a reset link has been sent.',
-            // En desarrollo, devolvemos el token para pruebas
-            resetToken: process.env.NODE_ENV === 'development' ? resetToken : undefined
-        });
-    } catch (error) {
-        return res.status(500).json({ error: 'Server error' });
-    }
-};
-
 export const changePassword = async (req: Request, res: Response): Promise<Response> => {
   try {
     const userId = (req as any).user.id;
@@ -428,7 +434,7 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const isCurrentPasswordValid = await (user as any).comparePassword(currentPassword);
+    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
     if (!isCurrentPasswordValid) {
       return res.status(400).json({ error: 'Current password is incorrect' });
     }
@@ -462,7 +468,7 @@ export const changeEmail = async (req: Request, res: Response): Promise<Response
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const isPasswordValid = await (user as any).comparePassword(password);
+    const isPasswordValid = await user.comparePassword(password);
     if (!isPasswordValid) {
       return res.status(400).json({ error: 'Password is incorrect' });
     }
@@ -484,5 +490,148 @@ export const changeEmail = async (req: Request, res: Response): Promise<Response
   } catch (error) {
     console.error('Error changing email:', error);
     return res.status(500).json({ error: 'Failed to change email' });
+  }
+};
+
+export const getSecurityQuestions = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    return res.status(200).json({ 
+      securityQuestionKeys: SECURITY_QUESTION_KEYS,
+      fallbackTexts: process.env.NODE_ENV === 'development' ? SECURITY_QUESTIONS_FALLBACK : undefined
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const setSecurityQuestion = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const userId = (req as any).user.id;
+    const { securityQuestionKey, securityAnswer, currentPassword } = req.body;
+
+    if (!securityQuestionKey || !securityAnswer || !currentPassword) {
+      return res.status(400).json({ 
+        error: 'Security question key, answer, and current password are required' 
+      });
+    }
+
+    if (!SECURITY_QUESTION_KEYS.includes(securityQuestionKey)) {
+      return res.status(400).json({ error: 'Invalid security question key' });
+    }
+
+    if (securityAnswer.trim().length < 2) {
+      return res.status(400).json({ error: 'Security answer must be at least 2 characters long' });
+    }
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const isPasswordValid = await user.comparePassword(currentPassword);
+    if (!isPasswordValid) {
+      return res.status(400).json({ error: 'Current password is incorrect' });
+    }
+
+    user.securityQuestion = securityQuestionKey;
+    user.securityAnswer = securityAnswer;
+    await user.save();
+
+    return res.status(200).json({ 
+      message: 'Security question set successfully',
+      securityQuestionKey: user.securityQuestion
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Failed to set security question' });
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required' });
+    }
+
+    const user = await User.findOne({ email, active: true });
+    if (!user) {
+      return res.status(200).json({ message: 'If the email exists, security question will be shown.' });
+    }
+
+    if (!user.securityQuestion) {
+      return res.status(400).json({ 
+        error: 'No security question set for this account. Please contact support.' 
+      });
+    }
+
+    return res.status(200).json({ 
+      message: 'User found',
+      securityQuestionKey: user.securityQuestion,
+      email: user.email
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const verifySecurityAnswer = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { email, securityAnswer } = req.body;
+    
+    if (!email || !securityAnswer) {
+      return res.status(400).json({ error: 'Email and security answer are required' });
+    }
+
+    const user = await User.findOne({ email, active: true });
+    if (!user || !user.securityQuestion) {
+      return res.status(404).json({ error: 'User not found or no security question set' });
+    }
+
+    const isAnswerCorrect = await user.compareSecurityAnswer(securityAnswer);
+    if (!isAnswerCorrect) {
+      return res.status(400).json({ error: 'Incorrect security answer' });
+    }
+
+    const resetToken = generateResetToken(user);
+    
+    return res.status(200).json({ 
+      message: 'Security answer verified successfully',
+      resetToken
+    });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error' });
+  }
+};
+
+export const resetPasswordWithToken = async (req: Request, res: Response): Promise<Response> => {
+  try {
+    const { resetToken, newPassword } = req.body;
+    
+    if (!resetToken || !newPassword) {
+      return res.status(400).json({ error: 'Reset token and new password are required' });
+    }
+
+    if (newPassword.length < 6) {
+      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+    }
+
+    const { verifyToken } = await import('../auth/token');
+    const decoded = verifyToken(resetToken) as any;
+    
+    if (!decoded || decoded.type !== 'password_reset') {
+      return res.status(400).json({ error: 'Invalid or expired reset token' });
+    }
+
+    const user = await User.findById(decoded.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    user.password = newPassword;
+    await user.save();
+
+    return res.status(200).json({ message: 'Password reset successfully' });
+  } catch (error) {
+    return res.status(500).json({ error: 'Server error' });
   }
 };

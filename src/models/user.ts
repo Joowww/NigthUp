@@ -7,6 +7,7 @@ export interface IUser {
   email: string;
   password: string;
   birthday: Date;
+  phoneNumber: string; 
   events: Types.ObjectId[];
   active: boolean;
   role: string;
@@ -17,6 +18,9 @@ export interface IUser {
     locale?: string;
   };
   authProvider: 'local' | 'google';
+  
+  securityQuestion?: string;
+  securityAnswer?: string;
   
   isOnline: boolean;
   lastSeen: Date;
@@ -31,17 +35,64 @@ export interface IUser {
   bio?: string;
   
   comparePassword(candidatePassword: string): Promise<boolean>;
+  compareSecurityAnswer(candidateAnswer: string): Promise<boolean>;
   isModified(path: string): boolean;
   createdAt?: Date;
   updatedAt?: Date;
   avatar?: string;
 }
 
+export const SECURITY_QUESTION_KEYS = [
+  "security.question.pet_name",
+  "security.question.birth_city", 
+  "security.question.mother_maiden_name",
+  "security.question.first_school",
+  "security.question.favorite_food",
+  "security.question.childhood_street",
+  "security.question.best_friend",
+  "security.question.first_job",
+  "security.question.favorite_book",
+  "security.question.birth_hospital",
+  "security.question.father_middle_name",
+  "security.question.first_car",
+  "security.question.favorite_teacher",
+  "security.question.graduation_year",
+  "security.question.favorite_movie"
+];
+
+export const SECURITY_QUESTIONS_FALLBACK = {
+  "security.question.pet_name": "¿Cuál es el nombre de tu primera mascota?",
+  "security.question.birth_city": "¿En qué ciudad naciste?",
+  "security.question.mother_maiden_name": "¿Cuál es el nombre de soltera de tu madre?",
+  "security.question.first_school": "¿Cuál fue el nombre de tu primera escuela?",
+  "security.question.favorite_food": "¿Cuál es tu comida favorita?",
+  "security.question.childhood_street": "¿En qué calle vivías cuando eras niño?",
+  "security.question.best_friend": "¿Cuál es el nombre de tu mejor amigo de la infancia?",
+  "security.question.first_job": "¿Cuál fue tu primer trabajo?",
+  "security.question.favorite_book": "¿Cuál es el nombre de tu libro favorito?",
+  "security.question.birth_hospital": "¿En qué hospital naciste?",
+  "security.question.father_middle_name": "¿Cuál es el segundo nombre de tu padre?",
+  "security.question.first_car": "¿Cuál fue el modelo de tu primer coche?",
+  "security.question.favorite_teacher": "¿Cuál es el nombre de tu profesor favorito?",
+  "security.question.graduation_year": "¿En qué año te graduaste de la secundaria?",
+  "security.question.favorite_movie": "¿Cuál es el nombre de tu película favorita?"
+};
+
 const userSchema = new Schema<IUser>({
   username: { type: String, required: true, unique: true },
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   birthday: { type: Date, required: true },
+  phoneNumber: { 
+    type: String, 
+    required: true,
+    validate: {
+      validator: function(v: string) {
+        return /^[\d\s\-\+\(\)]+$/.test(v);
+      },
+      message: 'Phone number format is invalid'
+    }
+  },
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   active: { type: Boolean, default: true },
   role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' },
@@ -60,6 +111,15 @@ const userSchema = new Schema<IUser>({
     enum: ['local', 'google'],
     default: 'local'
   },
+  
+  securityQuestion: {
+    type: String,
+    enum: SECURITY_QUESTION_KEYS
+  },
+  securityAnswer: {
+    type: String
+  },
+  
   isOnline: { type: Boolean, default: false },
   lastSeen: { type: Date, default: Date.now },
   emergencyContacts: [{ type: String, default: [] }],
@@ -86,16 +146,32 @@ const userSchema = new Schema<IUser>({
 userSchema.index({ location: '2dsphere' });
 
 userSchema.pre<IUser>('save', async function (next) {
-  if (!this.isModified('password')) return next();
-  console.log('  Hasheando contraseña...');
-  const salt = await bcrypt.genSalt();
-  const hash = await bcrypt.hash(this.password, salt);
-  this.password = hash;
+  if (!this.isModified('password') && !this.isModified('securityAnswer')) return next();
+  
+  if (this.isModified('password')) {
+    console.log('  Hasheando contraseña...');
+    const salt = await bcrypt.genSalt();
+    const hash = await bcrypt.hash(this.password, salt);
+    this.password = hash;
+  }
+  
+  if (this.isModified('securityAnswer') && this.securityAnswer) {
+    console.log('  Hasheando respuesta de seguridad...');
+    const salt = await bcrypt.genSalt();
+    const hash = await bcrypt.hash(this.securityAnswer.toLowerCase().trim(), salt);
+    this.securityAnswer = hash;
+  }
+  
   next();
 });
 
 userSchema.methods.comparePassword = async function (candidatePassword: string): Promise<boolean> {
   return await bcrypt.compare(candidatePassword, this.password);
+};
+
+userSchema.methods.compareSecurityAnswer = async function (candidateAnswer: string): Promise<boolean> {
+  if (!this.securityAnswer) return false;
+  return await bcrypt.compare(candidateAnswer.toLowerCase().trim(), this.securityAnswer);
 };
 
 export const User = model<IUser>('User', userSchema);
