@@ -27,12 +27,10 @@ export async function createUser(req: Request, res: Response): Promise<Response>
             return res.status(403).json({ error: 'Cannot create admin user from this route' });
         }
 
-        // VALIDACIÓN OBLIGATORIA DE TELÉFONO
         if (!phoneNumber) {
             return res.status(400).json({ error: 'Phone number is required' });
         }
 
-        // Validación de formato de teléfono
         const phoneRegex = /^[\d\s\-\+\(\)]+$/;
         if (!phoneRegex.test(phoneNumber)) {
             return res.status(400).json({ error: 'Invalid phone number format' });
@@ -42,7 +40,6 @@ export async function createUser(req: Request, res: Response): Promise<Response>
             return res.status(400).json({ error: 'Phone number must have at least 9 digits' });
         }
 
-        // VALIDACIÓN OBLIGATORIA DE PREGUNTA Y RESPUESTA DE SEGURIDAD
         if (!securityQuestionKey) {
             return res.status(400).json({ error: 'Security question is required' });
         }

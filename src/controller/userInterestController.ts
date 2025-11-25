@@ -5,6 +5,7 @@ import { validationResult } from 'express-validator';
 
 const userInterestService = new UserInterestService();
 
+// Crear un interés de usuario
 export async function createUserInterest(req: Request, res: Response): Promise<Response> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -12,18 +13,26 @@ export async function createUserInterest(req: Request, res: Response): Promise<R
     }
 
     try {
-        const { name, description, color } = req.body as IUserInterest;
-        const newInterest: Partial<IUserInterest> = { name, description, color };
-        const interest = await userInterestService.createUserInterest(newInterest);
-        return res.status(201).json(interest);
+        const { userId, tagId, score } = req.body as Partial<IUserInterest>;
+        if (!userId || !tagId || typeof score !== 'number') {
+            return res.status(400).json({ error: 'userId, tagId y score son requeridos' });
+        }
+        const newInterest = await userInterestService.createUserInterest({
+            userId,
+            tagId,
+            score,
+            active: true
+        });
+        return res.status(201).json(newInterest);
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'Failed to create user interest', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'Failed to create user interest',
+            details: (error as Error).message
         });
     }
 }
 
+// Obtener todos los intereses de usuario (con paginación y búsqueda)
 export async function getAllUserInterests(req: Request, res: Response): Promise<Response> {
     try {
         const skip = parseInt(req.query.skip as string) || 0;
@@ -45,6 +54,7 @@ export async function getAllUserInterests(req: Request, res: Response): Promise<
     }
 }
 
+// Obtener interés de usuario por ID
 export async function getUserInterestById(req: Request, res: Response): Promise<Response> {
     try {
         const { id } = req.params;
@@ -58,6 +68,7 @@ export async function getUserInterestById(req: Request, res: Response): Promise<
     }
 }
 
+// Actualizar interés de usuario
 export async function updateUserInterest(req: Request, res: Response): Promise<Response> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -66,18 +77,18 @@ export async function updateUserInterest(req: Request, res: Response): Promise<R
 
     try {
         const { id } = req.params;
-        const { name, description, color } = req.body as IUserInterest;
-        const updatedInterest: Partial<IUserInterest> = { name, description, color };
-        const interest = await userInterestService.updateUserInterest(id, updatedInterest);
-        if (!interest) {
+        const { score, active } = req.body as Partial<IUserInterest>;
+        const updatedInterest = await userInterestService.updateUserInterest(id, { score, active });
+        if (!updatedInterest) {
             return res.status(404).json({ message: 'User interest not found' });
         }
-        return res.status(200).json(interest);
+        return res.status(200).json(updatedInterest);
     } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
     }
 }
 
+// Eliminar interés de usuario
 export async function deleteUserInterest(req: Request, res: Response): Promise<Response> {
     try {
         const { id } = req.params;
@@ -94,6 +105,7 @@ export async function deleteUserInterest(req: Request, res: Response): Promise<R
     }
 }
 
+// Obtener estadísticas generales de intereses de usuario
 export async function getUserInterestStats(req: Request, res: Response): Promise<Response> {
     try {
         const stats = await userInterestService.getUserInterestStats();
@@ -103,11 +115,37 @@ export async function getUserInterestStats(req: Request, res: Response): Promise
     }
 }
 
+// Obtener intereses de usuario por usuario
 export async function getUserInterestsByUser(req: Request, res: Response): Promise<Response> {
     try {
         const { userId } = req.params;
         const interests = await userInterestService.getUserInterestsByUser(userId);
         return res.status(200).json(interests);
+    } catch (error) {
+        return res.status(500).json({ message: (error as Error).message });
+    }
+}
+
+// Obtener intereses de usuario por tag
+export async function getUserInterestsByTag(req: Request, res: Response): Promise<Response> {
+    try {
+        const { tagId } = req.params;
+        const interests = await userInterestService.getUserInterestsByTag(tagId);
+        return res.status(200).json(interests);
+    } catch (error) {
+        return res.status(500).json({ message: (error as Error).message });
+    }
+}
+
+// Crear múltiples intereses iniciales (onboarding)
+export async function createInitialInterests(req: Request, res: Response): Promise<Response> {
+    try {
+        const { userId, interests } = req.body as { userId: string, interests: { tagId: string, score: number }[] };
+        if (!userId || !Array.isArray(interests)) {
+            return res.status(400).json({ error: 'userId e interests son requeridos' });
+        }
+        await userInterestService.createInitialInterests(userId, interests);
+        return res.status(201).json({ message: 'Initial interests created successfully' });
     } catch (error) {
         return res.status(500).json({ message: (error as Error).message });
     }

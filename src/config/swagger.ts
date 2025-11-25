@@ -120,7 +120,10 @@ const options: swaggerJSDoc.Options = {
                 name: 'Chat',
                 description: 'Chat and messaging endpoints'
             },
-
+            {
+                name: 'Posts',
+                description: 'Social posts, feed and interactions endpoints'
+            }
         ],
     },
     apis: [
@@ -138,7 +141,8 @@ const options: swaggerJSDoc.Options = {
         './src/routes/calendarEventRoutes.ts',
         './src/routes/pollRoutes.ts',
         './src/routes/eventTinderRoutes.ts',
-        './src/routes/chatRoutes.ts', 
+        './src/routes/chatRoutes.ts',
+        './src/routes/postRoutes.ts'
     ],
 };
 

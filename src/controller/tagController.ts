@@ -112,3 +112,27 @@ export async function getTagStats(req: Request, res: Response): Promise<Response
         return res.status(500).json({ message: (error as Error).message });
     }
 }
+
+export async function getTagsByType(req: Request, res: Response): Promise<Response> {
+  try {
+    const { type } = req.params;
+
+    // Validar que el tipo sea uno de los permitidos
+    const validTypes = ['MusicType', 'Musician', 'EventType', 'ChildhoodIdol'];
+    if (!validTypes.includes(type)) {
+      return res.status(400).json({ 
+        error: 'Invalid tag type', 
+        validTypes 
+      });
+    }
+
+    const tags = await tagService.getTagsByType(type);
+
+    return res.status(200).json(tags);
+  } catch (error) {
+    return res.status(500).json({ 
+      error: 'Error retrieving tags by type',
+      details: (error as Error).message 
+    });
+  }
+}

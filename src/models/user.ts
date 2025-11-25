@@ -32,7 +32,9 @@ export interface IUser {
   isVisibleOnMap: boolean;
   lastLocationUpdate?: Date;
   profilePicture?: string;
+  coverPhoto?: string;
   bio?: string;
+  posts?: Types.ObjectId[];
   
   comparePassword(candidatePassword: string): Promise<boolean>;
   compareSecurityAnswer(candidateAnswer: string): Promise<boolean>;
@@ -83,15 +85,19 @@ const userSchema = new Schema<IUser>({
   email: { type: String, required: true, unique: true },
   password: { type: String, required: true },
   birthday: { type: Date, required: true },
-  phoneNumber: { 
-    type: String, 
-    required: true,
+  phoneNumber: {
+    type: String,
+    required: false,
     validate: {
-      validator: function(v: string) {
-        return /^[\d\s\-\+\(\)]+$/.test(v);
+      validator: function(v) {
+        // Si no hay teléfono, es válido
+        if (!v) return true;
+        // Validación más flexible para teléfonos
+        return /^[\+]?[(]?[\d\s\-\(\)]{10,}$/.test(v);
       },
       message: 'Phone number format is invalid'
-    }
+    },
+    default: null
   },
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   active: { type: Boolean, default: true },
@@ -136,8 +142,24 @@ const userSchema = new Schema<IUser>({
   },
   isVisibleOnMap: { type: Boolean, default: true },
   lastLocationUpdate: { type: Date },
-  profilePicture: { type: String },
-  bio: { type: String, maxlength: 500 }
+  profilePicture: { 
+    type: String, 
+    default: '' 
+  },
+  coverPhoto: { 
+    type: String, 
+    default: '' 
+  },
+  bio: { 
+    type: String, 
+    maxlength: 500,
+    default: ''
+  },
+  posts: [{
+    type: Schema.Types.ObjectId,
+    ref: 'Post',
+    default: []
+  }]
 }, {
   timestamps: true,
   versionKey: false

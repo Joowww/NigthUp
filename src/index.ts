@@ -23,6 +23,7 @@ import panicButtonRoutes from './routes/panicButtonRoutes';
 import calendarEventRoutes from './routes/calendarEventRoutes';
 import pollRoutes from './routes/pollRoutes';
 import eventTinderRoutes from './routes/eventTinderRoutes';
+import postRoutes from './routes/postRoutes';
 
 import User from './models/user';
 
@@ -33,6 +34,9 @@ const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
+
+// Servir archivos estáticos (imágenes subidas)
+app.use('/uploads', express.static('uploads'));
 
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
@@ -54,19 +58,28 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
         username: 'JoelMoreno',
         email: 'joel@nightup.com',
         password: 'JoelMoreno',
-        birthday: new Date('2000-08-06')
+        birthday: new Date('2000-08-06'),
+        phoneNumber: '+34 612 345 678',
+        securityQuestion: 'security.question.pet_name',
+        securityAnswer: 'Fluffy'
     },
     {
         username: 'DavidSanchez',
         email: 'david@nightup.com',
         password: 'DavidSanchez',
-        birthday: new Date('2000-08-06')
+        birthday: new Date('2000-08-06'),
+        phoneNumber: '+34 612 345 679',
+        securityQuestion: 'security.question.birth_city',
+        securityAnswer: 'Madrid'
     },
     {
         username: 'BryanGarcia',
         email: 'bryan@nightup.com',
         password: 'BryanGarcia',
-        birthday: new Date('2000-08-06')
+        birthday: new Date('2000-08-06'),
+        phoneNumber: '+34 612 345 680',
+        securityQuestion: 'security.question.favorite_food',
+        securityAnswer: 'Pizza'
     }
     ];
 
@@ -79,6 +92,9 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
                 email: adminData.email,
                 password: adminData.password,
                 birthday: adminData.birthday,
+                phoneNumber: adminData.phoneNumber,
+                securityQuestion: adminData.securityQuestion,
+                securityAnswer: adminData.securityAnswer,
                 role: 'admin',
                 active: true
             });
@@ -104,6 +120,8 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     app.use('/api/calendar', calendarEventRoutes);
     app.use('/api/poll', pollRoutes);
     app.use('/api/event-tinder', eventTinderRoutes);
+    app.use('/api/post', postRoutes);
+    console.log('[APP] /api/post routes mounted');
 
     console.log('All routes registered including new features');
 
@@ -117,7 +135,7 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     });
     
     app.get('/api/test', (req, res) => {
-        res.json({ message: 'API is working!', allRoutes: ['/api/user', '/api/event', '/api/business', '/api/rating'] });
+        res.json({ message: 'API is working!', allRoutes: ['/api/user', '/api/event', '/api/business', '/api/rating', '/api/post'] });
     });
 
    /*app.listen(PORT, () => {
@@ -127,7 +145,8 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     });*/
 
     httpServer.listen(PORT, () => { 
-        console.log(`🚀 SERVER URL http://localhost:${PORT}`);
+        console.log(`SERVER URL http://localhost:${PORT}`);
+        console.log(`Static files served at http://localhost:${PORT}/uploads`);
         console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
         console.log('Server is running!');
     });

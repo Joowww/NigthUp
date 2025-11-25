@@ -124,7 +124,7 @@ const router = Router();
  *         securityAnswer:
  *           type: string
  *           description: Respuesta de seguridad 
- *           example: "Fluffy"s
+ *           example: "Fluffy"
  *     SecurityQuestionRequest:
  *       type: object
  *       required:

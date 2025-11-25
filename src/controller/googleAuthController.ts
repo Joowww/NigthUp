@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { generateToken, generateRefreshToken } from '../auth/token';
 import { UserService } from '../services/userServices';
+import User from '../models/user'; // Asegúrate de importar tu modelo User
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const userService = new UserService();
@@ -46,28 +47,73 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
             name: name?.substring(0, 20) + '...' 
         });
 
-        const user = await userService.findOrCreateUserByGoogle({
-            googleId,
-            email,
-            name,
-            picture,
-            locale
+        // Buscar usuario existente primero
+        let user = await User.findOne({
+            $or: [
+                { googleId },
+                { email }
+            ]
         });
 
-        console.log('[GOOGLE AUTH] User found/created:', user._id);
+        let isNewUser = false;
+
+        if (!user) {
+            // Usuario nuevo - crear
+            const username = email ? email.split('@')[0] : `user_${Date.now()}`;
+        
+            let finalUsername = username;
+            let counter = 1;
+            while (await User.findOne({ username: finalUsername })) {
+                finalUsername = `${username}${counter}`;
+                counter++;
+            }
+
+            user = new User({
+                username: finalUsername,
+                email: email || '',
+                password: 'google_auth_' + Math.random().toString(36),
+                birthday: new Date('2000-01-01'),
+                googleId,
+                googleProfile: {
+                    name,
+                    picture,
+                    locale
+                },
+                authProvider: 'google',
+                active: true,
+                role: 'user'
+            });
+
+            await user.save();
+            isNewUser = true; // ← MARCADOR DE USUARIO NUEVO
+            console.log('[GOOGLE AUTH] New user created:', user._id);
+        } else {
+            // Usuario existente - actualizar
+            user.googleId = googleId;
+            user.googleProfile = {
+                name: name || user.googleProfile?.name,
+                picture: picture || user.googleProfile?.picture,
+                locale: locale || user.googleProfile?.locale
+            };
+            user.authProvider = 'google';
+            
+            await user.save();
+            console.log('[GOOGLE AUTH] Existing user updated:', user._id);
+        }
 
         const jwtToken = generateToken(user);
         const refreshToken = generateRefreshToken(user);
 
         const safeUser = removePassword(user);
 
-        console.log('[GOOGLE AUTH] Google authentication successful');
+        console.log('[GOOGLE AUTH] Google authentication successful, isNewUser:', isNewUser);
 
         return res.status(200).json({
             user: safeUser,
             message: 'GOOGLE_LOGIN_SUCCESSFUL',
             token: jwtToken,
-            refreshToken
+            refreshToken,
+            isNewUser: isNewUser // ← INFORMACIÓN CRÍTICA PARA EL FRONTEND
         });
 
     } catch (error) {

@@ -1,0 +1,83 @@
+import multer from 'multer';
+import path from 'path';
+import fs from 'fs';
+
+// Crear carpetas si no existen
+const createFolderIfNotExists = (folderPath: string) => {
+  if (!fs.existsSync(folderPath)) {
+    fs.mkdirSync(folderPath, { recursive: true });
+    console.log(`📁 Carpeta creada: ${folderPath}`);
+  }
+};
+
+// Asegurar que existen las carpetas
+createFolderIfNotExists('uploads/profile-pictures');
+createFolderIfNotExists('uploads/cover-photos');
+createFolderIfNotExists('uploads/posts');
+createFolderIfNotExists('uploads/events');
+
+// Configuración de almacenamiento
+const storage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    let folder = 'uploads/';
+
+    // Determinar carpeta según la ruta
+    if (req.path.includes('/profile-picture')) {
+      folder += 'profile-pictures/';
+    } else if (req.path.includes('/cover-photo')) {
+      folder += 'cover-photos/';
+    } else if (req.path.includes('/post')) {
+      folder += 'posts/';
+    } else if (req.path.includes('/event')) {
+      folder += 'events/';
+    } else {
+      folder += 'others/';
+    }
+
+    createFolderIfNotExists(folder);
+    cb(null, folder);
+  },
+  filename: (req, file, cb) => {
+    // Generar nombre único: timestamp-random-originalname
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+    const ext = path.extname(file.originalname);
+    const nameWithoutExt = path.basename(file.originalname, ext);
+    cb(null, `${nameWithoutExt}-${uniqueSuffix}${ext}`);
+  }
+});
+
+// Filtro de archivos (solo imágenes y videos)
+const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimes = [
+    'image/jpeg',
+    'image/jpg',
+    'image/png',
+    'image/gif',
+    'image/webp',
+    'video/mp4',
+    'video/mpeg',
+    'video/quicktime'
+  ];
+
+  if (allowedMimes.includes(file.mimetype)) {
+    cb(null, true);
+  } else {
+    cb(new Error('Invalid file type. Only JPEG, PNG, GIF, WEBP, MP4, MPEG and MOV are allowed.'));
+  }
+};
+
+// Configuración de multer
+export const upload = multer({
+  storage: storage,
+  fileFilter: fileFilter,
+  limits: {
+    fileSize: 10 * 1024 * 1024, // 10MB máximo
+  }
+});
+
+// Middlewares específicos
+export const uploadSingle = upload.single('file');
+export const uploadProfilePicture = upload.single('profilePicture');
+export const uploadCoverPhoto = upload.single('coverPhoto');
+export const uploadPostMedia = upload.array('media', 5); // Máximo 5 archivos
+export const uploadEventImage = upload.single('image');

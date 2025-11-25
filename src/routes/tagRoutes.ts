@@ -6,7 +6,8 @@ import {
     updateTag,
     deleteTag,
     getTagStats,
-    getTagsByEvent
+    getTagsByEvent,
+    getTagsByType
 } from '../controller/tagController';
 import { authenticateToken } from '../auth/middleware';
 
@@ -181,6 +182,37 @@ router.get('/stats', getTagStats);
  *         description: Error del servidor
  */
 router.get('/event/:eventId', getTagsByEvent);
+
+// En routes/tagRoutes.ts - Agregar esta ruta
+/**
+ * @swagger
+ * /api/tag/type/{type}:
+ *   get:
+ *     summary: Get tags by specific type
+ *     tags: [Tags]
+ *     parameters:
+ *       - in: path
+ *         name: type
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [MusicType, Musician, EventType, ChildhoodIdol]
+ *         description: Type of tags to retrieve
+ *     responses:
+ *       200:
+ *         description: List of tags by type
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Tag'
+ *       400:
+ *         description: Invalid tag type
+ *       500:
+ *         description: Server error
+ */
+router.get('/type/:type', getTagsByType);
 
 /**
  * @swagger

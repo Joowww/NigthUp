@@ -75,6 +75,19 @@ export class TagService {
     }
   }
 
+  async getTagsByType(type: string): Promise<ITag[]> {
+    try {
+      return await Tag.find({ 
+        type, 
+        active: true 
+      })
+      .select('name type color description') 
+      .sort({ name: 1 });
+    } catch (error) {
+      throw new Error((error as Error).message);
+    }
+  }
+
   async updateTag(id: string, tagData: Partial<ITag>): Promise<ITag | null> {
     return await Tag.findByIdAndUpdate(
       id,
