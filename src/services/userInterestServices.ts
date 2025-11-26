@@ -11,13 +11,19 @@ export interface UserInterestStats {
 export class UserInterestService {
   async createUserInterest(interestData: Partial<IUserInterest>): Promise<IUserInterest> {
     try {
-      const newInterest = new UserInterest(interestData);
-      return await newInterest.save();
-    } catch (error) {
-      // Manejar error de duplicado
-      if ((error as any).code === 11000) {
-        throw new Error('User already has this interest');
+      const { userId, tagId, score, active } = interestData;
+      if (!userId || !tagId || typeof score !== 'number') {
+        throw new Error('userId, tagId y score son requeridos');
       }
+
+      const updated = await UserInterest.findOneAndUpdate(
+        { userId, tagId },
+        { $set: { score, active: active !== undefined ? active : true } },
+        { new: true, upsert: true }
+      );
+
+      return updated!;
+    } catch (error) {
       throw new Error((error as Error).message);
     }
   }
@@ -27,7 +33,6 @@ export class UserInterestService {
       let filter: any = { active: true };
 
       if (search) {
-        // Buscar a través de la población de tags
         filter = {
           ...filter,
           $or: [
@@ -101,7 +106,6 @@ export class UserInterestService {
     return await UserInterest.findByIdAndDelete(id);
   }
 
-  // NUEVO: Obtener intereses por usuario específico
   async getUserInterestsByUser(userId: string): Promise<IUserInterest[]> {
     return await UserInterest.find({ 
       userId: new mongoose.Types.ObjectId(userId), 
@@ -111,7 +115,6 @@ export class UserInterestService {
       .sort({ score: -1, createdAt: -1 });
   }
 
-  // NUEVO: Obtener intereses por tag específico
   async getUserInterestsByTag(tagId: string): Promise<IUserInterest[]> {
     return await UserInterest.find({ 
       tagId: new mongoose.Types.ObjectId(tagId), 
@@ -121,7 +124,6 @@ export class UserInterestService {
       .sort({ score: -1, createdAt: -1 });
   }
 
-  // NUEVO: Verificar si usuario ya tiene un interés
   async userHasInterest(userId: string, tagId: string): Promise<boolean> {
     const existing = await UserInterest.findOne({
       userId: new mongoose.Types.ObjectId(userId),
@@ -130,7 +132,6 @@ export class UserInterestService {
     return !!existing;
   }
 
-  // NUEVO: Actualizar score de interés existente
   async updateInterestScore(userId: string, tagId: string, score: number): Promise<IUserInterest | null> {
     return await UserInterest.findOneAndUpdate(
       {
@@ -138,11 +139,10 @@ export class UserInterestService {
         tagId: new mongoose.Types.ObjectId(tagId)
       },
       { score },
-      { new: true, upsert: false } // No crear nuevo, solo actualizar existente
+      { new: true, upsert: false } 
     );
   }
 
-  // NUEVO: Crear o actualizar interés
   async createOrUpdateUserInterest(userId: string, tagId: string, score: number): Promise<IUserInterest> {
     try {
       const existing = await UserInterest.findOne({
@@ -151,10 +151,8 @@ export class UserInterestService {
       });
 
       if (existing) {
-        // Actualizar existente
         return await this.updateInterestScore(userId, tagId, score) as IUserInterest;
       } else {
-        // Crear nuevo
         return await this.createUserInterest({
           userId: new mongoose.Types.ObjectId(userId),
           tagId: new mongoose.Types.ObjectId(tagId),
@@ -167,30 +165,29 @@ export class UserInterestService {
     }
   }
 
-  // NUEVO: Para onboarding - crear múltiples intereses iniciales
   async createInitialInterests(userId: string, interests: { tagId: string, score: number }[]): Promise<void> {
     try {
-      const interestPromises = interests.map(interest => 
-        this.createOrUpdateUserInterest(
-          userId, 
-          interest.tagId, 
-          interest.score
-        )
-      );
-      
-      await Promise.all(interestPromises);
+      for (const interest of interests) {
+        await UserInterest.updateOne(
+          {
+            userId: new mongoose.Types.ObjectId(userId),
+            tagId: new mongoose.Types.ObjectId(interest.tagId)
+          },
+          {
+            $set: { score: interest.score, active: true }
+          },
+          { upsert: true }
+        );
+      }
     } catch (error) {
       throw new Error((error as Error).message);
     }
   }
 
-  // NUEVO: Estadísticas corregidas
   async getUserInterestStats(): Promise<UserInterestStats> {
     const total = await UserInterest.countDocuments();
     const active = await UserInterest.countDocuments({ active: true });
     const inactive = await UserInterest.countDocuments({ active: false });
-
-    // Obtener tags más populares (con más usuarios)
     const mostPopular = await UserInterest.aggregate([
       {
         $group: {
@@ -232,7 +229,6 @@ export class UserInterestService {
     };
   }
 
-  // NUEVO: Obtener estadísticas de usuario específico
   async getUserInterestStatsByUser(userId: string): Promise<{
     total: number;
     averageScore: number;
@@ -242,12 +238,10 @@ export class UserInterestService {
     
     const total = userInterests.length;
     
-    // Calcular score promedio
     const averageScore = total > 0 
       ? userInterests.reduce((sum, interest) => sum + interest.score, 0) / total
       : 0;
 
-    // Agrupar por tipo de tag
     const byType = userInterests.reduce((acc, interest) => {
       const tagType = (interest.tagId as any).type || 'Unknown';
       const existing = acc.find(item => item.type === tagType);

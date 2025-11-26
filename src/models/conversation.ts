@@ -1,69 +1,129 @@
 import mongoose, { Schema, model, Types, Document } from 'mongoose';
-import { IMessage } from './message'; // Importamos la interfaz del mensaje
-import { IUser } from './user'; // Importamos la interfaz de usuario
+import { IMessage } from './message';
+import { IUser } from './user';
 
-// Interfaz para un participante (que puede ser User o Business)
 interface IParticipant {
-  participant: Types.ObjectId;
-  participantModel: 'User' | 'Business';
+    participant: Types.ObjectId;
+    participantModel: 'User' | 'Business';
+    role: 'member' | 'admin' | 'creator';
+    joinedAt: Date;
 }
 
-// Interfaz para las configuraciones por usuario (ej. fijar chat)
 interface IConversationSettings {
-  user: Types.ObjectId; // El usuario al que pertenece esta config
-  isPinned: boolean;
+    user: Types.ObjectId;
+    isPinned: boolean;
+    muted: boolean;
 }
 
-// Interfaz para el documento de Conversación
+export interface IGroupPoll {
+    _id: Types.ObjectId;
+    question: string;
+    options: {
+        text: string;
+        voters: Types.ObjectId[];
+    }[];
+    creator: Types.ObjectId;
+    isActive: boolean;
+    expiresAt?: Date;
+    createdAt: Date;
+}
+
 export interface IConversation extends Document {
-  _id: Types.ObjectId;
-  participants: IParticipant[];
-  lastMessage?: Types.ObjectId | IMessage; // Referencia al último mensaje (para la lista de chats)
-  settings: IConversationSettings[];
-  createdAt: Date;
-  updatedAt: Date;
+    _id: Types.ObjectId;
+    participants: IParticipant[];
+    lastMessage?: Types.ObjectId | IMessage;
+    settings: IConversationSettings[];
+    isGroup: boolean;
+    groupName?: string;
+    groupDescription?: string;
+    groupImage?: string;
+    groupAdmins: Types.ObjectId[];
+    groupPolls: IGroupPoll[];
+    createdAt: Date;
+    updatedAt: Date;
 }
 
 const conversationSchema = new Schema<IConversation>({
-  participants: [{
-    _id: false, // No crear _id para este sub-documento
-    participant: {
-      type: Schema.Types.ObjectId,
-      required: true,
-      refPath: 'participants.participantModel' // Referencia dinámica
+    participants: [{
+        _id: false,
+        participant: {
+            type: Schema.Types.ObjectId,
+            required: true,
+            refPath: 'participants.participantModel'
+        },
+        participantModel: {
+            type: String,
+            required: true,
+            enum: ['User', 'Business']
+        },
+        role: {
+            type: String,
+            enum: ['member', 'admin', 'creator'],
+            default: 'member'
+        },
+        joinedAt: {
+            type: Date,
+            default: Date.now
+        }
+    }],
+    lastMessage: {
+        type: Schema.Types.ObjectId,
+        ref: 'Message',
+        default: null
     },
-    participantModel: {
-      type: String,
-      required: true,
-      enum: ['User', 'Business'] // Los participantes pueden ser Usuarios o Negocios
-    }
-  }],
-  
-  lastMessage: {
-    type: Schema.Types.ObjectId,
-    ref: 'Message',
-    default: null
-  },
-  
-  settings: [{
-    _id: false, // No crear _id para este sub-documento
-    user: {
-      type: Schema.Types.ObjectId,
-      ref: 'User',
-      required: true
+    settings: [{
+        _id: false,
+        user: {
+            type: Schema.Types.ObjectId,
+            ref: 'User',
+            required: true
+        },
+        isPinned: {
+            type: Boolean,
+            default: false
+        },
+        muted: {
+            type: Boolean,
+            default: false
+        }
+    }],
+    isGroup: {
+        type: Boolean,
+        default: false
     },
-    isPinned: {
-      type: Boolean,
-      default: false
-    }
-  }]
+    groupName: {
+        type: String,
+        required: function() { return this.isGroup; }
+    },
+    groupDescription: {
+        type: String
+    },
+    groupImage: {
+        type: String
+    },
+    groupAdmins: [{
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    }],
+    groupPolls: [{
+        _id: { type: Schema.Types.ObjectId, auto: true },
+        question: { type: String, required: true },
+        options: [{
+            text: { type: String, required: true },
+            voters: [{ type: Schema.Types.ObjectId, ref: 'User' }]
+        }],
+        creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        isActive: { type: Boolean, default: true },
+        expiresAt: { type: Date },
+        createdAt: { type: Date, default: Date.now }
+    }]
 }, {
-  timestamps: true, // Añade createdAt y updatedAt
-  versionKey: false
+    timestamps: true,
+    versionKey: false
 });
 
-// Índice para buscar conversaciones por participantes
 conversationSchema.index({ "participants.participant": 1 });
+conversationSchema.index({ isGroup: 1, updatedAt: -1 });
 
 export const Conversation = model<IConversation>('Conversation', conversationSchema);
 export default Conversation;

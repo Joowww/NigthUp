@@ -12,7 +12,10 @@ import {
     removeUserFromEvent,
     getEventStats,
     joinEvent,
-    leaveEvent
+    leaveEvent,
+    getLikeStatus,
+    likeEvent,
+    unlikeEvent
 } from '../controller/eventController';
 import { authenticateToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager } from '../middleware/roleMiddleware';
@@ -635,5 +638,117 @@ router.post('/:identifier/remove-user', authenticateToken, requireAdminOrManager
  *         description: Event not found
  */
 router.patch('/:identifier', authenticateToken, requireAdminOrManager, updateEventByIdentifier);
+
+/**
+ * @swagger
+ * /api/event/{identifier}/like:
+ *   post:
+ *     summary: Like an event
+ *     tags: [Events - Likes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Event liked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *                 liked:
+ *                   type: boolean
+ *       400:
+ *         description: User ID not found in token or already liked
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: Event not found
+ */
+router.post('/:identifier/like', authenticateToken, likeEvent);
+
+/**
+ * @swagger
+ * /api/event/{identifier}/unlike:
+ *   post:
+ *     summary: Unlike an event
+ *     tags: [Events - Likes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Event unliked successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                 event:
+ *                   $ref: '#/components/schemas/Event'
+ *                 liked:
+ *                   type: boolean
+ *       400:
+ *         description: User ID not found in token or not liked
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: Event not found
+ */
+router.post('/:identifier/unlike', authenticateToken, unlikeEvent);
+
+/**
+ * @swagger
+ * /api/event/{identifier}/like-status:
+ *   get:
+ *     summary: Check if user liked an event
+ *     tags: [Events - Likes]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID or event name
+ *     responses:
+ *       200:
+ *         description: Like status retrieved
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 liked:
+ *                   type: boolean
+ *                 likesCount:
+ *                   type: integer
+ *       400:
+ *         description: User ID not found in token
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: Event not found
+ */
+router.get('/:identifier/like-status', authenticateToken, getLikeStatus);
 
 export default router;

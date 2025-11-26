@@ -7,7 +7,7 @@ export interface ITag {
   color: string;
   events: Types.ObjectId[];
   active: boolean;
-  type: 'MusicType' | 'Musician' | 'EventType' | 'ChildhoodIdol'; // NUEVO
+  type: 'MusicType' | 'Musician' | 'EventType' | 'ChildhoodIdol'; 
   createdAt?: Date;
   updatedAt?: Date;
 }
@@ -36,7 +36,7 @@ const tagSchema = new Schema<ITag>({
     type: Boolean, 
     default: true 
   },
-  type: { // NUEVO
+  type: { 
     type: String,
     enum: ['MusicType', 'Musician', 'EventType', 'ChildhoodIdol'],
     required: true

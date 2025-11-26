@@ -39,7 +39,6 @@ const userInterestSchema = new Schema<IUserInterest>({
   versionKey: false
 });
 
-// Índice compuesto único para evitar duplicados
 userInterestSchema.index({ userId: 1, tagId: 1 }, { unique: true });
 
 export const UserInterest = model<IUserInterest>('UserInterest', userInterestSchema);

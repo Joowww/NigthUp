@@ -3,7 +3,7 @@ import { Schema, model, Types } from 'mongoose';
 export interface IPost {
   _id: Types.ObjectId;
   user: Types.ObjectId;
-  event?: Types.ObjectId; // Opcional: si el post es de un evento
+  event?: Types.ObjectId; 
   caption: string;
   media: {
     type: 'image' | 'video';
@@ -101,12 +101,11 @@ const postSchema = new Schema<IPost>(
   }
 );
 
-// Índices para mejor performance
 postSchema.index({ user: 1, createdAt: -1 });
 postSchema.index({ event: 1, createdAt: -1 });
 postSchema.index({ tags: 1 });
 postSchema.index({ createdAt: -1 });
-postSchema.index({ likes: -1 }); // Para posts populares
+postSchema.index({ likes: -1 }); 
 
 export const Post = model<IPost>('Post', postSchema);
 export default Post;

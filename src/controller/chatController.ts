@@ -102,11 +102,9 @@ export async function httpCreateConversation(req: AuthenticatedRequest, res: Res
     }
 } 
 
-// --- CORREGIDO: Nombre de función y parámetros ---
 export const httpSendMessage = async (req: Request, res: Response) => {
   console.log(">>> [httpSendMessage] Iniciando petición...");
   try {
-    // Casting seguro para acceder al usuario
     const userReq = req as AuthenticatedRequest; 
 
     if (!userReq.user) {
@@ -114,7 +112,6 @@ export const httpSendMessage = async (req: Request, res: Response) => {
         return res.status(401).json({ error: 'Unauthorized' });
     }
 
-    // Loguear el body para ver qué llega
     console.log(">>> [httpSendMessage] Body recibido:", req.body);
 
     const { conversationId, text } = req.body;
@@ -125,13 +122,11 @@ export const httpSendMessage = async (req: Request, res: Response) => {
     }
 
     const userId = userReq.user.id;
-    // Determinamos si es User o Business (ajusta según tu JWT)
     const userModel = (userReq.user.role === 'business' || userReq.user.type === 'business') ? 'Business' : 'User';
 
     console.log(`>>> [httpSendMessage] Datos procesados -> UserID: ${userId}, Model: ${userModel}, ConvID: ${conversationId}`);
     console.log(">>> [httpSendMessage] Llamando a chatService.createMessage...");
 
-    // Llamada al nombre correcto del servicio: createMessage
     const message = await chatService.createMessage(
       conversationId.trim(), 
       userId,

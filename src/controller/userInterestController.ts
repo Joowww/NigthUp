@@ -5,7 +5,6 @@ import { validationResult } from 'express-validator';
 
 const userInterestService = new UserInterestService();
 
-// Crear un interés de usuario
 export async function createUserInterest(req: Request, res: Response): Promise<Response> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -32,7 +31,6 @@ export async function createUserInterest(req: Request, res: Response): Promise<R
     }
 }
 
-// Obtener todos los intereses de usuario (con paginación y búsqueda)
 export async function getAllUserInterests(req: Request, res: Response): Promise<Response> {
     try {
         const skip = parseInt(req.query.skip as string) || 0;
@@ -54,7 +52,6 @@ export async function getAllUserInterests(req: Request, res: Response): Promise<
     }
 }
 
-// Obtener interés de usuario por ID
 export async function getUserInterestById(req: Request, res: Response): Promise<Response> {
     try {
         const { id } = req.params;
@@ -68,7 +65,6 @@ export async function getUserInterestById(req: Request, res: Response): Promise<
     }
 }
 
-// Actualizar interés de usuario
 export async function updateUserInterest(req: Request, res: Response): Promise<Response> {
     const errors = validationResult(req);
     if (!errors.isEmpty()) {
@@ -88,7 +84,6 @@ export async function updateUserInterest(req: Request, res: Response): Promise<R
     }
 }
 
-// Eliminar interés de usuario
 export async function deleteUserInterest(req: Request, res: Response): Promise<Response> {
     try {
         const { id } = req.params;
@@ -105,7 +100,6 @@ export async function deleteUserInterest(req: Request, res: Response): Promise<R
     }
 }
 
-// Obtener estadísticas generales de intereses de usuario
 export async function getUserInterestStats(req: Request, res: Response): Promise<Response> {
     try {
         const stats = await userInterestService.getUserInterestStats();
@@ -115,7 +109,6 @@ export async function getUserInterestStats(req: Request, res: Response): Promise
     }
 }
 
-// Obtener intereses de usuario por usuario
 export async function getUserInterestsByUser(req: Request, res: Response): Promise<Response> {
     try {
         const { userId } = req.params;
@@ -126,7 +119,6 @@ export async function getUserInterestsByUser(req: Request, res: Response): Promi
     }
 }
 
-// Obtener intereses de usuario por tag
 export async function getUserInterestsByTag(req: Request, res: Response): Promise<Response> {
     try {
         const { tagId } = req.params;
@@ -137,7 +129,6 @@ export async function getUserInterestsByTag(req: Request, res: Response): Promis
     }
 }
 
-// Crear múltiples intereses iniciales (onboarding)
 export async function createInitialInterests(req: Request, res: Response): Promise<Response> {
     try {
         const { userId, interests } = req.body as { userId: string, interests: { tagId: string, score: number }[] };

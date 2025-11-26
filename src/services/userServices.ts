@@ -1,4 +1,4 @@
-import User, { IUser } from '../models/user';
+import User, { DEFAULT_AVATAR, DEFAULT_COVER_PHOTO, IUser } from '../models/user';
 import EventModel from '../models/event';
 import mongoose from 'mongoose';
 
@@ -8,6 +8,33 @@ export interface UserStats {
     inactive: number;
     newCount: number | null;
     lastUpdated?: string | null;
+}
+
+export interface UserProfileResponse {
+    _id: string;
+    username: string;
+    email: string;
+    avatar?: string;
+    coverPhoto?: string;
+    bio?: string;
+    firstName?: string;
+    lastName?: string;
+    gender?: string;
+    city?: string;
+    country?: string;
+    website?: string;
+    socialMedia?: {
+        instagram?: string;
+        twitter?: string;
+        facebook?: string;
+        tiktok?: string;
+    };
+    interests: any[];
+    friends: any[];
+    events: any[];
+    isOnline: boolean;
+    lastSeen: Date;
+    createdAt: Date;
 }
 
 export class UserService {
@@ -34,7 +61,15 @@ export class UserService {
 
     async createUser(userData: Partial<IUser>): Promise<IUser | null> {
         try {
-            const newUser = new User(userData);
+            const userWithDefaults = {
+            avatar: DEFAULT_AVATAR,
+            coverPhoto: DEFAULT_COVER_PHOTO,
+            interests: [],
+            friends: [],
+            ...userData
+        };
+
+            const newUser = new User(userWithDefaults);
             return await newUser.save();
         } catch (error) {
             throw new Error((error as Error).message);
@@ -45,7 +80,9 @@ export class UserService {
         const users = await User.find({ active: true })
             .skip(skip)
             .limit(limit)
-            .populate('events', 'username email');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar');
 
         const total = await User.countDocuments({ active: true });
         return { users, total };
@@ -55,7 +92,9 @@ export class UserService {
         const users = await User.find()
             .skip(skip)
             .limit(limit)
-            .populate('events', 'username email');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar');
 
         const total = await User.countDocuments();
         return { users, total };
@@ -64,8 +103,43 @@ export class UserService {
     async getUserByIdentifier(identifier: string): Promise<IUser | null> {
         const filter = this.buildIdentifierFilter(identifier);
         return await User.findOne({ ...filter, active: true })
-            .populate('events', 'username email')
-            .select('-password');
+            .populate('events', 'name schedule location')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar coverPhoto bio isOnline lastSeen')
+            .select('-password -securityAnswer');
+    }
+
+    async getUserProfile(identifier: string): Promise<UserProfileResponse | null> {
+        const filter = this.buildIdentifierFilter(identifier);
+        const user = await User.findOne({ ...filter, active: true })
+            .populate('events', 'name schedule location image')
+            .populate('interests', 'name color type description')
+            .populate('friends', 'username avatar coverPhoto bio isOnline lastSeen')
+            .select('-password -securityAnswer -securityQuestion -googleId -googleProfile -authProvider -emergencyContacts -location -isVisibleOnMap -lastLocationUpdate');
+
+        if (!user) return null;
+
+        return {
+            _id: user._id.toString(),
+            username: user.username,
+            email: user.email,
+            avatar: user.avatar,
+            coverPhoto: user.coverPhoto,
+            bio: user.bio,
+            firstName: user.firstName,
+            lastName: user.lastName,
+            gender: user.gender,
+            city: user.city,
+            country: user.country,
+            website: user.website,
+            socialMedia: user.socialMedia,
+            interests: user.interests,
+            friends: user.friends,
+            events: user.events,
+            isOnline: user.isOnline,
+            lastSeen: user.lastSeen,
+            createdAt: user.createdAt!
+        };
     }
 
     async updateUserByIdentifier(identifier: string, userData: Partial<IUser>): Promise<IUser | null> {
@@ -73,11 +147,80 @@ export class UserService {
             throw new Error('Password cannot be updated from this service');
         }
         const filter = this.buildIdentifierFilter(identifier);
+
         return await User.findOneAndUpdate(
             filter,
             userData,
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
+    }
+
+    async updateUserProfile(userId: string, profileData: {
+        firstName?: string;
+        lastName?: string;
+        bio?: string;
+        gender?: string;
+        city?: string;
+        country?: string;
+        website?: string;
+        socialMedia?: {
+            instagram?: string;
+            twitter?: string;
+            facebook?: string;
+            tiktok?: string;
+        };
+    }): Promise<IUser | null> {
+        return await User.findByIdAndUpdate(
+            userId,
+            profileData,
+            { new: true }
+        )
+        .populate('events', 'name schedule location')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar coverPhoto bio isOnline lastSeen')
+        .select('-password -securityAnswer');
+    }
+
+    async updateAvatar(userId: string, avatarUrl: string): Promise<IUser | null> {
+        return await User.findByIdAndUpdate(
+            userId,
+            { avatar: avatarUrl },
+            { new: true }
+        )
+        .select('-password -securityAnswer');
+    }
+
+    async updateCoverPhoto(userId: string, coverPhotoUrl: string): Promise<IUser | null> {
+        return await User.findByIdAndUpdate(
+            userId,
+            { coverPhoto: coverPhotoUrl },
+            { new: true }
+        )
+        .select('-password -securityAnswer');
+    }
+
+    async addUserInterests(userId: string, interestIds: string[]): Promise<IUser | null> {
+        return await User.findByIdAndUpdate(
+            userId,
+            { $addToSet: { interests: { $each: interestIds } } },
+            { new: true }
+        )
+        .populate('interests', 'name color type')
+        .select('-password -securityAnswer');
+    }
+
+    async removeUserInterests(userId: string, interestIds: string[]): Promise<IUser | null> {
+        return await User.findByIdAndUpdate(
+            userId,
+            { $pull: { interests: { $in: interestIds } } },
+            { new: true }
+        )
+        .populate('interests', 'name color type')
+        .select('-password -securityAnswer');
     }
 
     async disableUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -86,7 +229,11 @@ export class UserService {
             filter,
             { active: false },
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
     }
 
     async reactivateUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -95,7 +242,11 @@ export class UserService {
             filter,
             { active: true },
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
     }
 
     async deleteUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -115,7 +266,11 @@ export class UserService {
             userFilter,
             { $addToSet: { events: event._id } },
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
 
         if (updatedUser) {
             await EventModel.findByIdAndUpdate(
@@ -134,7 +289,10 @@ export class UserService {
                     { username, active: true },
                     { email: username, active: true }
                 ]
-            }).populate('events', 'username email');
+            })
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar');
 
             if (!userWithPass) return null;
 
@@ -143,10 +301,13 @@ export class UserService {
             }
 
             const valid = await (userWithPass as any).comparePassword(password);
+
             if (!valid) return null;
 
             const user = await User.findById(userWithPass.id)
                 .populate('events', 'username email')
+                .populate('interests', 'name color type')
+                .populate('friends', 'username avatar coverPhoto bio isOnline lastSeen')
                 .select('-password');
             return user;
         } catch (error) {
@@ -178,12 +339,11 @@ export class UserService {
                 locale: locale || user.googleProfile?.locale
             };
             user.authProvider = 'google';
-            
+
             await user.save();
             return user;
         } else {
-            const username = email ? email.split('@')[0] : `user_${Date.now()}`;
-        
+            const username = email ? email.split('@')[0] : 'user_' + Date.now();
             let finalUsername = username;
             let counter = 1;
             while (await User.findOne({ username: finalUsername })) {
@@ -194,8 +354,8 @@ export class UserService {
             user = new User({
                 username: finalUsername,
                 email: email || '',
-                password: 'google_auth_' + Math.random().toString(36), // Contraseña dummy
-                birthday: new Date('2000-01-01'), // Fecha por defecto
+                password: 'google_auth_' + Math.random().toString(36),
+                birthday: new Date('2000-01-01'),
                 googleId,
                 googleProfile: {
                     name,
@@ -204,9 +364,11 @@ export class UserService {
                 },
                 authProvider: 'google',
                 active: true,
-                role: 'user'
+                role: 'user',
+                avatar: picture || '',
+                interests: [],
+                friends: []
             });
-
             await user.save();
             return user;
         }
@@ -229,11 +391,11 @@ export class UserService {
         if (email && user.email !== email) {
             throw new Error('Google account email does not match user email');
         }
-
-        const existingUserWithGoogleId = await User.findOne({ 
-            googleId, 
-            _id: { $ne: userId } 
+        const existingUserWithGoogleId = await User.findOne({
+            googleId,
+            _id: { $ne: userId }
         });
+
         if (existingUserWithGoogleId) {
             throw new Error('Google account is already connected to another user');
         }
@@ -259,7 +421,6 @@ export class UserService {
         if (user.authProvider === 'google' && !user.password) {
             throw new Error('Please set a password before disconnecting Google account');
         }
-
         user.googleId = undefined;
         user.googleProfile = undefined;
         user.authProvider = 'local';
@@ -274,7 +435,11 @@ export class UserService {
             filter,
             { role: 'admin' },
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
     }
 
     async removeUserAdminByIdentifier(identifier: string): Promise<IUser | null> {
@@ -283,7 +448,11 @@ export class UserService {
             filter,
             { role: 'user' },
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
     }
 
     async makeUserManagerByIdentifier(identifier: string): Promise<IUser | null> {
@@ -292,7 +461,11 @@ export class UserService {
             filter,
             { role: 'manager' },
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
     }
 
     async removeUserManagerByIdentifier(identifier: string): Promise<IUser | null> {
@@ -301,7 +474,11 @@ export class UserService {
             filter,
             { role: 'user' },
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
     }
 
     async removeEventFromUser(identifier: string, eventIdentifier: string): Promise<IUser | null> {
@@ -315,7 +492,11 @@ export class UserService {
             userFilter,
             { $pull: { events: event._id } },
             { new: true }
-        ).populate('events', 'username email').select('-password');
+        )
+        .populate('events', 'username email')
+        .populate('interests', 'name color type')
+        .populate('friends', 'username avatar')
+        .select('-password');
 
         if (updatedUser) {
             await EventModel.findByIdAndUpdate(
@@ -336,14 +517,12 @@ export class UserService {
         const total = await User.countDocuments();
         const active = await User.countDocuments({ active: true });
         const inactive = await User.countDocuments({ active: false });
-
         let newCount: number | null = null;
         let lastUpdated: string | null = null;
 
         if (User.schema.path('createdAt')) {
             const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
             newCount = await User.countDocuments({ createdAt: { $gte: since } });
-
             const last = await User.findOne().sort({ createdAt: -1 }).select('createdAt').lean();
             lastUpdated = last?.createdAt ? new Date(last.createdAt).toISOString() : null;
         }
@@ -353,7 +532,23 @@ export class UserService {
     async getAuthProviderStats(): Promise<{ local: number; google: number }> {
         const localCount = await User.countDocuments({ authProvider: 'local' });
         const googleCount = await User.countDocuments({ authProvider: 'google' });
-        
         return { local: localCount, google: googleCount };
+    }
+
+    async getSuggestedUsers(userId: string, limit: number = 10): Promise<IUser[]> {
+        const user = await User.findById(userId).select('interests friends');
+        if (!user) return [];
+
+        return await User.find({
+            _id: { $ne: userId },
+            $or: [
+                { interests: { $in: user.interests } },
+                { friends: { $in: user.friends } }
+            ]
+        })
+        .select('username avatar coverPhoto bio interests isOnline lastSeen')
+        .populate('interests', 'name color')
+        .limit(limit)
+        .sort({ isOnline: -1, lastSeen: -1 });
     }
 }

@@ -25,12 +25,21 @@ import {
     setSecurityQuestion,
     forgotPassword,
     verifySecurityAnswer,
-    resetPasswordWithToken
+    resetPasswordWithToken,
+    // NUEVAS FUNCIONES
+    getUserProfile,
+    updateUserProfile,
+    updateAvatar,
+    updateCoverPhoto,
+    addUserInterests,
+    removeUserInterests,
+    getSuggestedUsers
 } from '../controller/userController';
 
 import { googleAuth, connectGoogleAccount } from '../controller/googleAuthController';
 import { authenticateToken, authenticateRefreshToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager, requireUser } from '../middleware/roleMiddleware';
+import { uploadProfilePicture, uploadCoverPhoto } from '../middleware/upload';
 
 const router = Router();
 
@@ -955,5 +964,218 @@ router.patch('/:identifier/remove-manager', authenticateToken, requireAdmin, rem
  *         description: User not found
  */
 router.delete('/hard/:identifier', authenticateToken, requireAdmin, deleteUserByIdentifier);
+
+/**
+ * @swagger
+ * /api/user/profile/{identifier}:
+ *   get:
+ *     summary: Get complete user profile with all details
+ *     tags: [Users - Public]
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID, username or email
+ *     responses:
+ *       200:
+ *         description: User profile retrieved successfully
+ *       404:
+ *         description: User not found
+ */
+router.get('/profile/:identifier', getUserProfile);
+
+/**
+ * @swagger
+ * /api/user/profile:
+ *   put:
+ *     summary: Update user profile information
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               firstName:
+ *                 type: string
+ *               lastName:
+ *                 type: string
+ *               bio:
+ *                 type: string
+ *               gender:
+ *                 type: string
+ *                 enum: [male, female, other, prefer_not_to_say]
+ *               city:
+ *                 type: string
+ *               country:
+ *                 type: string
+ *               website:
+ *                 type: string
+ *               socialMedia:
+ *                 type: object
+ *                 properties:
+ *                   instagram:
+ *                     type: string
+ *                   twitter:
+ *                     type: string
+ *                   facebook:
+ *                     type: string
+ *                   tiktok:
+ *                     type: string
+ *     responses:
+ *       200:
+ *         description: Profile updated successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.put('/profile', authenticateToken, updateUserProfile);
+
+/**
+ * @swagger
+ * /api/user/avatar:
+ *   post:
+ *     summary: Update user avatar
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               avatar:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Avatar updated successfully
+ *       400:
+ *         description: No file uploaded
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/avatar', authenticateToken, uploadProfilePicture, updateAvatar);
+
+/**
+ * @swagger
+ * /api/user/cover-photo:
+ *   post:
+ *     summary: Update user cover photo
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         multipart/form-data:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               coverPhoto:
+ *                 type: string
+ *                 format: binary
+ *     responses:
+ *       200:
+ *         description: Cover photo updated successfully
+ *       400:
+ *         description: No file uploaded
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/cover-photo', authenticateToken, uploadCoverPhoto, updateCoverPhoto);
+
+/**
+ * @swagger
+ * /api/user/interests:
+ *   post:
+ *     summary: Add interests to user profile
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - interestIds
+ *             properties:
+ *               interestIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Interests added successfully
+ *       400:
+ *         description: interestIds must be an array
+ *       401:
+ *         description: Unauthorized
+ */
+router.post('/interests', authenticateToken, addUserInterests);
+
+/**
+ * @swagger
+ * /api/user/interests:
+ *   delete:
+ *     summary: Remove interests from user profile
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - interestIds
+ *             properties:
+ *               interestIds:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *     responses:
+ *       200:
+ *         description: Interests removed successfully
+ *       400:
+ *         description: interestIds must be an array
+ *       401:
+ *         description: Unauthorized
+ */
+router.delete('/interests', authenticateToken, removeUserInterests);
+
+/**
+ * @swagger
+ * /api/user/suggested:
+ *   get:
+ *     summary: Get suggested users for feed "Para ti"
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: limit
+ *         schema:
+ *           type: integer
+ *           default: 10
+ *     responses:
+ *       200:
+ *         description: Suggested users retrieved successfully
+ *       401:
+ *         description: Unauthorized
+ */
+router.get('/suggested', authenticateToken, getSuggestedUsers);
+
+// Mantener todas las rutas existentes...
+// ... resto del código existente
 
 export default router;

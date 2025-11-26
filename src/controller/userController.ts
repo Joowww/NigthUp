@@ -1,9 +1,10 @@
 import { Request, Response } from 'express';
 import { IUser, SECURITY_QUESTION_KEYS, SECURITY_QUESTIONS_FALLBACK } from '../models/user';
 import User from '../models/user'; 
-import { UserService } from '../services/userServices';
+import { UserService, UserProfileResponse } from '../services/userServices';
 import { validationResult } from 'express-validator';
 import { generateToken, generateRefreshToken, generateResetToken } from '../auth/token';
+import { upload } from '../middleware/upload';
 
 const userService = new UserService();
 
@@ -12,6 +13,183 @@ function removePassword(user: any) {
     delete userObj.password;
     delete userObj.securityAnswer;
     return userObj;
+}
+
+export async function getUserProfile(req: Request, res: Response): Promise<Response> {
+    try {
+        const { identifier } = req.params;
+        const profile = await userService.getUserProfile(identifier);
+
+        if (!profile) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        return res.status(200).json(profile);
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Error retrieving user profile',
+            details: (error as Error).message
+        });
+    }
+}
+
+export async function updateUserProfile(req: Request, res: Response): Promise<Response> {
+    try {
+        const userId = (req as any).user.id;
+        const { firstName, lastName, bio, gender, city, country, website, socialMedia } = req.body;
+
+        const updatedUser = await userService.updateUserProfile(userId, {
+            firstName,
+            lastName,
+            bio,
+            gender,
+            city,
+            country,
+            website,
+            socialMedia
+        });
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        return res.status(200).json({
+            message: 'Profile updated successfully',
+            user: updatedUser
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Error updating profile',
+            details: (error as Error).message
+        });
+    }
+}
+
+export async function updateAvatar(req: Request, res: Response): Promise<Response> {
+    try {
+        const userId = (req as any).user.id;
+        
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const avatarUrl = `/uploads/profile-pictures/${req.file.filename}`;
+        const updatedUser = await userService.updateAvatar(userId, avatarUrl);
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        return res.status(200).json({
+            message: 'Avatar updated successfully',
+            avatar: avatarUrl
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Error updating avatar',
+            details: (error as Error).message
+        });
+    }
+}
+
+export async function updateCoverPhoto(req: Request, res: Response): Promise<Response> {
+    try {
+        const userId = (req as any).user.id;
+        
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const coverPhotoUrl = `/uploads/cover-photos/${req.file.filename}`;
+        const updatedUser = await userService.updateCoverPhoto(userId, coverPhotoUrl);
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        return res.status(200).json({
+            message: 'Cover photo updated successfully',
+            coverPhoto: coverPhotoUrl
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Error updating cover photo',
+            details: (error as Error).message
+        });
+    }
+}
+
+export async function addUserInterests(req: Request, res: Response): Promise<Response> {
+    try {
+        const userId = (req as any).user.id;
+        const { interestIds } = req.body;
+
+        if (!Array.isArray(interestIds)) {
+            return res.status(400).json({ error: 'interestIds must be an array' });
+        }
+
+        const updatedUser = await userService.addUserInterests(userId, interestIds);
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        return res.status(200).json({
+            message: 'Interests added successfully',
+            interests: updatedUser.interests
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Error adding interests',
+            details: (error as Error).message
+        });
+    }
+}
+
+export async function removeUserInterests(req: Request, res: Response): Promise<Response> {
+    try {
+        const userId = (req as any).user.id;
+        const { interestIds } = req.body;
+
+        if (!Array.isArray(interestIds)) {
+            return res.status(400).json({ error: 'interestIds must be an array' });
+        }
+
+        const updatedUser = await userService.removeUserInterests(userId, interestIds);
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        return res.status(200).json({
+            message: 'Interests removed successfully',
+            interests: updatedUser.interests
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Error removing interests',
+            details: (error as Error).message
+        });
+    }
+}
+
+export async function getSuggestedUsers(req: Request, res: Response): Promise<Response> {
+    try {
+        const userId = (req as any).user.id;
+        const limit = parseInt(req.query.limit as string) || 10;
+
+        const suggestedUsers = await userService.getSuggestedUsers(userId, limit);
+
+        return res.status(200).json({
+            suggestedUsers,
+            total: suggestedUsers.length
+        });
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Error retrieving suggested users',
+            details: (error as Error).message
+        });
+    }
 }
 
 export async function createUser(req: Request, res: Response): Promise<Response> {

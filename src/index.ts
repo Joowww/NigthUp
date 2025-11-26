@@ -2,6 +2,7 @@ import express from 'express';
 import mongoose from "mongoose";
 import cors from 'cors';
 import dotenv from 'dotenv';
+import path from 'path';
 
 import swaggerSpec from './config/swagger';
 import { setupSwagger } from './config/swagger';
@@ -24,6 +25,8 @@ import calendarEventRoutes from './routes/calendarEventRoutes';
 import pollRoutes from './routes/pollRoutes';
 import eventTinderRoutes from './routes/eventTinderRoutes';
 import postRoutes from './routes/postRoutes';
+import initialInterestRoutes from './routes/initialInterestRoutes';
+import groupRoutes from './routes/groupRoutes';
 
 import User from './models/user';
 
@@ -37,6 +40,7 @@ app.use(express.json());
 
 // Servir archivos estáticos (imágenes subidas)
 app.use('/uploads', express.static('uploads'));
+app.use('/public', express.static('public'));
 
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
@@ -54,15 +58,15 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
 
     // Crear admins si no existen
     const initialAdmins = [
-    {
-        username: 'JoelMoreno',
-        email: 'joel@nightup.com',
-        password: 'JoelMoreno',
-        birthday: new Date('2000-08-06'),
-        phoneNumber: '+34 612 345 678',
-        securityQuestion: 'security.question.pet_name',
-        securityAnswer: 'Fluffy'
-    },
+    // {
+    //     username: 'JoelMoreno',
+    //     email: 'joel@nightup.com',
+    //     password: 'JoelMoreno',
+    //     birthday: new Date('2000-08-06'),
+    //     phoneNumber: '+34 612 345 678',
+    //     securityQuestion: 'security.question.pet_name',
+    //     securityAnswer: 'Fluffy'
+    // },
     {
         username: 'DavidSanchez',
         email: 'david@nightup.com',
@@ -121,6 +125,9 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     app.use('/api/poll', pollRoutes);
     app.use('/api/event-tinder', eventTinderRoutes);
     app.use('/api/post', postRoutes);
+    app.use('/api/initial-interest', initialInterestRoutes);
+    app.use('/api/group', groupRoutes);
+console.log('[APP] /api/group routes mounted');
     console.log('[APP] /api/post routes mounted');
 
     console.log('All routes registered including new features');

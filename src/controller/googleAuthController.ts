@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { OAuth2Client } from 'google-auth-library';
 import { generateToken, generateRefreshToken } from '../auth/token';
 import { UserService } from '../services/userServices';
-import User from '../models/user'; // Asegúrate de importar tu modelo User
+import User from '../models/user'; 
 
 const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 const userService = new UserService();
@@ -47,7 +47,6 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
             name: name?.substring(0, 20) + '...' 
         });
 
-        // Buscar usuario existente primero
         let user = await User.findOne({
             $or: [
                 { googleId },
@@ -58,7 +57,6 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
         let isNewUser = false;
 
         if (!user) {
-            // Usuario nuevo - crear
             const username = email ? email.split('@')[0] : `user_${Date.now()}`;
         
             let finalUsername = username;
@@ -85,10 +83,9 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
             });
 
             await user.save();
-            isNewUser = true; // ← MARCADOR DE USUARIO NUEVO
+            isNewUser = true; 
             console.log('[GOOGLE AUTH] New user created:', user._id);
         } else {
-            // Usuario existente - actualizar
             user.googleId = googleId;
             user.googleProfile = {
                 name: name || user.googleProfile?.name,
@@ -113,7 +110,7 @@ export const googleAuth = async (req: Request, res: Response): Promise<Response>
             message: 'GOOGLE_LOGIN_SUCCESSFUL',
             token: jwtToken,
             refreshToken,
-            isNewUser: isNewUser // ← INFORMACIÓN CRÍTICA PARA EL FRONTEND
+            isNewUser: isNewUser 
         });
 
     } catch (error) {

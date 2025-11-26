@@ -108,7 +108,6 @@ export class ChatService {
     return conversation;
   }
 
-  // --- CORREGIDO: Eliminadas las transacciones para evitar error en local ---
   async createMessage(
     conversationId: string, 
     senderId: string, 
@@ -120,7 +119,6 @@ export class ChatService {
           throw new Error('Invalid conversationId');
       }
 
-      // 1. Crear mensaje
       const newMessage = new Message({
         conversation: conversationId,
         sender: senderId,
@@ -129,19 +127,15 @@ export class ChatService {
         readBy: [senderId]
       });
 
-      await newMessage.save(); // Sin { session }
-
-      // 2. Actualizar conversación
+      await newMessage.save(); 
       await Conversation.findByIdAndUpdate(
         conversationId,
         { 
           lastMessage: newMessage._id, 
           $set: { updatedAt: new Date() } 
         }
-        // Sin { session }
       );
 
-      // 3. Poblar y devolver
       const populatedMessage = await Message.findById(newMessage._id)
         .populate({
           path: 'sender',

@@ -117,7 +117,6 @@ export async function getTagsByType(req: Request, res: Response): Promise<Respon
   try {
     const { type } = req.params;
 
-    // Validar que el tipo sea uno de los permitidos
     const validTypes = ['MusicType', 'Musician', 'EventType', 'ChildhoodIdol'];
     if (!validTypes.includes(type)) {
       return res.status(400).json({ 

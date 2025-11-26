@@ -1,7 +1,8 @@
 import { Request, Response } from 'express';
-import { IEvent } from '../models/event';
+import { IEvent, Event } from '../models/event';
 import { EventService } from '../services/eventServices';
 import { validationResult } from 'express-validator';
+import mongoose from 'mongoose';
 
 const eventService = new EventService();
 
@@ -229,3 +230,103 @@ export async function leaveEvent(req: Request, res: Response): Promise<Response>
         return res.status(400).json({ message: (error as Error).message });
     }
 }
+
+// ... tus controladores existentes ...
+
+export async function likeEvent(req: Request, res: Response): Promise<Response> {
+    try {
+        const { identifier } = req.params;
+        const userId = (req as any).user.id;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID not found in token' });
+        }
+
+        const event = await Event.findById(identifier);
+        if (!event) {
+            return res.status(404).json({ message: 'EVENT NOT FOUND' });
+        }
+
+        // Verificar si ya dio like
+        if (event.likedBy.includes(new mongoose.Types.ObjectId(userId))) {
+            return res.status(400).json({ message: 'EVENT ALREADY LIKED' });
+        }
+
+        // Añadir like
+        event.likedBy.push(new mongoose.Types.ObjectId(userId));
+        event.likes += 1;
+
+        await event.save();
+
+        return res.status(200).json({
+            message: 'Event liked successfully',
+            event: event,
+            liked: true
+        });
+    } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+    }
+}
+
+export async function unlikeEvent(req: Request, res: Response): Promise<Response> {
+    try {
+        const { identifier } = req.params;
+        const userId = (req as any).user.id;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID not found in token' });
+        }
+
+        const event = await Event.findById(identifier);
+        if (!event) {
+            return res.status(404).json({ message: 'EVENT NOT FOUND' });
+        }
+
+        // Verificar si dio like
+        if (!event.likedBy.includes(new mongoose.Types.ObjectId(userId))) {
+            return res.status(400).json({ message: 'EVENT NOT LIKED' });
+        }
+
+        // Quitar like
+        event.likedBy = event.likedBy.filter(
+            id => id.toString() !== userId
+        );
+        event.likes = Math.max(0, event.likes - 1);
+
+        await event.save();
+
+        return res.status(200).json({
+            message: 'Event unliked successfully',
+            event: event,
+            liked: false
+        });
+    } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+    }
+}
+
+export async function getLikeStatus(req: Request, res: Response): Promise<Response> {
+    try {
+        const { identifier } = req.params;
+        const userId = (req as any).user.id;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID not found in token' });
+        }
+
+        const event = await Event.findById(identifier);
+        if (!event) {
+            return res.status(404).json({ message: 'EVENT NOT FOUND' });
+        }
+
+        const liked = event.likedBy.includes(new mongoose.Types.ObjectId(userId));
+
+        return res.status(200).json({
+            liked: liked,
+            likesCount: event.likes
+        });
+    } catch (error) {
+        return res.status(400).json({ message: (error as Error).message });
+    }
+}
+
