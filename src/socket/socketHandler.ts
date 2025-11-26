@@ -1,6 +1,7 @@
 import { Server, Socket } from 'socket.io';
 import { ChatService } from '../services/chatServices';
 import { Conversation } from '../models/conversation';
+import { contentModerationService } from '../services/contentModerationService';
 
 interface SocketAuth {
   userId: string;
@@ -73,75 +74,87 @@ export function initializeSocket(io: Server) {
     });
 
     // Enviar mensaje (funciona para chats 1v1 y grupos)
-    socket.on('sendMessage', async (data) => {
-      const { conversationId, text, replyTo } = data;
-      
-      if (!conversationId || !text) {
-        socket.emit('error', { message: 'conversationId y text son requeridos' });
-        return;
-      }
+    // En el evento 'sendMessage'
+socket.on('sendMessage', async (data) => {
+  const { conversationId, text, replyTo } = data;
+  
+  if (!conversationId || !text) {
+    socket.emit('error', { message: 'conversationId y text son requeridos' });
+    return;
+  }
 
-      try {
-        // ✅ Verificar que el usuario pertenece a la conversación/grupo
-        const conversation = await Conversation.findOne({
-          _id: conversationId,
-          participants: userId // ✅ Simplificado para arrays directos
-        });
+  try {
+    // ✅ MODERACIÓN ANTES DE ENVIAR
+    const moderationResult = contentModerationService.moderateMessage(text);
+    
+    if (!moderationResult.isAllowed) {
+      socket.emit('messageBlocked', {
+        reason: moderationResult.reason,
+        severity: moderationResult.severity,
+        detectedWords: moderationResult.detectedWords,
+        detectedPatterns: moderationResult.detectedPatterns
+      });
+      return; // ❌ No enviar el mensaje
+    }
 
-        if (!conversation) {
-          socket.emit('error', { message: 'No tienes acceso a esta conversación' });
-          return;
-        }
-
-        // Crear el mensaje
-        const newMessage = await chatService.sendMessage(
-          conversationId,
-          userId,
-          'User',
-          text
-        );
-        
-        // ✅ Emitir mensaje a todos en la sala (chat o grupo)
-        io.to(conversationId).emit('newMessage', newMessage);
-
-        // Notificar a participantes offline
-        conversation.participants.forEach((participantId: any) => {
-          const pId = participantId.toString();
-          
-          if (pId !== userId) {
-            io.to(pId).emit('newConversationUpdate', {
-              conversationId: conversationId,
-              isGroup: conversation.isGroup,
-              groupName: conversation.groupName,
-              lastMessage: {
-                text: text,
-                senderId: userId,
-                createdAt: new Date()
-              }
-            });
-          }
-        });
-
-      } catch (error: any) {
-        console.error('❌ Socket error al enviar mensaje:', error);
-        socket.emit('error', { message: 'Error al enviar mensaje', details: error.message });
-      }
+    // Verificar acceso a la conversación
+    const conversation = await Conversation.findOne({
+      _id: conversationId,
+      participants: userId
     });
+
+    if (!conversation) {
+      socket.emit('error', { message: 'No tienes acceso a esta conversación' });
+      return;
+    }
+
+    // Crear el mensaje (usar texto sanitizado si hay palabras de baja severidad)
+    const messageText = moderationResult.sanitizedMessage || text;
+    const newMessage = await chatService.sendMessage(
+      conversationId,
+      userId,
+      'User',
+      messageText
+    );
+    
+    // Emitir mensaje a todos en la sala
+    io.to(conversationId).emit('newMessage', newMessage);
+
+    // Notificar a participantes offline...
+  } catch (error: any) {
+    console.error('❌ Socket error al enviar mensaje:', error);
+    socket.emit('error', { message: 'Error al enviar mensaje', details: error.message });
+  }
+});
 
     // Editar mensaje
-    socket.on('editMessage', async (data) => {
-      const { messageId, text } = data;
-      
-      try {
-        const editedMessage = await chatService.editMessage(messageId, userId, text);
-        
-        const conversationId = editedMessage.conversation.toString();
-        io.to(conversationId).emit('messageEdited', editedMessage);
-        
-      } catch (error: any) {
-        socket.emit('error', { message: 'Error al editar mensaje', details: error.message });
-      }
-    });
+socket.on('editMessage', async (data) => {
+  const { messageId, text } = data;
+  
+  try {
+    // ✅ MODERACIÓN AL EDITAR
+    const moderationResult = contentModerationService.moderateMessage(text);
+    
+    if (!moderationResult.isAllowed) {
+      socket.emit('editBlocked', {
+        reason: moderationResult.reason,
+        severity: moderationResult.severity,
+        detectedWords: moderationResult.detectedWords,
+        detectedPatterns: moderationResult.detectedPatterns
+      });
+      return;
+    }
+
+    const messageText = moderationResult.sanitizedMessage || text;
+    const editedMessage = await chatService.editMessage(messageId, userId, messageText);
+    
+    const conversationId = editedMessage.conversation.toString();
+    io.to(conversationId).emit('messageEdited', editedMessage);
+    
+  } catch (error: any) {
+    socket.emit('error', { message: 'Error al editar mensaje', details: error.message });
+  }
+});
 
     // Eliminar mensaje
     socket.on('deleteMessage', async (data) => {

@@ -1,6 +1,7 @@
 import { Request, Response } from 'express';
 import { ChatService } from '../services/chatServices';
 import { Conversation } from '../models/conversation';
+import { contentModerationService } from '../services/contentModerationService';
 
 const chatService = new ChatService();
 
@@ -104,64 +105,92 @@ export async function httpGetMessages(req: AuthenticatedRequest, res: Response) 
 }
 
 export async function httpSendMessage(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { conversationId, text, replyTo } = req.body;
-    
-    if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const { conversationId, text, replyTo } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+  
+      if (!conversationId || !text) {
+        return res.status(400).json({ error: 'conversationId and text are required' });
+      }
+  
+      // ✅ MODERACIÓN
+      const moderationResult = contentModerationService.moderateMessage(text);
+      
+      if (!moderationResult.isAllowed) {
+        return res.status(403).json({
+          error: 'Message blocked',
+          reason: moderationResult.reason,
+          severity: moderationResult.severity,
+          detectedWords: moderationResult.detectedWords,
+          detectedPatterns: moderationResult.detectedPatterns
+        });
+      }
+  
+      // Verificar acceso
+      const conversation = await Conversation.findOne({
+        _id: conversationId,
+        participants: req.user.id
+      });
+  
+      if (!conversation) {
+        return res.status(403).json({ error: 'You do not have access to this conversation' });
+      }
+  
+      const messageText = moderationResult.sanitizedMessage || text;
+      const msg = await chatService.sendMessage(
+        conversationId, 
+        req.user.id, 
+        'User',
+        messageText
+      );
+      
+      return res.status(201).json(msg);
+    } catch (e: any) {
+      console.error('Error in httpSendMessage:', e);
+      return res.status(500).json({ error: 'Failed to send message', details: e.message });
     }
-
-    if (!conversationId || !text) {
-      return res.status(400).json({ error: 'conversationId and text are required' });
-    }
-
-    // ✅ Verificar que el usuario pertenece a la conversación
-    const conversation = await Conversation.findOne({
-      _id: conversationId,
-      participants: req.user.id
-    });
-
-    if (!conversation) {
-      return res.status(403).json({ error: 'You do not have access to this conversation' });
-    }
-
-    // ✅ Usar sendMessage con 4 parámetros
-    const msg = await chatService.sendMessage(
-      conversationId, 
-      req.user.id, 
-      'User', // Siempre User
-      text
-    );
-    
-    return res.status(201).json(msg);
-  } catch (e: any) {
-    console.error('Error in httpSendMessage:', e);
-    return res.status(500).json({ error: 'Failed to send message', details: e.message });
   }
-}
-
 // EDITAR / ELIMINAR
 
 export async function httpEditMessage(req: AuthenticatedRequest, res: Response) {
-  try {
-    const { messageId } = req.params;
-    const { text } = req.body;
-    
-    if (!req.user) {
-      return res.status(401).json({ error: 'Unauthorized' });
+    try {
+      const { messageId } = req.params;
+      const { text } = req.body;
+      
+      if (!req.user) {
+        return res.status(401).json({ error: 'Unauthorized' });
+      }
+  
+      if (!text) {
+        return res.status(400).json({ error: 'text is required' });
+      }
+  
+      // ✅ MODERACIÓN AL EDITAR
+      const moderationResult = contentModerationService.moderateMessage(text);
+      
+      if (!moderationResult.isAllowed) {
+        return res.status(403).json({
+          error: 'Edit blocked',
+          reason: moderationResult.reason,
+          severity: moderationResult.severity,
+          detectedWords: moderationResult.detectedWords,
+          detectedPatterns: moderationResult.detectedPatterns
+        });
+      }
+  
+      // Usar texto sanitizado si aplica
+      const messageText = moderationResult.sanitizedMessage || text;
+      
+      const msg = await chatService.editMessage(messageId, req.user.id, messageText);
+      return res.status(200).json(msg);
+    } catch (e: any) {
+      console.error('Error in httpEditMessage:', e);
+      return res.status(400).json({ error: 'Failed to edit message', details: e.message });
     }
-
-    if (!text) {
-      return res.status(400).json({ error: 'text is required' });
-    }
-
-    const msg = await chatService.editMessage(messageId, req.user.id, text);
-    return res.status(200).json(msg);
-  } catch (e: any) {
-    console.error('Error in httpEditMessage:', e);
-    return res.status(400).json({ error: 'Failed to edit message', details: e.message });
   }
-}
 
 export async function httpDeleteMessage(req: AuthenticatedRequest, res: Response) {
   try {
