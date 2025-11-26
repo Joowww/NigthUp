@@ -1,69 +1,62 @@
+// conversation.ts
 import mongoose, { Schema, model, Types, Document } from 'mongoose';
-import { IMessage } from './message'; // Importamos la interfaz del mensaje
-import { IUser } from './user'; // Importamos la interfaz de usuario
 
-// Interfaz para un participante (que puede ser User o Business)
-interface IParticipant {
-  participant: Types.ObjectId;
-  participantModel: 'User' | 'Business';
-}
-
-// Interfaz para las configuraciones por usuario (ej. fijar chat)
-interface IConversationSettings {
-  user: Types.ObjectId; // El usuario al que pertenece esta config
-  isPinned: boolean;
-}
-
-// Interfaz para el documento de Conversación
 export interface IConversation extends Document {
   _id: Types.ObjectId;
-  participants: IParticipant[];
-  lastMessage?: Types.ObjectId | IMessage; // Referencia al último mensaje (para la lista de chats)
-  settings: IConversationSettings[];
+  isGroup: boolean; // ✅ IMPORTANTE
+  groupName?: string; // ✅ Para grupos
+  groupAvatar?: string; // ✅ Para grupos
+  groupAdmins?: Types.ObjectId[]; // ✅ Para gestionar admins
+  participants: Types.ObjectId[];
+  lastMessage?: {
+    message: string;
+    senderId: Types.ObjectId;
+    createdAt: Date;
+  };
+  settings: any[];
   createdAt: Date;
   updatedAt: Date;
 }
 
-const conversationSchema = new Schema<IConversation>({
-  participants: [{
-    _id: false, // No crear _id para este sub-documento
-    participant: {
-      type: Schema.Types.ObjectId,
-      required: true,
-      refPath: 'participants.participantModel' // Referencia dinámica
+const conversationSchema = new Schema<IConversation>(
+  {
+    isGroup: {
+      type: Boolean,
+      default: false // ✅ false = chat 1v1, true = grupo
     },
-    participantModel: {
+    groupName: {
       type: String,
-      required: true,
-      enum: ['User', 'Business'] // Los participantes pueden ser Usuarios o Negocios
-    }
-  }],
-  
-  lastMessage: {
-    type: Schema.Types.ObjectId,
-    ref: 'Message',
-    default: null
-  },
-  
-  settings: [{
-    _id: false, // No crear _id para este sub-documento
-    user: {
+      required: function(this: IConversation) {
+        return this.isGroup; // Obligatorio solo si es grupo
+      }
+    },
+    groupAvatar: {
+      type: String,
+      default: 'https://via.placeholder.com/150'
+    },
+    groupAdmins: [{
+      type: Schema.Types.ObjectId,
+      ref: 'User'
+    }],
+    participants: [{
       type: Schema.Types.ObjectId,
       ref: 'User',
       required: true
+    }],
+    lastMessage: {
+      type: {
+        message: { type: String, required: true },
+        senderId: { type: Schema.Types.ObjectId, required: true },
+        createdAt: { type: Date, required: true }
+      },
+      required: false,
+      _id: false
     },
-    isPinned: {
-      type: Boolean,
-      default: false
-    }
-  }]
-}, {
-  timestamps: true, // Añade createdAt y updatedAt
-  versionKey: false
-});
-
-// Índice para buscar conversaciones por participantes
-conversationSchema.index({ "participants.participant": 1 });
+    settings: [Schema.Types.Mixed]
+  },
+  {
+    timestamps: true
+  }
+);
 
 export const Conversation = model<IConversation>('Conversation', conversationSchema);
-export default Conversation;

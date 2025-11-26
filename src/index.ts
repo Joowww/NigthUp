@@ -24,6 +24,7 @@ import calendarEventRoutes from './routes/calendarEventRoutes';
 import pollRoutes from './routes/pollRoutes';
 import eventTinderRoutes from './routes/eventTinderRoutes';
 import postRoutes from './routes/postRoutes';
+import chatRoutes from './routes/chatRoutes';
 
 import User from './models/user';
 
@@ -121,6 +122,7 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     app.use('/api/poll', pollRoutes);
     app.use('/api/event-tinder', eventTinderRoutes);
     app.use('/api/post', postRoutes);
+    app.use('/api/chat', chatRoutes);
     console.log('[APP] /api/post routes mounted');
 
     console.log('All routes registered including new features');
