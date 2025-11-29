@@ -330,3 +330,47 @@ export async function getLikeStatus(req: Request, res: Response): Promise<Respon
     }
 }
 
+export async function getEventsByParticipant(req: Request, res: Response) {
+    try {
+        const userId = req.params.userId;
+        const events = await Event.find({ participants: userId });
+        return res.json({ events });
+    } catch (error) {
+        return res.status(500).json({ message: 'Error fetching events', error: (error as Error).message });
+    }
+}
+
+export async function getEventIdsByParticipant(req: Request, res: Response) {
+    try {
+        const userId = req.params.userId;
+        const events = await Event.find({ participants: userId }).select('_id');
+        const eventIds = events.map(e => e._id);
+        return res.json({ eventIds });
+    } catch (error) {
+        return res.status(500).json({ message: 'Error fetching event IDs', error: (error as Error).message });
+    }
+}
+
+export async function isUserInEvent(req: Request, res: Response) {
+    try {
+        const { userId, eventId } = req.params;
+        const event = await Event.findOne({ _id: eventId, participants: userId });
+        return res.json({ isParticipant: !!event });
+    } catch (error) {
+        return res.status(500).json({ message: 'Error checking participation', error: (error as Error).message });
+    }
+}
+
+export async function getParticipantsByEvent(req: Request, res: Response) {
+    try {
+        const eventId = req.params.eventId;
+        const event = await Event.findById(eventId).populate('participants', 'username avatar _id');
+        if (!event) {
+            return res.status(404).json({ message: 'Event not found' });
+        }
+        return res.json({ participants: event.participants });
+    } catch (error) {
+        return res.status(500).json({ message: 'Error fetching participants', error: (error as Error).message });
+    }
+}
+

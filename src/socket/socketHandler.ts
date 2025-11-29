@@ -4,6 +4,7 @@ import { Conversation } from '../models/conversation';
 import { User } from '../models/user';
 import { verifyToken } from '../auth/token';
 import { GroupService } from '../services/groupServices';
+import Friendship from '../models/friendship';
 
 interface SocketAuth {
   token: string;
@@ -255,14 +256,14 @@ export function initializeSocket(io: Server) {
 
     // ==================== MANEJO DE DESCONEXIÓN ====================
 
-    socket.on('disconnect', (reason) => {
+    socket.on('disconnect', async (reason) => {
       console.log(`🔴 Cliente desconectado: ${socket.id} - Razón: ${reason}`);
       
       // Remover usuario de onlineUsers
       onlineUsers.delete(userId);
 
       // Actualizar estado en BD
-      User.findByIdAndUpdate(userId, { 
+      await User.findByIdAndUpdate(userId, { 
         isOnline: false,
         lastSeen: new Date()
       }).catch(console.error);
@@ -305,26 +306,29 @@ export function initializeSocket(io: Server) {
     console.log(`📖 Mensaje ${messageId} marcado como leído por ${userId}`);
   }
 
-  function notifyFriendsStatusChange(userId: string, isOnline: boolean, io: Server) {
-    // Obtener amigos y notificarles del cambio de estado
-    // Esto requiere una consulta a la base de datos
-    User.findById(userId)
-      .populate('friends', '_id')
-      .then(user => {
-        if (user && user.friends) {
-          user.friends.forEach(friend => {
-            const friendId = (friend as any)._id.toString();
-            if (onlineUsers.has(friendId)) {
-              io.to(friendId).emit('friendStatusChanged', {
-                userId,
-                isOnline,
-                lastSeen: new Date()
-              });
-            }
-          });
-        }
-      })
-      .catch(console.error);
+  // Notifica a los amigos aceptados que el usuario ha cambiado de estado
+  async function notifyFriendsStatusChange(userId: string, isOnline: boolean, io: Server) {
+    // Busca todas las amistades aceptadas donde el usuario es requester o recipient
+    const friendships = await Friendship.find({
+      status: 'accepted',
+      $or: [{ requester: userId }, { recipient: userId }]
+    });
+
+    // Obtén los IDs de los amigos
+    const friendIds = friendships.map(f =>
+      f.requester.toString() === userId ? f.recipient.toString() : f.requester.toString()
+    );
+
+    // Notifica solo a los amigos que están online
+    friendIds.forEach(friendId => {
+      const socketId = getUserSocket(friendId);
+      if (socketId) {
+        io.to(socketId).emit('friend-status-change', {
+          userId,
+          isOnline
+        });
+      }
+    });
   }
 
   function getOnlineFriends(userId: string): any[] {

@@ -45,17 +45,17 @@ const router = Router();
  *     FriendRequest:
  *       type: object
  *       required:
- *         - friendId
+ *         - recipientId
  *       properties:
- *         friendId:
+ *         recipientId:
  *           type: string
  *           description: ID del usuario al que enviar solicitud
  *     BlockRequest:
  *       type: object
  *       required:
- *         - userToBlock
+ *         - recipientId
  *       properties:
- *         userToBlock:
+ *         recipientId:
  *           type: string
  *           description: ID del usuario a bloquear
  */

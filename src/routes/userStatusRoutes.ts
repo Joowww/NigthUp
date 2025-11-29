@@ -1,8 +1,5 @@
 import { Router } from 'express';
 import {
-  setOnline,
-  setOffline,
-  updateLastSeen,
   getUserStatus,
   getFriendsWithStatus
 } from '../controller/userStatusController';
@@ -74,92 +71,6 @@ const router = Router();
  *           type: string
  *           format: date-time
  */
-
-/**
- * @swagger
- * /api/user-status/online:
- *   post:
- *     summary: Set user status to online
- *     tags: [User Status]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User status set to online successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Estado actualizado a online"
- *                 user:
- *                   $ref: '#/components/schemas/UserStatus'
- *       401:
- *         description: Unauthorized - Token required
- *       404:
- *         description: User not found
- */
-router.post('/online', authenticateToken, setOnline);
-
-/**
- * @swagger
- * /api/user-status/offline:
- *   post:
- *     summary: Set user status to offline
- *     tags: [User Status]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: User status set to offline successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Estado actualizado a offline"
- *                 user:
- *                   $ref: '#/components/schemas/UserStatus'
- *       401:
- *         description: Unauthorized - Token required
- *       404:
- *         description: User not found
- */
-router.post('/offline', authenticateToken, setOffline);
-
-/**
- * @swagger
- * /api/user-status/last-seen:
- *   post:
- *     summary: Update user's last seen timestamp
- *     tags: [User Status]
- *     security:
- *       - bearerAuth: []
- *     responses:
- *       200:
- *         description: Last seen timestamp updated successfully
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 message:
- *                   type: string
- *                   example: "Última conexión actualizada"
- *                 lastSeen:
- *                   type: string
- *                   format: date-time
- *                   description: Updated timestamp
- *       401:
- *         description: Unauthorized - Token required
- *       404:
- *         description: User not found
- */
-router.post('/last-seen', authenticateToken, updateLastSeen);
 
 /**
  * @swagger

@@ -5,264 +5,36 @@ import { Conversation } from '../models/conversation';
 import { Friendship } from '../models/friendship';
 import { Tag } from '../models/tag';
 import { UserInterest } from '../models/userInterest';
+import { Business } from '../models/business';
+import { UserTrust } from '../models/userTrust';
+import { Message } from '../models/message'; // Añade este import arriba si no lo tienes
 
-export async function seedDemoData() {
-    try {
-        await mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD');
-        console.log('Connected to MongoDB');
+function randomFromArray<T>(arr: T[]): T {
+    return arr[Math.floor(Math.random() * arr.length)];
+}
 
-        // Primero crear algunos tags de intereses
-        const interestTags = await createInterestTags();
+function randomCoordsInBarcelona() {
+    const minLat = 41.36, maxLat = 41.41, minLng = 2.13, maxLng = 2.20;
+    return [
+        +(minLng + Math.random() * (maxLng - minLng)).toFixed(6),
+        +(minLat + Math.random() * (maxLat - minLat)).toFixed(6)
+    ];
+}
 
-        // Crear usuario principal JoelMoreno
-        let joel = await User.findOne({ username: 'JoelMoreno' });
-        
-        if (!joel) {
-            console.log('JoelMoreno not found, creating demo user...');
-            joel = new User({
-                username: 'JoelMoreno',
-                email: 'joel@nightup.com',
-                password: 'JoelMoreno123',
-                birthday: new Date('1990-08-06'),
-                phoneNumber: '+34 612 345 678',
-                securityQuestion: 'security.question.pet_name',
-                securityAnswer: 'Fluffy',
-                avatar: DEFAULT_AVATAR,
-                coverPhoto: DEFAULT_COVER_PHOTO,
-                bio: 'Music lover and nightlife enthusiast. Always looking for the next great party! 🎵🎉',
-                firstName: 'Joel',
-                lastName: 'Moreno',
-                gender: 'male',
-                city: 'Barcelona',
-                country: 'Spain',
-                website: 'https://joelmoreno.com',
-                socialMedia: {
-                    instagram: '@joelmoreno',
-                    twitter: '@joelmoreno'
-                },
-                location: {
-                    type: 'Point',
-                    coordinates: [2.1734, 41.3851] // Barcelona coordinates
-                },
-                isVisibleOnMap: true,
-                lastLocationUpdate: new Date(),
-                interests: [interestTags.techno._id, interestTags.electronic._id, interestTags.dj._id],
-                friends: [],
-                active: true,
-                role: 'user',
-                isOnline: true,
-                lastSeen: new Date()
-            });
-            await joel.save();
-            console.log('JoelMoreno user created');
-        }
+function randomCoordsInMadrid() {
+    const minLat = 40.40, maxLat = 40.48, minLng = -3.73, maxLng = -3.60;
+    return [
+        +(minLng + Math.random() * (maxLng - minLng)).toFixed(6),
+        +(minLat + Math.random() * (maxLat - minLat)).toFixed(6)
+    ];
+}
 
-        // Crear amigos en inglés con locations realistas en Barcelona
-        const friendData = [
-            {
-                username: 'AlexJohnson',
-                email: 'alex.johnson@example.com',
-                firstName: 'Alex',
-                lastName: 'Johnson',
-                bio: 'DJ and producer. Love electronic music and meeting new people at events.',
-                gender: 'male' as const,
-                city: 'Barcelona',
-                coordinates: [2.1589, 41.3887], // Plaza Catalunya
-                interests: ['techno', 'electronic', 'dj', 'production']
-            },
-            {
-                username: 'SarahMiller',
-                email: 'sarah.miller@example.com',
-                firstName: 'Sarah',
-                lastName: 'Miller',
-                bio: 'Event organizer and social butterfly. Always up for a good time! 💃',
-                gender: 'female' as const,
-                city: 'Barcelona',
-                coordinates: [2.1775, 41.3828], // Gothic Quarter
-                interests: ['house', 'social', 'dance', 'festivals']
-            },
-            {
-                username: 'MikeDavis',
-                email: 'mike.davis@example.com',
-                firstName: 'Mike',
-                lastName: 'Davis',
-                bio: 'Techno enthusiast and club goer. Love the Barcelona nightlife scene.',
-                gender: 'male' as const,
-                city: 'Barcelona',
-                coordinates: [2.1900, 41.3830], // Eixample
-                interests: ['techno', 'underground', 'clubbing', 'music']
-            },
-            {
-                username: 'EmmaWilson',
-                email: 'emma.wilson@example.com',
-                firstName: 'Emma',
-                lastName: 'Wilson',
-                bio: 'Photographer and music lover. Capturing the best moments of nightlife.',
-                gender: 'female' as const,
-                city: 'Barcelona',
-                coordinates: [2.1600, 41.3750], // Montjuic
-                interests: ['photography', 'music', 'social', 'events']
-            },
-            {
-                username: 'ChrisTaylor',
-                email: 'chris.taylor@example.com',
-                firstName: 'Chris',
-                lastName: 'Taylor',
-                bio: 'Bar manager and cocktail expert. Knows all the best spots in town.',
-                gender: 'male' as const,
-                city: 'Barcelona',
-                coordinates: [2.1680, 41.3790], // El Raval
-                interests: ['cocktails', 'social', 'bars', 'networking']
-            },
-            {
-                username: 'JessicaBrown',
-                email: 'jessica.brown@example.com',
-                firstName: 'Jessica',
-                lastName: 'Brown',
-                bio: 'Marketing professional who loves discovering new music venues.',
-                gender: 'female' as const,
-                city: 'Barcelona',
-                coordinates: [2.1500, 41.3700], // Sants
-                interests: ['marketing', 'social', 'venues', 'networking']
-            },
-            {
-                username: 'KevinLee',
-                email: 'kevin.lee@example.com',
-                firstName: 'Kevin',
-                lastName: 'Lee',
-                bio: 'Software developer by day, music producer by night. Always coding with beats.',
-                gender: 'male' as const,
-                city: 'Barcelona',
-                coordinates: [2.1400, 41.3900], // Gràcia
-                interests: ['production', 'electronic', 'coding', 'technology']
-            },
-            {
-                username: 'RachelGreen',
-                email: 'rachel.green@example.com',
-                firstName: 'Rachel',
-                lastName: 'Green',
-                bio: 'Fashion designer and party lover. Dressing the nightlife scene.',
-                gender: 'female' as const,
-                city: 'Barcelona',
-                coordinates: [2.1550, 41.3950], // Poblenou
-                interests: ['fashion', 'social', 'design', 'events']
-            }
-        ];
+function randomPhone() {
+    return '+34 6' + Math.floor(10000000 + Math.random() * 89999999);
+}
 
-        const friends = [];
-        for (const friend of friendData) {
-            let user = await User.findOne({ username: friend.username });
-            
-            if (!user) {
-                user = new User({
-                    username: friend.username,
-                    email: friend.email,
-                    password: 'Password123',
-                    birthday: new Date('1990-01-01'),
-                    phoneNumber: '+34 600 000 000',
-                    securityQuestion: 'security.question.pet_name',
-                    securityAnswer: 'Fluffy',
-                    avatar: DEFAULT_AVATAR,
-                    coverPhoto: DEFAULT_COVER_PHOTO,
-                    bio: friend.bio,
-                    firstName: friend.firstName,
-                    lastName: friend.lastName,
-                    gender: friend.gender,
-                    city: friend.city,
-                    country: 'Spain',
-                    location: {
-                        type: 'Point',
-                        coordinates: friend.coordinates
-                    },
-                    isVisibleOnMap: true,
-                    lastLocationUpdate: new Date(),
-                    interests: friend.interests.map(interest => interestTags[interest]._id),
-                    friends: [],
-                    active: true,
-                    role: 'user',
-                    isOnline: Math.random() > 0.5, // Random online status
-                    lastSeen: new Date(Date.now() - Math.random() * 7 * 24 * 60 * 60 * 1000) // Random last seen
-                });
-                await user.save();
-                console.log(`User ${friend.username} created`);
-            }
-            friends.push(user);
-        }
-
-        // Crear amistades entre Joel y sus amigos
-        for (const friend of friends) {
-            const existingFriendship = await Friendship.findOne({
-                $or: [
-                    { requester: joel!._id, recipient: friend._id },
-                    { requester: friend._id, recipient: joel!._id }
-                ]
-            });
-
-            if (!existingFriendship) {
-                const friendship = new Friendship({
-                    requester: joel!._id,
-                    recipient: friend._id,
-                    status: 'accepted'
-                });
-                await friendship.save();
-                console.log(`Friendship created between JoelMoreno and ${friend.username}`);
-            }
-
-            // Actualizar arrays de friends en ambos usuarios
-            await User.findByIdAndUpdate(joel!._id, {
-                $addToSet: { friends: friend._id }
-            });
-
-            await User.findByIdAndUpdate(friend._id, {
-                $addToSet: { friends: joel!._id }
-            });
-        }
-
-        // Crear algunos eventos de ejemplo en Barcelona
-        await createDemoEvents(joel!._id);
-
-        // Crear grupo de amigos
-        const existingGroup = await Conversation.findOne({
-            groupName: 'Barcelona Night Crew',
-            isGroup: true
-        });
-
-        if (!existingGroup) {
-            const allParticipantIds = [joel!._id, ...friends.map(f => f._id)];
-            
-            const group = new Conversation({
-                participants: allParticipantIds.map(id => ({
-                    participant: id,
-                    participantModel: 'User',
-                    role: id.equals(joel!._id) ? 'creator' : 'member',
-                    joinedAt: new Date()
-                })),
-                isGroup: true,
-                groupName: 'Barcelona Night Crew',
-                groupDescription: 'The best group for nightlife enthusiasts in Barcelona! 🎉🌙',
-                groupImage: 'https://via.placeholder.com/500x200/7c3aed/FFFFFF?text=BARCELONA+NIGHT+CREW',
-                groupAdmins: [joel!._id, friends[0]._id, friends[1]._id] // Joel, Alex, Sarah como admins
-            });
-
-            await group.save();
-            console.log('Group "Barcelona Night Crew" created successfully:', group._id);
-        } else {
-            console.log('The group "Barcelona Night Crew" already exists');
-        }
-
-        // Crear UserInterests para Joel
-        await createUserInterests(joel!, interestTags);
-
-        console.log('🎉 Demo data seeded successfully!');
-        console.log('👤 Main user: JoelMoreno');
-        console.log('👥 Friends created: ' + friends.length);
-        console.log('🏙️ All users located in Barcelona with realistic coordinates');
-        
-        await mongoose.disconnect();
-        console.log('Disconnected from MongoDB');
-    } catch (error) {
-        console.error('Error seeding demo data:', error);
-    }
+function randomDate(start: Date, end: Date) {
+    return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
 }
 
 async function createInterestTags() {
@@ -290,98 +62,376 @@ async function createInterestTags() {
         { name: 'Music', type: 'MusicType', color: '#118ab2', description: 'General music interest' },
         { name: 'Events', type: 'EventType', color: '#073b4c', description: 'General events interest' }
     ];
-
     const tags: any = {};
     for (const tagData of tagsData) {
         let tag = await Tag.findOne({ name: tagData.name });
         if (!tag) {
             tag = new Tag(tagData);
             await tag.save();
-            console.log(`Tag created: ${tagData.name}`);
         }
         tags[tagData.name.toLowerCase()] = tag;
     }
     return tags;
 }
 
-async function createDemoEvents(joelId: mongoose.Types.ObjectId) {
-    const eventsData = [
-        {
-            name: 'Techno Night at Razzmatazz',
-            schedule: new Date('2024-12-15T23:00:00.000Z'),
-            coordinates: [2.1975, 41.4050], // Razzmatazz location
-            description: 'The biggest techno night in Barcelona with international DJs',
-            category: 'Techno',
-            capacity: 2000,
-            price: 30
-        },
-        {
-            name: 'Sunset House Party at Opium',
-            schedule: new Date('2024-12-20T20:00:00.000Z'),
-            coordinates: [2.1950, 41.4020], // Opium location
-            description: 'Beautiful sunset house music with beach views',
-            category: 'House',
-            capacity: 800,
-            price: 25
-        },
-        {
-            name: 'Electronic Festival at Poble Espanyol',
-            schedule: new Date('2024-12-31T22:00:00.000Z'),
-            coordinates: [2.1475, 41.3675], // Poble Espanyol
-            description: 'New Years Eve electronic music festival',
-            category: 'Electronic',
-            capacity: 5000,
-            price: 75
-        }
-    ];
-
-    for (const eventData of eventsData) {
-        let event = await Event.findOne({ name: eventData.name });
-        if (!event) {
-            event = new Event({
-                ...eventData,
-                location: {
-                    type: 'Point',
-                    coordinates: eventData.coordinates
-                },
-                image: DEFAULT_EVENT_IMAGE,
-                participants: [joelId] // Joel participa en todos los eventos
-            });
-            await event.save();
-            console.log(`Event created: ${eventData.name}`);
-        }
-    }
-}
-
-async function createUserInterests(joel: any, interestTags: any) {
-    // Crear UserInterests para Joel con diferentes scores
-    const userInterests = [
-        { tagId: interestTags.techno._id, score: 5 },
-        { tagId: interestTags.electronic._id, score: 4 },
-        { tagId: interestTags.dj._id, score: 5 },
-        { tagId: interestTags.production._id, score: 3 },
-        { tagId: interestTags.music._id, score: 5 },
-        { tagId: interestTags.events._id, score: 4 }
-    ];
-
-    for (const interest of userInterests) {
+async function createUserInterests(user: any, interestTags: any) {
+    const tagKeys = Object.keys(interestTags);
+    for (let i = 0; i < 5; i++) {
+        const tagKey = randomFromArray(tagKeys);
+        const tagId = interestTags[tagKey]._id;
         const existingInterest = await UserInterest.findOne({
-            userId: joel._id,
-            tagId: interest.tagId
+            userId: user._id,
+            tagId: tagId
         });
-
         if (!existingInterest) {
             const userInterest = new UserInterest({
-                userId: joel._id,
-                tagId: interest.tagId,
-                score: interest.score,
+                userId: user._id,
+                tagId: tagId,
+                score: Math.floor(Math.random() * 5) + 1,
                 active: true
             });
             await userInterest.save();
-            console.log(`UserInterest created for Joel: ${interest.tagId}`);
         }
     }
 }
 
-// Ejecutar el script
+async function createDemoEvents(users: any[], interestTags: any) {
+    const eventNames = [
+        'Techno Night at Razzmatazz', 'Sunset House Party at Opium', 'Electronic Festival at Poble Espanyol',
+        'House Vibes', 'Underground Session', 'Clubbing Madness', 'Photography Meetup', 'Cocktail Night',
+        'Networking Afterwork', 'Fashion Gala', 'Design Expo', 'Music Jam', 'Events Summit'
+    ];
+    const categories = ['Techno', 'House', 'Electronic', 'Social', 'Dance', 'Clubbing', 'Festivals', 'Photography', 'Cocktails', 'Bars', 'Networking', 'Marketing', 'Venues', 'Coding', 'Technology', 'Fashion', 'Design', 'Music', 'Events'];
+    const events = [];
+    for (let i = 0; i < 100; i++) {
+        const name = eventNames[i % eventNames.length] + ' #' + (i + 1);
+        const event = new Event({
+            name,
+            schedule: randomDate(new Date(), new Date(Date.now() + 1000 * 60 * 60 * 24 * 180)),
+            location: {
+                type: 'Point',
+                coordinates: randomCoordsInBarcelona()
+            },
+            description: `Evento de ${randomFromArray(categories)} en Barcelona.`,
+            category: randomFromArray(categories),
+            capacity: Math.floor(Math.random() * 2000) + 100,
+            price: Math.floor(Math.random() * 50) + 10,
+            participants: users.slice(i % users.length, (i % users.length) + 10).map(u => u._id),
+            likes: Math.floor(Math.random() * 100),
+            likedBy: [],
+            active: true,
+            image: DEFAULT_EVENT_IMAGE
+        });
+        await event.save();
+        events.push(event);
+    }
+    return events;
+}
+
+async function createBusinesses(users: any[]) {
+    const businessNames = [
+        'Razzmatazz', 'Opium', 'Pacha', 'Shoko', 'Bling Bling', 'Sutton', 'Macarena Club', 'Jamboree', 'Moog', 'Input', 'City Hall', 'La Terrrazza'
+    ];
+    const businesses = [];
+    for (let i = 0; i < 100; i++) {
+        const name = businessNames[i % businessNames.length] + ' Business #' + (i + 1);
+        const business = new Business({
+            name,
+            address: `Calle Falsa ${i + 1}, Barcelona`,
+            phone: randomPhone(),
+            email: `contact${i + 1}@${name.replace(/\s/g, '').toLowerCase()}.com`,
+            location: {
+                type: 'Point',
+                coordinates: randomCoordsInBarcelona()
+            },
+            events: [],
+            managers: [randomFromArray(users)._id],
+            active: true,
+            avatar: ''
+        });
+        await business.save();
+        businesses.push(business);
+    }
+    return businesses;
+}
+
+async function createFriendships(users: any[]) {
+    for (let i = 0; i < users.length; i++) {
+        for (let j = i + 1; j < users.length && j < i + 6; j++) {
+            const requester = users[i];
+            const recipient = users[j];
+            const exists = await Friendship.findOne({
+                $or: [
+                    { requester: requester._id, recipient: recipient._id },
+                    { requester: recipient._id, recipient: requester._id }
+                ]
+            });
+            if (!exists) {
+                const friendship = new Friendship({
+                    requester: requester._id,
+                    recipient: recipient._id,
+                    status: 'accepted'
+                });
+                await friendship.save();
+            }
+        }
+    }
+}
+
+export async function seedDemoData() {
+    try {
+        await mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD');
+        await Business.deleteMany({});
+        await Event.deleteMany({});
+        await Friendship.deleteMany({});
+        await User.deleteMany({});
+        await UserInterest.deleteMany({});
+        await UserTrust.deleteMany({});
+        console.log('Collections cleared');
+
+        const interestTags = await createInterestTags();
+
+        // Crear JoelMoreno y DavidSanchez
+        const specialUsersData = [
+            {
+                username: 'JoelMoreno',
+                email: 'joel@nightup.com',
+                password: 'JoelMoreno123',
+                birthday: new Date('1990-08-06'),
+                phoneNumber: '+34 612 345 678',
+                securityQuestion: 'security.question.pet_name',
+                securityAnswer: 'Fluffy',
+                avatar: DEFAULT_AVATAR,
+                coverPhoto: DEFAULT_COVER_PHOTO,
+                bio: 'Music lover and nightlife enthusiast. Always looking for the next great party! 🎵🎉',
+                firstName: 'Joel',
+                lastName: 'Moreno',
+                gender: 'male',
+                city: 'Madrid',
+                country: 'Spain',
+                website: 'https://joelmoreno.com',
+                socialMedia: {
+                    instagram: '@joelmoreno',
+                    twitter: '@joelmoreno'
+                },
+                location: {
+                    type: 'Point',
+                    coordinates: randomCoordsInMadrid()
+                },
+                isVisibleOnMap: true,
+                lastLocationUpdate: new Date(),
+                interests: [interestTags.techno._id, interestTags.electronic._id, interestTags.dj._id],
+                friends: [],
+                active: true,
+                role: 'admin',
+                isOnline: true,
+                lastSeen: new Date(),
+                emergencyContacts: [],
+                authProvider: 'local'
+            },
+            {
+                username: 'DavidSanchez',
+                email: 'david@nightup.com',
+                password: 'DavidSanchez123',
+                birthday: new Date('1992-05-12'),
+                phoneNumber: '+34 612 345 679',
+                securityQuestion: 'security.question.pet_name',
+                securityAnswer: 'Rocky',
+                avatar: DEFAULT_AVATAR,
+                coverPhoto: DEFAULT_COVER_PHOTO,
+                bio: 'Nightlife explorer and event organizer.',
+                firstName: 'David',
+                lastName: 'Sanchez',
+                gender: 'male',
+                city: 'Madrid',
+                country: 'Spain',
+                website: 'https://davidsanchez.com',
+                socialMedia: {
+                    instagram: '@davidsanchez',
+                    twitter: '@davidsanchez'
+                },
+                location: {
+                    type: 'Point',
+                    coordinates: randomCoordsInMadrid()
+                },
+                isVisibleOnMap: true,
+                lastLocationUpdate: new Date(),
+                interests: [interestTags.house._id, interestTags.electronic._id, interestTags.dj._id],
+                friends: [],
+                active: true,
+                role: 'admin',
+                isOnline: true,
+                lastSeen: new Date(),
+                emergencyContacts: [],
+                authProvider: 'local'
+            }
+        ];
+
+        const specialUsers = [];
+        for (const userData of specialUsersData) {
+            let user = new User(userData);
+            await user.save();
+            specialUsers.push(user);
+        }
+
+        // Crear 98 usuarios aleatorios
+        const names = ['Alex', 'Sarah', 'Mike', 'Emma', 'Chris', 'Jessica', 'Kevin', 'Rachel', 'Laura', 'Daniel', 'Sofia', 'Luis', 'Marta', 'Carlos', 'Lucia', 'Pablo', 'Elena', 'Jorge', 'Ana', 'Victor'];
+        const surnames = ['Johnson', 'Miller', 'Davis', 'Wilson', 'Taylor', 'Brown', 'Lee', 'Green', 'Martinez', 'Garcia', 'Lopez', 'Sanchez', 'Perez', 'Gomez', 'Ruiz', 'Diaz', 'Morales', 'Torres', 'Ramos', 'Castro'];
+        const users = [...specialUsers];
+        for (let i = 0; i < 98; i++) {
+            const firstName = randomFromArray(names);
+            const lastName = randomFromArray(surnames);
+            const username = `${firstName}${lastName}${i}`;
+            const email = `${username.toLowerCase()}@nightup.com`;
+            const gender = randomFromArray(['male', 'female', 'other', 'prefer_not_to_say']);
+            const city = 'Barcelona';
+            const country = 'Spain';
+            const website = `https://${username.toLowerCase()}.com`;
+            const socialMedia = {
+                instagram: `@${username.toLowerCase()}`,
+                twitter: `@${username.toLowerCase()}`,
+                facebook: `@${username.toLowerCase()}`,
+                tiktok: `@${username.toLowerCase()}`
+            };
+            const location = {
+                type: 'Point',
+                coordinates: randomCoordsInMadrid()
+            };
+            const interests = Object.values(interestTags)
+                .sort(() => 0.5 - Math.random())
+                .slice(0, Math.floor(Math.random() * 5) + 1)
+                .map((tag: any) => tag._id);
+            const user = new User({
+                username,
+                email,
+                password: 'Password123',
+                birthday: randomDate(new Date(1980, 0, 1), new Date(2005, 0, 1)),
+                phoneNumber: randomPhone(),
+                securityQuestion: 'security.question.pet_name',
+                securityAnswer: 'Fluffy',
+                avatar: DEFAULT_AVATAR,
+                coverPhoto: DEFAULT_COVER_PHOTO,
+                bio: 'Generated user for demo data.',
+                firstName,
+                lastName,
+                gender,
+                city,
+                country,
+                website,
+                socialMedia,
+                location,
+                isVisibleOnMap: true,
+                lastLocationUpdate: new Date(),
+                interests,
+                friends: [],
+                active: true,
+                role: 'user',
+                isOnline: Math.random() > 0.5,
+                lastSeen: randomDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), new Date()),
+                emergencyContacts: [],
+                authProvider: 'local'
+            });
+            await user.save();
+            users.push(user);
+        }
+
+        // Crear UserInterests para todos los usuarios
+        for (const user of users) {
+            await createUserInterests(user, interestTags);
+        }
+
+        // Crear 100 eventos
+        const events = await createDemoEvents(users, interestTags);
+
+        // Crear 100 negocios
+        await createBusinesses(users);
+
+        // Crear amistades
+        await createFriendships(users);
+
+        // Después de crear todos los usuarios y amistades
+        const joel = specialUsers.find(u => u.username === 'JoelMoreno');
+        if (joel) {
+            // Escoge 3-4 amigos de Joel (que no sean DavidSanchez)
+            const possibleFriends = users.filter(u => u._id.toString() !== joel._id.toString() && u.username !== 'DavidSanchez');
+            const joelFriends = possibleFriends.sort(() => 0.5 - Math.random()).slice(0, 4);
+
+            // Asegura la amistad en la colección Friendship
+            for (const friend of joelFriends) {
+                const exists = await Friendship.findOne({
+                    $or: [
+                        { requester: joel._id, recipient: friend._id },
+                        { requester: friend._id, recipient: joel._id }
+                    ]
+                });
+                if (!exists) {
+                    await new Friendship({
+                        requester: joel._id,
+                        recipient: friend._id,
+                        status: 'accepted'
+                    }).save();
+                }
+            }
+
+            // Crea una conversación de grupo
+            const participants = [joel, ...joelFriends].map(u => ({
+                participant: u._id,
+                participantModel: 'User'
+            }));
+            const conversation = await new Conversation({
+                participants,
+                isGroup: true,
+                groupName: 'Grupo de Joel y amigos'
+            }).save();
+
+            // Añade algunos mensajes de ejemplo como documentos Message
+            const messages = [
+                { sender: joel._id, text: '¡Hola equipo! ¿Dónde salimos este finde?' },
+                { sender: joelFriends[0]._id, text: '¡Yo voto por Malasaña!' },
+                { sender: joelFriends[1]._id, text: '¿Y si probamos algo nuevo?' },
+                { sender: joel._id, text: '¡Me apunto a lo que sea!' }
+            ];
+            for (const msg of messages) {
+                await Message.create({
+                    conversation: conversation._id,
+                    sender: msg.sender,
+                    senderModel: 'User',
+                    text: msg.text,
+                    readBy: [msg.sender],
+                    createdAt: new Date()
+                });
+            }
+            console.log('Conversación de grupo creada para JoelMoreno y amigos');
+        }
+
+        // === Añadir 20 userTrust a JoelMoreno ===
+        const joelUser = specialUsers.find(u => u.username === 'JoelMoreno');
+        if (joelUser) {
+            // Escoge 20 usuarios únicos distintos de Joel
+            const possibleRaters = users.filter(u => u._id.toString() !== joelUser._id.toString());
+            const raters = possibleRaters.sort(() => 0.5 - Math.random()).slice(0, 20);
+
+            for (let i = 0; i < raters.length; i++) {
+                await new UserTrust({
+                    rated: joelUser._id,
+                    rater: raters[i]._id,
+                    score: Math.floor(Math.random() * 5) + 1,
+                    comment: `Trust demo #${i + 1}`,
+                    context: 'demo'
+                }).save();
+            }
+            console.log('20 userTrust añadidos a JoelMoreno');
+        }
+
+        console.log('🎉 Demo data seeded successfully!');
+        console.log('👤 Main users: JoelMoreno, DavidSanchez');
+        console.log('👥 Users created: ' + users.length);
+        console.log('🏙️ All users located in Barcelona with realistic coordinates');
+        await mongoose.disconnect();
+        console.log('Disconnected from MongoDB');
+    } catch (error) {
+        console.error('Error seeding demo data:', error);
+    }
+}
+
 seedDemoData().catch(console.error);

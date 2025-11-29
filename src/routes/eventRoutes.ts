@@ -15,7 +15,11 @@ import {
     leaveEvent,
     getLikeStatus,
     likeEvent,
-    unlikeEvent
+    unlikeEvent,
+    getEventsByParticipant,
+    getEventIdsByParticipant,
+    isUserInEvent,
+    getParticipantsByEvent
 } from '../controller/eventController';
 import { authenticateToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager } from '../middleware/roleMiddleware';
@@ -294,7 +298,6 @@ router.post('/:identifier/join', authenticateToken, joinEvent);
  */
 router.post('/:identifier/leave', authenticateToken, leaveEvent);
 
-// --- RUTAS ADMIN ONLY ---
 /**
  * @swagger
  * /api/event/with-inactive:
@@ -488,7 +491,6 @@ router.patch('/:identifier/reactivate', authenticateToken, requireAdmin, reactiv
  */
 router.delete('/hard/:identifier', authenticateToken, requireAdmin, deleteEventByIdentifier);
 
-// --- RUTAS ADMIN/MANAGER ---
 /**
  * @swagger
  * /api/event/{identifier}/add-user:
@@ -750,5 +752,145 @@ router.post('/:identifier/unlike', authenticateToken, unlikeEvent);
  *         description: Event not found
  */
 router.get('/:identifier/like-status', authenticateToken, getLikeStatus);
+
+/**
+ * @swagger
+ * /api/event/by-participant/{userId}:
+ *   get:
+ *     summary: Get events by participant user ID
+ *     tags: [Events - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID of the participant
+ *     responses:
+ *       200:
+ *         description: List of events by participant user ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 events:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/Event'
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: No events found for the user ID
+ */
+router.get('/by-participant/:userId', authenticateToken, getEventsByParticipant);
+
+/**
+ * @swagger
+ * /api/event/ids-by-participant/{userId}:
+ *   get:
+ *     summary: Get event IDs by participant user ID
+ *     tags: [Events - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID of the participant
+ *     responses:
+ *       200:
+ *         description: List of event IDs by participant user ID
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 eventIds:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: No event IDs found for the user ID
+ */
+router.get('/ids-by-participant/:userId', authenticateToken, getEventIdsByParticipant);
+
+/**
+ * @swagger
+ * /api/event/is-participant/{eventId}/{userId}:
+ *   get:
+ *     summary: Check if a user is a participant in an event
+ *     tags: [Events - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID of the participant
+ *     responses:
+ *       200:
+ *         description: Participant status retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 isParticipant:
+ *                   type: boolean
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: Event or user not found
+ */
+router.get('/is-participant/:eventId/:userId', authenticateToken, isUserInEvent);
+
+/**
+ * @swagger
+ * /api/event/{eventId}/participants:
+ *   get:
+ *     summary: Get participants of an event
+ *     tags: [Events - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: eventId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Event ID
+ *     responses:
+ *       200:
+ *         description: List of participants in the event
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 participants:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *       401:
+ *         description: Unauthorized - Token required
+ *       404:
+ *         description: Event not found
+ */
+router.get('/:eventId/participants', authenticateToken, getParticipantsByEvent);
 
 export default router;

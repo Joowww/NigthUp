@@ -27,7 +27,7 @@ import eventTinderRoutes from './routes/eventTinderRoutes';
 import postRoutes from './routes/postRoutes';
 import initialInterestRoutes from './routes/initialInterestRoutes';
 import groupRoutes from './routes/groupRoutes';
-
+import userStatusRoutes from './routes/userStatusRoutes';
 import User from './models/user';
 
 dotenv.config();
@@ -127,6 +127,7 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     app.use('/api/post', postRoutes);
     app.use('/api/initial-interest', initialInterestRoutes);
     app.use('/api/group', groupRoutes);
+    app.use('/api/user-status', userStatusRoutes);
 console.log('[APP] /api/group routes mounted');
     console.log('[APP] /api/post routes mounted');
 

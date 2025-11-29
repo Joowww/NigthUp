@@ -1,19 +1,34 @@
 import { Request, Response } from 'express';
 import { MapService } from '../services/mapServices';
+import Event from '../models/event';
+import Business from '../models/business';
 
 const mapService = new MapService();
 
 export async function updateLocation(req: Request, res: Response): Promise<Response> {
   try {
     const userId = (req as any).user.id;
-    const { coordinates } = req.body;
+    let coordinates: [number, number] | undefined = undefined;
 
-    if (!coordinates || !Array.isArray(coordinates) || coordinates.length !== 2) {
+    // Permitir ambos formatos
+    if (Array.isArray(req.body.coordinates) && req.body.coordinates.length === 2) {
+      coordinates = req.body.coordinates as [number, number];
+    } else if (typeof req.body.latitude === 'number' && typeof req.body.longitude === 'number') {
+      coordinates = [req.body.longitude, req.body.latitude];
+    }
+
+    if (!coordinates) {
       return res.status(400).json({ error: 'Valid coordinates array [longitude, latitude] is required' });
     }
 
-    await mapService.updateUserLocation(userId, coordinates as [number, number]);
-    return res.status(200).json({ message: 'Location updated successfully' });
+    await mapService.updateUserLocation(userId, coordinates);
+    return res.status(200).json({
+      message: 'Location updated successfully',
+      location: {
+        type: 'Point',
+        coordinates
+      }
+    });
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });
   }
@@ -34,26 +49,12 @@ export async function setVisibility(req: Request, res: Response): Promise<Respon
 export async function getNearbyUsers(req: Request, res: Response): Promise<Response> {
   try {
     const userId = (req as any).user.id;
-    const { radius } = req.query;
+    // Radius por defecto 50000 metros, máximo 100 usuarios
+    const radius = parseInt(req.query.radius as string) || 50000;
+    const limit = 100;
 
-    const users = await mapService.getNearbyUsers(userId, parseInt(radius as string) || 10000);
+    const users = await mapService.getNearbyUsers(userId, radius);
     return res.status(200).json(users);
-  } catch (error) {
-    return res.status(500).json({ error: (error as Error).message });
-  }
-}
-
-export async function getNearbyBusinesses(req: Request, res: Response): Promise<Response> {
-  try {
-    const { coordinates, radius } = req.query;
-
-    if (!coordinates) {
-      return res.status(400).json({ error: 'Coordinates are required' });
-    }
-
-    const coords = (coordinates as string).split(',').map(Number);
-    const businesses = await mapService.getNearbyBusinesses([coords[0], coords[1]], parseInt(radius as string) || 5000);
-    return res.status(200).json(businesses);
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });
   }
@@ -62,10 +63,51 @@ export async function getNearbyBusinesses(req: Request, res: Response): Promise<
 export async function getFriendsNearby(req: Request, res: Response): Promise<Response> {
   try {
     const userId = (req as any).user.id;
-    const { radius } = req.query;
+    const radius = parseInt(req.query.radius as string) || 50000;
 
-    const friends = await mapService.getFriendsNearby(userId, parseInt(radius as string) || 10000);
+    const friends = await mapService.getFriendsNearby(userId, radius);
     return res.status(200).json(friends);
+  } catch (error) {
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+export async function getNearbyEvents(req: Request, res: Response): Promise<Response> {
+  try {
+    const { eventId } = req.query;
+    const radius = parseInt(req.query.radius as string) || 50000;
+    const limit = 100;
+
+    if (!eventId) {
+      return res.status(400).json({ error: 'eventId is required' });
+    }
+    const event = await Event.findById(eventId);
+    if (!event || !event.location || !Array.isArray(event.location.coordinates)) {
+      return res.status(404).json({ error: 'Event not found or has no location' });
+    }
+    const coords = event.location.coordinates;
+    const events = await mapService.getNearbyEvents(coords, radius);
+    return res.status(200).json({ events });
+  } catch (error) {
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+export async function getNearbyBusinessesOnly(req: Request, res: Response): Promise<Response> {
+  try {
+    const { businessId } = req.query;
+    const radius = parseInt(req.query.radius as string) || 50000;
+
+    if (!businessId) {
+      return res.status(400).json({ error: 'businessId is required' });
+    }
+    const business = await Business.findById(businessId);
+    if (!business || !business.location || !Array.isArray(business.location.coordinates)) {
+      return res.status(404).json({ error: 'Business not found or has no location' });
+    }
+    const coords = business.location.coordinates;
+    const businesses = await mapService.getNearbyBusinesses(coords, radius);
+    return res.status(200).json({ businesses });
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });
   }
