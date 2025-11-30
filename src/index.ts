@@ -28,6 +28,8 @@ import postRoutes from './routes/postRoutes';
 import initialInterestRoutes from './routes/initialInterestRoutes';
 import groupRoutes from './routes/groupRoutes';
 import userStatusRoutes from './routes/userStatusRoutes';
+import chatRoutes from './routes/chatRoutes';
+
 import User from './models/user';
 
 dotenv.config();
@@ -128,7 +130,8 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     app.use('/api/initial-interest', initialInterestRoutes);
     app.use('/api/group', groupRoutes);
     app.use('/api/user-status', userStatusRoutes);
-console.log('[APP] /api/group routes mounted');
+    console.log('[APP] /api/group routes mounted');
+    app.use('/api/chat', chatRoutes);
     console.log('[APP] /api/post routes mounted');
 
     console.log('All routes registered including new features');

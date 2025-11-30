@@ -26,18 +26,14 @@ import {
     forgotPassword,
     verifySecurityAnswer,
     resetPasswordWithToken,
-<<<<<<< HEAD
-    // NUEVAS FUNCIONES
     getUserProfile,
     updateUserProfile,
     updateAvatar,
     updateCoverPhoto,
     addUserInterests,
     removeUserInterests,
-    getSuggestedUsers
-=======
+    getSuggestedUsers,
     completeOnboardingHandler
->>>>>>> feature/web/30-11-2025
 } from '../controller/userController';
 
 import { googleAuth, connectGoogleAccount } from '../controller/googleAuthController';
@@ -1021,7 +1017,6 @@ router.patch('/:identifier/remove-manager', authenticateToken, requireAdmin, rem
  */
 router.delete('/hard/:identifier', authenticateToken, requireAdmin, deleteUserByIdentifier);
 
-<<<<<<< HEAD
 /**
  * @swagger
  * /api/user/profile/{identifier}:
@@ -1231,11 +1226,5 @@ router.delete('/interests', authenticateToken, removeUserInterests);
  *         description: Unauthorized
  */
 router.get('/suggested', authenticateToken, getSuggestedUsers);
-
-// Mantener todas las rutas existentes...
-// ... resto del código existente
-=======
-
->>>>>>> feature/web/30-11-2025
 
 export default router;
