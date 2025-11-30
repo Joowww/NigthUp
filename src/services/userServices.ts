@@ -356,4 +356,18 @@ export class UserService {
         
         return { local: localCount, google: googleCount };
     }
+
+    async updateOnboardingData(userId: string, data: { comunidad: string; intereses: string[] }): Promise<IUser | null> {
+        return await User.findByIdAndUpdate(
+            userId,
+            {
+                $set: {
+                    comunidad: data.comunidad,
+                    intereses: data.intereses,
+                    onboardingCompleted: true 
+                }
+            },
+            { new: true } 
+        );
+    }
 }

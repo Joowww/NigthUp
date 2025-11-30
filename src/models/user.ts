@@ -21,6 +21,11 @@ export interface IUser {
   
   securityQuestion?: string;
   securityAnswer?: string;
+
+comunidad?: string;
+intereses?: string[];
+onboardingCompleted?: boolean;
+
   
   isOnline: boolean;
   lastSeen: Date;
@@ -99,6 +104,10 @@ const userSchema = new Schema<IUser>({
     },
     default: null
   },
+
+  comunidad: { type: String, default: '' },
+  intereses: { type: [String], default: [] },
+  onboardingCompleted: { type: Boolean, default: false },
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   active: { type: Boolean, default: true },
   role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' },
