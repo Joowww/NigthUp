@@ -6,6 +6,7 @@ export const DEFAULT_AVATAR = '/default-images/default-avatar.png';
 export const DEFAULT_COVER_PHOTO = '/default-images/default-cover.jpg';
 
 
+
 export interface IUser {
     _id: Types.ObjectId;
     username: string;
@@ -34,12 +35,13 @@ export interface IUser {
     };
     isVisibleOnMap: boolean;
     lastLocationUpdate?: Date;
-    avatar: string;  
-    coverPhoto: string; 
+    avatar?: string;
+    profilePicture?: string;
+    coverPhoto?: string;
     bio?: string;
     posts?: Types.ObjectId[];
-    interests: Types.ObjectId[]; 
-    friends: Types.ObjectId[];   
+    interests: Types.ObjectId[];
+    friends: Types.ObjectId[];
     firstName?: string;
     lastName?: string;
     gender?: 'male' | 'female' | 'other' | 'prefer_not_to_say';
@@ -52,7 +54,9 @@ export interface IUser {
         facebook?: string;
         tiktok?: string;
     };
-
+    comunidad?: string;
+    intereses?: string[];
+    onboardingCompleted?: boolean;
     comparePassword(candidatePassword: string): Promise<boolean>;
     compareSecurityAnswer(candidateAnswer: string): Promise<boolean>;
     isModified(path: string): boolean;
@@ -113,6 +117,9 @@ const userSchema = new Schema<IUser>({
         },
         default: null
     },
+    comunidad: { type: String, default: '' },
+   intereses: { type: [String], default: [] },
+   onboardingCompleted: { type: Boolean, default: false },
     events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
     active: { type: Boolean, default: true },
     role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' },

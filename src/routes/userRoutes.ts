@@ -26,6 +26,7 @@ import {
     forgotPassword,
     verifySecurityAnswer,
     resetPasswordWithToken,
+<<<<<<< HEAD
     // NUEVAS FUNCIONES
     getUserProfile,
     updateUserProfile,
@@ -34,6 +35,9 @@ import {
     addUserInterests,
     removeUserInterests,
     getSuggestedUsers
+=======
+    completeOnboardingHandler
+>>>>>>> feature/web/30-11-2025
 } from '../controller/userController';
 
 import { googleAuth, connectGoogleAccount } from '../controller/googleAuthController';
@@ -219,6 +223,58 @@ const router = Router();
  *         description: Failed to create user
  */
 router.post('/', createUser);
+
+/**
+ * @swagger
+ * /api/user/complete-onboarding:
+ *   patch:
+ *     summary: Completar onboarding del usuario actual (establece comunidad e intereses)
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - comunidad
+ *               - intereses
+ *             properties:
+ *               comunidad:
+ *                 type: string
+ *                 description: Identificador o nombre de la comunidad seleccionada por el usuario
+ *                 example: "comunidad_madrid"
+ *               intereses:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: Lista de intereses seleccionados por el usuario
+ *                 example: ["musica", "tecnologia", "deportes"]
+ *     responses:
+ *       200:
+ *         description: Onboarding completado con éxito. Devuelve el usuario actualizado.
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 message:
+ *                   type: string
+ *                   example: "Onboarding completado con éxito"
+ *                 user:
+ *                   $ref: '#/components/schemas/User'
+ *       400:
+ *         description: Datos inválidos (faltan comunidad o intereses)
+ *       401:
+ *         description: Usuario no autenticado
+ *       404:
+ *         description: Usuario no encontrado
+ *       500:
+ *         description: Error del servidor
+ */
+router.patch('/complete-onboarding',authenticateToken,completeOnboardingHandler);
 
 /**
  * @swagger
@@ -965,6 +1021,7 @@ router.patch('/:identifier/remove-manager', authenticateToken, requireAdmin, rem
  */
 router.delete('/hard/:identifier', authenticateToken, requireAdmin, deleteUserByIdentifier);
 
+<<<<<<< HEAD
 /**
  * @swagger
  * /api/user/profile/{identifier}:
@@ -1177,5 +1234,8 @@ router.get('/suggested', authenticateToken, getSuggestedUsers);
 
 // Mantener todas las rutas existentes...
 // ... resto del código existente
+=======
+
+>>>>>>> feature/web/30-11-2025
 
 export default router;
