@@ -9,24 +9,57 @@ import { Business } from '../models/business';
 import { UserTrust } from '../models/userTrust';
 import { Message } from '../models/message'; // Añade este import arriba si no lo tienes
 
+// Extiende el tipo globalThis para incluir __spainGrid
+declare global {
+    // eslint-disable-next-line no-var
+    var __spainGrid: [number, number][] | undefined;
+}
+
+// Coordenadas aproximadas de las capitales de cada comunidad autónoma de España
+const SPAIN_REGIONS = [
+    { name: "Andalucía", coords: [-4.7794, 37.8882] },        // Sevilla
+    { name: "Aragón", coords: [-0.8877, 41.6488] },           // Zaragoza
+    { name: "Asturias", coords: [-5.8448, 43.3619] },         // Oviedo
+    { name: "Islas Baleares", coords: [2.6502, 39.5696] },    // Palma
+    { name: "Canarias", coords: [-15.4134, 28.0997] },        // Las Palmas
+    { name: "Cantabria", coords: [-3.8044, 43.4623] },        // Santander
+    { name: "Castilla y León", coords: [-4.7286, 41.6529] },  // Valladolid
+    { name: "Castilla-La Mancha", coords: [-3.0026, 39.8628] },// Toledo
+    { name: "Cataluña", coords: [2.1686, 41.3874] },          // Barcelona
+    { name: "Comunidad Valenciana", coords: [-0.3763, 39.4699] },// Valencia
+    { name: "Extremadura", coords: [-6.3703, 39.4752] },      // Mérida
+    { name: "Galicia", coords: [-8.5448, 42.8782] },          // Santiago
+    { name: "Madrid", coords: [-3.7038, 40.4168] },           // Madrid
+    { name: "Murcia", coords: [-1.1307, 37.9922] },           // Murcia
+    { name: "Navarra", coords: [-1.6461, 42.8185] },          // Pamplona
+    { name: "País Vasco", coords: [-2.935, 43.263] },         // Bilbao
+    { name: "La Rioja", coords: [-2.4456, 42.4650] }          // Logroño
+];
+
+// Genera una cuadrícula de puntos separados por ~500m alrededor de una coordenada base
+function generateGridPoints(baseCoords: [number, number], count: number): [number, number][] {
+    const points: [number, number][] = [];
+    const perRegion = Math.ceil(count / SPAIN_REGIONS.length);
+    const step = 0.0045; // ~500m en lat/lon
+    let idx = 0;
+    for (const region of SPAIN_REGIONS) {
+        let n = 0;
+        let x = 0, y = 0;
+        while (n < perRegion && points.length < count) {
+            // Espiral cuadrada para separar bien los puntos
+            const angle = 2 * Math.PI * (idx % 8) / 8;
+            const radius = step * Math.floor(idx / 8 + 1);
+            const lng = +(region.coords[0] + Math.cos(angle) * radius).toFixed(6);
+            const lat = +(region.coords[1] + Math.sin(angle) * radius).toFixed(6);
+            points.push([lng, lat]);
+            n++; idx++;
+        }
+    }
+    return points.slice(0, count);
+}
+
 function randomFromArray<T>(arr: T[]): T {
     return arr[Math.floor(Math.random() * arr.length)];
-}
-
-function randomCoordsInBarcelona() {
-    const minLat = 41.36, maxLat = 41.41, minLng = 2.13, maxLng = 2.20;
-    return [
-        +(minLng + Math.random() * (maxLng - minLng)).toFixed(6),
-        +(minLat + Math.random() * (maxLat - minLat)).toFixed(6)
-    ];
-}
-
-function randomCoordsInMadrid() {
-    const minLat = 40.40, maxLat = 40.48, minLng = -3.73, maxLng = -3.60;
-    return [
-        +(minLng + Math.random() * (maxLng - minLng)).toFixed(6),
-        +(minLat + Math.random() * (maxLat - minLat)).toFixed(6)
-    ];
 }
 
 function randomPhone() {
@@ -110,9 +143,9 @@ async function createDemoEvents(users: any[], interestTags: any) {
             schedule: randomDate(new Date(), new Date(Date.now() + 1000 * 60 * 60 * 24 * 180)),
             location: {
                 type: 'Point',
-                coordinates: randomCoordsInBarcelona()
+                coordinates: randomCoordsAcrossSpain(i, 1000)
             },
-            description: `Evento de ${randomFromArray(categories)} en Barcelona.`,
+            description: `Evento de ${randomFromArray(categories)} en España.`,
             category: randomFromArray(categories),
             capacity: Math.floor(Math.random() * 2000) + 100,
             price: Math.floor(Math.random() * 50) + 10,
@@ -137,12 +170,12 @@ async function createBusinesses(users: any[]) {
         const name = businessNames[i % businessNames.length] + ' Business #' + (i + 1);
         const business = new Business({
             name,
-            address: `Calle Falsa ${i + 1}, Barcelona`,
+            address: `Calle Falsa ${i + 1}, España`,
             phone: randomPhone(),
             email: `contact${i + 1}@${name.replace(/\s/g, '').toLowerCase()}.com`,
             location: {
                 type: 'Point',
-                coordinates: randomCoordsInBarcelona()
+                coordinates: randomCoordsAcrossSpain(i, 1000)
             },
             events: [],
             managers: [randomFromArray(users)._id],
@@ -176,6 +209,32 @@ async function createFriendships(users: any[]) {
             }
         }
     }
+}
+
+function randomCoordsAcrossSpain(idx: number, total: number): [number, number] {
+    // Usa la cuadrícula generada
+    if (!globalThis.__spainGrid) {
+        globalThis.__spainGrid = generateGridPoints([ -3.7038, 40.4168 ], total);
+    }
+    return globalThis.__spainGrid[idx];
+}
+
+// Añade esta función para filtrar usuarios por proximidad a una coordenada
+function usersNearCoords(users: any[], coords: [number, number], maxDistanceKm: number, excludeIds: string[] = []) {
+    // Haversine formula
+    function distance([lng1, lat1]: [number, number], [lng2, lat2]: [number, number]) {
+        const R = 6371; // km
+        const dLat = (lat2 - lat1) * Math.PI / 180;
+        const dLng = (lng2 - lng1) * Math.PI / 180;
+        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    }
+    return users.filter(u =>
+        !excludeIds.includes(u._id.toString()) &&
+        distance(u.location.coordinates, coords) <= maxDistanceKm
+    );
 }
 
 export async function seedDemoData() {
@@ -216,7 +275,7 @@ export async function seedDemoData() {
                 },
                 location: {
                     type: 'Point',
-                    coordinates: randomCoordsInMadrid()
+                    coordinates: [-3.7038, 40.4168] 
                 },
                 isVisibleOnMap: true,
                 lastLocationUpdate: new Date(),
@@ -252,7 +311,7 @@ export async function seedDemoData() {
                 },
                 location: {
                     type: 'Point',
-                    coordinates: randomCoordsInMadrid()
+                    coordinates: randomCoordsAcrossSpain(1, 1000)
                 },
                 isVisibleOnMap: true,
                 lastLocationUpdate: new Date(),
@@ -274,17 +333,18 @@ export async function seedDemoData() {
             specialUsers.push(user);
         }
 
-        // Crear 98 usuarios aleatorios
+        // Crear 1000 usuarios distribuidos por toda España
         const names = ['Alex', 'Sarah', 'Mike', 'Emma', 'Chris', 'Jessica', 'Kevin', 'Rachel', 'Laura', 'Daniel', 'Sofia', 'Luis', 'Marta', 'Carlos', 'Lucia', 'Pablo', 'Elena', 'Jorge', 'Ana', 'Victor'];
         const surnames = ['Johnson', 'Miller', 'Davis', 'Wilson', 'Taylor', 'Brown', 'Lee', 'Green', 'Martinez', 'Garcia', 'Lopez', 'Sanchez', 'Perez', 'Gomez', 'Ruiz', 'Diaz', 'Morales', 'Torres', 'Ramos', 'Castro'];
         const users = [...specialUsers];
-        for (let i = 0; i < 98; i++) {
+        const userCoords = generateGridPoints([ -3.7038, 40.4168 ], 1000);
+        for (let i = 0; i < 1000; i++) {
             const firstName = randomFromArray(names);
             const lastName = randomFromArray(surnames);
             const username = `${firstName}${lastName}${i}`;
             const email = `${username.toLowerCase()}@nightup.com`;
             const gender = randomFromArray(['male', 'female', 'other', 'prefer_not_to_say']);
-            const city = 'Barcelona';
+            const city = 'España';
             const country = 'Spain';
             const website = `https://${username.toLowerCase()}.com`;
             const socialMedia = {
@@ -295,7 +355,7 @@ export async function seedDemoData() {
             };
             const location = {
                 type: 'Point',
-                coordinates: randomCoordsInMadrid()
+                coordinates: userCoords[i]
             };
             const interests = Object.values(interestTags)
                 .sort(() => 0.5 - Math.random())
@@ -340,23 +400,118 @@ export async function seedDemoData() {
             await createUserInterests(user, interestTags);
         }
 
-        // Crear 100 eventos
-        const events = await createDemoEvents(users, interestTags);
+        // Crear 1000 eventos distribuidos por toda España
+        const eventCoords = generateGridPoints([ -3.7038, 40.4168 ], 1000);
+        const eventNames = [
+            'Techno Night', 'Sunset House Party', 'Electronic Festival',
+            'House Vibes', 'Underground Session', 'Clubbing Madness', 'Photography Meetup', 'Cocktail Night',
+            'Networking Afterwork', 'Fashion Gala', 'Design Expo', 'Music Jam', 'Events Summit'
+        ];
+        const categories = Object.keys(interestTags);
+        const events = [];
+        for (let i = 0; i < 1000; i++) {
+            const name = eventNames[i % eventNames.length] + ' #' + (i + 1);
+            const event = new Event({
+                name,
+                schedule: randomDate(new Date(), new Date(Date.now() + 1000 * 60 * 60 * 24 * 180)),
+                location: {
+                    type: 'Point',
+                    coordinates: eventCoords[i]
+                },
+                description: `Evento de ${randomFromArray(categories)} en España.`,
+                category: randomFromArray(categories),
+                capacity: Math.floor(Math.random() * 2000) + 100,
+                price: Math.floor(Math.random() * 50) + 10,
+                participants: users.slice(i % users.length, (i % users.length) + 10).map(u => u._id),
+                likes: Math.floor(Math.random() * 100),
+                likedBy: [],
+                active: true,
+                image: DEFAULT_EVENT_IMAGE,
+                ratings: [
+                    {
+                        user: users[(i + 1) % users.length]._id,
+                        score: Math.floor(Math.random() * 5) + 1,
+                        comment: "¡Gran evento!"
+                    }
+                ]
+            });
+            await event.save();
+            events.push(event);
+        }
 
-        // Crear 100 negocios
-        await createBusinesses(users);
+        // Crear 1000 negocios distribuidos por toda España
+        const businessCoords = generateGridPoints([ -3.7038, 40.4168 ], 1000);
+        const businessNames = [
+            'Razzmatazz', 'Opium', 'Pacha', 'Shoko', 'Bling Bling', 'Sutton', 'Macarena Club', 'Jamboree', 'Moog', 'Input', 'City Hall', 'La Terrrazza'
+        ];
+        const businesses = [];
+        for (let i = 0; i < 1000; i++) {
+            const name = businessNames[i % businessNames.length] + ' Business #' + (i + 1);
+            const business = new Business({
+                name,
+                address: `Calle Falsa ${i + 1}, España`,
+                phone: randomPhone(),
+                email: `contact${i + 1}@${name.replace(/\s/g, '').toLowerCase()}.com`,
+                location: {
+                    type: 'Point',
+                    coordinates: businessCoords[i]
+                },
+                events: [],
+                managers: [randomFromArray(users)._id],
+                active: true,
+                avatar: ''
+            });
+            await business.save();
+            businesses.push(business);
+        }
 
-        // Crear amistades
-        await createFriendships(users);
-
-        // Después de crear todos los usuarios y amistades
+        // Crear amistades: Joel y David con 50 amigos, repartidos por España, 15 en Madrid, 20 en Cataluña (10 en Barcelona)
         const joel = specialUsers.find(u => u.username === 'JoelMoreno');
-        if (joel) {
-            // Escoge 3-4 amigos de Joel (que no sean DavidSanchez)
-            const possibleFriends = users.filter(u => u._id.toString() !== joel._id.toString() && u.username !== 'DavidSanchez');
-            const joelFriends = possibleFriends.sort(() => 0.5 - Math.random()).slice(0, 4);
+        const david = specialUsers.find(u => u.username === 'DavidSanchez');
+        if (joel && david) {
+            // Excluye a Joel y David de la lista de posibles amigos
+            const possibleFriends = users.filter(u => ![joel._id.toString(), david._id.toString()].includes(u._id.toString()));
 
-            // Asegura la amistad en la colección Friendship
+            // 15 amigos en Madrid (40.4168, -3.7038, radio 30km)
+            const madridCoords: [number, number] = [-3.7038, 40.4168];
+            const madridFriends = usersNearCoords(possibleFriends, madridCoords, 30).slice(0, 15);
+
+            // 10 amigos en Barcelona (41.3874, 2.1686, radio 15km)
+            const bcnCoords: [number, number] = [2.1686, 41.3874];
+            const bcnFriends = usersNearCoords(possibleFriends, bcnCoords, 15, madridFriends.map(u => u._id.toString())).slice(0, 10);
+
+            // 10 más en Cataluña (resto de Cataluña, radio 80km desde Barcelona, excluyendo los de BCN y Madrid)
+            const catalunyaCoords: [number, number] = [2.1686, 41.3874];
+            const catalunyaFriends = usersNearCoords(possibleFriends, catalunyaCoords, 80, [
+                ...madridFriends.map(u => u._id.toString()),
+                ...bcnFriends.map(u => u._id.toString())
+            ]).slice(0, 10);
+
+            // El resto repartidos por toda España, excluyendo los anteriores
+            const alreadyPicked = [
+                ...madridFriends.map(u => u._id.toString()),
+                ...bcnFriends.map(u => u._id.toString()),
+                ...catalunyaFriends.map(u => u._id.toString())
+            ];
+            const restFriends = possibleFriends.filter(u => !alreadyPicked.includes(u._id.toString())).slice(0, 15);
+
+            // Junta todos los amigos
+            const joelFriends = [
+                ...madridFriends,
+                ...bcnFriends,
+                ...catalunyaFriends,
+                ...restFriends
+            ].slice(0, 50);
+
+            // Lo mismo para David (puedes variar la selección si quieres, aquí se usa la misma lógica)
+            const davidFriends = [
+                ...madridFriends,
+                ...bcnFriends,
+                ...catalunyaFriends,
+                ...possibleFriends.filter(u => !alreadyPicked.includes(u._id.toString())).slice(15, 65)
+            ].slice(0, 50);
+
+            // Crea las amistades para Joel
             for (const friend of joelFriends) {
                 const exists = await Friendship.findOne({
                     $or: [
@@ -372,61 +527,105 @@ export async function seedDemoData() {
                     }).save();
                 }
             }
+            // Crea las amistades para David
+            for (const friend of davidFriends) {
+                const exists = await Friendship.findOne({
+                    $or: [
+                        { requester: david._id, recipient: friend._id },
+                        { requester: friend._id, recipient: david._id }
+                    ]
+                });
+                if (!exists) {
+                    await new Friendship({
+                        requester: david._id,
+                        recipient: friend._id,
+                        status: 'accepted'
+                    }).save();
+                }
+            }
+            console.log('JoelMoreno friends:');
+            console.log(joelFriends.map(u => u.username).join(', '));
 
-            // Crea una conversación de grupo
-            const participants = [joel, ...joelFriends].map(u => ({
+            console.log('DavidSanchez friends:');
+            console.log(davidFriends.map(u => u.username).join(', '));
+
+            // Conversaciones individuales y de grupo para Joel (igual que antes)
+            const participants1 = [joel, joelFriends[0]].map(u => ({
                 participant: u._id,
                 participantModel: 'User'
             }));
-            const conversation = await new Conversation({
-                participants,
+            const conversation1 = await Conversation.create({
+                participants: participants1,
+                isGroup: false
+            });
+            await Message.create({
+                conversation: conversation1._id,
+                sender: joel._id,
+                senderModel: 'User',
+                text: '¡Hola! ¿Vamos a un evento este finde?',
+                readBy: [joel._id],
+                createdAt: new Date()
+            });
+            await Message.create({
+                conversation: conversation1._id,
+                sender: joelFriends[0]._id,
+                senderModel: 'User',
+                text: '¡Claro! ¿Dónde quedamos?',
+                readBy: [joelFriends[0]._id],
+                createdAt: new Date()
+            });
+            // Dos grupos
+            const group1 = [joel, ...joelFriends.slice(0, 4)].map(u => ({
+                participant: u._id,
+                participantModel: 'User'
+            }));
+            const group2 = [joel, ...joelFriends.slice(5, 10)].map(u => ({
+                participant: u._id,
+                participantModel: 'User'
+            }));
+            const conversationGroup1 = await Conversation.create({
+                participants: group1,
                 isGroup: true,
-                groupName: 'Grupo de Joel y amigos'
-            }).save();
-
-            // Añade algunos mensajes de ejemplo como documentos Message
-            const messages = [
-                { sender: joel._id, text: '¡Hola equipo! ¿Dónde salimos este finde?' },
-                { sender: joelFriends[0]._id, text: '¡Yo voto por Malasaña!' },
-                { sender: joelFriends[1]._id, text: '¿Y si probamos algo nuevo?' },
-                { sender: joel._id, text: '¡Me apunto a lo que sea!' }
-            ];
-            for (const msg of messages) {
-                await Message.create({
-                    conversation: conversation._id,
-                    sender: msg.sender,
-                    senderModel: 'User',
-                    text: msg.text,
-                    readBy: [msg.sender],
-                    createdAt: new Date()
-                });
-            }
-            console.log('Conversación de grupo creada para JoelMoreno y amigos');
-        }
-
-        // === Añadir 20 userTrust a JoelMoreno ===
-        const joelUser = specialUsers.find(u => u.username === 'JoelMoreno');
-        if (joelUser) {
-            // Escoge 20 usuarios únicos distintos de Joel
-            const possibleRaters = users.filter(u => u._id.toString() !== joelUser._id.toString());
-            const raters = possibleRaters.sort(() => 0.5 - Math.random()).slice(0, 20);
-
+                groupName: 'Grupo de Joel y amigos 1'
+            });
+            const conversationGroup2 = await Conversation.create({
+                participants: group2,
+                isGroup: true,
+                groupName: 'Grupo de Joel y amigos 2'
+            });
+            await Message.create({
+                conversation: conversationGroup1._id,
+                sender: joel._id,
+                senderModel: 'User',
+                text: '¡Bienvenidos al grupo!',
+                readBy: [joel._id],
+                createdAt: new Date()
+            });
+            await Message.create({
+                conversation: conversationGroup2._id,
+                sender: joel._id,
+                senderModel: 'User',
+                text: '¡Este es el segundo grupo!',
+                readBy: [joel._id],
+                createdAt: new Date()
+            });
+            // UserTrust para Joel
+            const raters = joelFriends.slice(0, 20);
             for (let i = 0; i < raters.length; i++) {
-                await new UserTrust({
-                    rated: joelUser._id,
+                await UserTrust.create({
+                    rated: joel._id,
                     rater: raters[i]._id,
                     score: Math.floor(Math.random() * 5) + 1,
                     comment: `Trust demo #${i + 1}`,
                     context: 'demo'
-                }).save();
+                });
             }
-            console.log('20 userTrust añadidos a JoelMoreno');
         }
 
         console.log('🎉 Demo data seeded successfully!');
         console.log('👤 Main users: JoelMoreno, DavidSanchez');
         console.log('👥 Users created: ' + users.length);
-        console.log('🏙️ All users located in Barcelona with realistic coordinates');
+        console.log('🏙️ All users, events, and businesses distributed across Spain');
         await mongoose.disconnect();
         console.log('Disconnected from MongoDB');
     } catch (error) {
