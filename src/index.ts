@@ -11,6 +11,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { initializeSocket } from './socket/socketHandler';
 
+// Importación de rutas
 import userRoutes from './routes/userRoutes';
 import eventRoutes from './routes/eventRoutes';
 import businessRoutes from './routes/businessRoutes';
@@ -30,43 +31,58 @@ import groupRoutes from './routes/groupRoutes';
 import userStatusRoutes from './routes/userStatusRoutes';
 import User from './models/user';
 
+// Cargar variables de entorno
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
 app.use(express.json());
 
-// Servir archivos estáticos (imágenes subidas)
+// Servir archivos estáticos
 app.use('/uploads', express.static('uploads'));
 app.use('/public', express.static('public'));
 
+// --- CONFIGURACIÓN CORS ---
+app.use(cors({
+    origin: process.env.FRONTEND_URL?.split(',') || [
+      'http://localhost:4200',
+      'http://localhost:8080',
+      'http://localhost:5173',
+      'https://ea1.upc.edu',
+      'https://ea1-api.upc.edu'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+}));
+
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
-  cors: {
-    origin: process.env.FRONTEND_URL || "http://localhost:4200", 
-    methods: ["GET", "POST", "PUT", "DELETE"],
-  }
+    cors: {
+      origin: process.env.FRONTEND_URL?.split(',') || [
+        'http://localhost:4200',
+        'http://localhost:8080',
+        'http://localhost:5173',
+        'https://ea1.upc.edu',
+        'https://ea1-api.upc.edu'
+      ],
+      credentials: true,
+      methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+    }
 });
 initializeSocket(io);
 
+// URI de Mongo (Prioridad: Variable de Entorno > Localhost)
+const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/NIGHTUP_BBDD';
+
 // CONEXION A MONGODB
-mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
+mongoose.connect(MONGO_URI)
 .then(async () => {
     console.log('SUCCESSFUL CONNECTION TO MONGODB DATABASE');
+    console.log(`Using Mongo URI: ${MONGO_URI}`); // Log útil para debug en prod
 
     // Crear admins si no existen
     const initialAdmins = [
-    // {
-    //     username: 'JoelMoreno',
-    //     email: 'joel@nightup.com',
-    //     password: 'JoelMoreno',
-    //     birthday: new Date('2000-08-06'),
-    //     phoneNumber: '+34 612 345 678',
-    //     securityQuestion: 'security.question.pet_name',
-    //     securityAnswer: 'Fluffy'
-    // },
     {
         username: 'DavidSanchez',
         email: 'david@nightup.com',
@@ -104,15 +120,12 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
             });
             await adminUser.save();
             console.log(`Admin user ${adminData.username} created successfully`);
-        } else {
-            console.log(`Admin user ${adminData.username} already exists`);
         }
     }
 
-    // REGISTRAR RUTAS ANTES DE INICIAR EL SERVIDOR
+    // REGISTRAR RUTAS
     app.use('/api/user', userRoutes);
     app.use('/api/event', eventRoutes);
-    console.log('[APP] /api/event routes mounted');
     app.use('/api/business', businessRoutes);
     app.use('/api/rating', ratingRoutes);
     app.use('/api/tag', tagRoutes);
@@ -128,14 +141,11 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     app.use('/api/initial-interest', initialInterestRoutes);
     app.use('/api/group', groupRoutes);
     app.use('/api/user-status', userStatusRoutes);
-console.log('[APP] /api/group routes mounted');
-    console.log('[APP] /api/post routes mounted');
 
     console.log('All routes registered including new features');
 
     // Configurar Swagger
     setupSwagger(app);
-    console.log('Swagger configured');
 
     // Rutas de prueba
     app.get('/api/rating/test', (req, res) => {
@@ -143,19 +153,13 @@ console.log('[APP] /api/group routes mounted');
     });
     
     app.get('/api/test', (req, res) => {
-        res.json({ message: 'API is working!', allRoutes: ['/api/user', '/api/event', '/api/business', '/api/rating', '/api/post'] });
+        res.json({ message: 'API is working!', allRoutes: ['/api/user', '/api/event'] });
     });
 
-   /*app.listen(PORT, () => {
-        console.log(`SERVER URL http://localhost:${PORT}`);
-        console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
-        console.log('Server is running!');
-    });*/
-
+    // Iniciar servidor
     httpServer.listen(PORT, () => { 
         console.log(`SERVER URL http://localhost:${PORT}`);
-        console.log(`Static files served at http://localhost:${PORT}/uploads`);
-        console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
+        console.log(`Swagger docs at ${process.env.API_URL || `http://localhost:${PORT}`}/api-docs`);
         console.log('Server is running!');
     });
 })

@@ -12,8 +12,19 @@ const options: swaggerJSDoc.Options = {
         },
         servers: [
             {
-                url: 'http://localhost:3000',
+                url: process.env.API_URL || 'http://localhost:3000',
+                description: process.env.NODE_ENV === 'production' ? 'Production server' : 'Development server'
             },
+            // Servidor alternativo para producción UPC
+            ...(process.env.NODE_ENV === 'production' ? [{
+                url: 'https://ea1-api.upc.edu',
+                description: 'UPC Production Server'
+            }] : []),
+            // Servidor de desarrollo siempre disponible
+            {
+                url: 'http://localhost:3000',
+                description: 'Local development server'
+            }
         ],
         components: {
             securitySchemes: {
