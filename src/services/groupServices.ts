@@ -37,7 +37,7 @@ export class GroupService {
             throw new Error('Group not found');
         }
 
-        if (!group.groupAdmins.includes(new Types.ObjectId(adminId))) {
+        if (!(group.groupAdmins ?? []).includes(new Types.ObjectId(adminId))) {
             throw new Error('Only admins can add participants');
         }
 
@@ -77,7 +77,7 @@ export class GroupService {
             createdAt: new Date()
         };
 
-        group.groupPolls.push(poll);
+        (group.groupPolls ?? []).push(poll);
         return await group.save();
     }
 
@@ -88,7 +88,7 @@ export class GroupService {
             throw new Error('Group not found');
         }
 
-        const poll = group.groupPolls.find((p: IGroupPoll) => p._id.toString() === pollId);
+        const poll = (group.groupPolls ?? []).find((p: IGroupPoll) => p._id.toString() === pollId);
         if (!poll || !poll.isActive) {
             throw new Error('Poll not found or inactive');
         }
@@ -126,7 +126,7 @@ export class GroupService {
             throw new Error('Group not found');
         }
 
-        if (!group.groupAdmins.includes(new Types.ObjectId(adminId))) {
+        if (!(group.groupAdmins ?? []).includes(new Types.ObjectId(adminId))) {
             throw new Error('Only admins can remove participants');
         }
 
@@ -144,7 +144,7 @@ export class GroupService {
             throw new Error('Group not found');
         }
 
-        if (!group.groupAdmins.includes(new Types.ObjectId(adminId))) {
+        if (!(group.groupAdmins ?? []).includes(new Types.ObjectId(adminId))) {
             throw new Error('Only admins can update group info');
         }
 

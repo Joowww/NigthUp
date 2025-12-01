@@ -7,7 +7,7 @@ import { Tag } from '../models/tag';
 import { UserInterest } from '../models/userInterest';
 import { Business } from '../models/business';
 import { UserTrust } from '../models/userTrust';
-import { Message } from '../models/message'; // Añade este import arriba si no lo tienes
+import { Message } from '../models/message';
 
 // Extiende el tipo globalThis para incluir __spainGrid
 declare global {
@@ -128,89 +128,6 @@ async function createUserInterests(user: any, interestTags: any) {
     }
 }
 
-async function createDemoEvents(users: any[], interestTags: any) {
-    const eventNames = [
-        'Techno Night at Razzmatazz', 'Sunset House Party at Opium', 'Electronic Festival at Poble Espanyol',
-        'House Vibes', 'Underground Session', 'Clubbing Madness', 'Photography Meetup', 'Cocktail Night',
-        'Networking Afterwork', 'Fashion Gala', 'Design Expo', 'Music Jam', 'Events Summit'
-    ];
-    const categories = ['Techno', 'House', 'Electronic', 'Social', 'Dance', 'Clubbing', 'Festivals', 'Photography', 'Cocktails', 'Bars', 'Networking', 'Marketing', 'Venues', 'Coding', 'Technology', 'Fashion', 'Design', 'Music', 'Events'];
-    const events = [];
-    for (let i = 0; i < 100; i++) {
-        const name = eventNames[i % eventNames.length] + ' #' + (i + 1);
-        const event = new Event({
-            name,
-            schedule: randomDate(new Date(), new Date(Date.now() + 1000 * 60 * 60 * 24 * 180)),
-            location: {
-                type: 'Point',
-                coordinates: randomCoordsAcrossSpain(i, 1000)
-            },
-            description: `Evento de ${randomFromArray(categories)} en España.`,
-            category: randomFromArray(categories),
-            capacity: Math.floor(Math.random() * 2000) + 100,
-            price: Math.floor(Math.random() * 50) + 10,
-            participants: users.slice(i % users.length, (i % users.length) + 10).map(u => u._id),
-            likes: Math.floor(Math.random() * 100),
-            likedBy: [],
-            active: true,
-            image: DEFAULT_EVENT_IMAGE
-        });
-        await event.save();
-        events.push(event);
-    }
-    return events;
-}
-
-async function createBusinesses(users: any[]) {
-    const businessNames = [
-        'Razzmatazz', 'Opium', 'Pacha', 'Shoko', 'Bling Bling', 'Sutton', 'Macarena Club', 'Jamboree', 'Moog', 'Input', 'City Hall', 'La Terrrazza'
-    ];
-    const businesses = [];
-    for (let i = 0; i < 100; i++) {
-        const name = businessNames[i % businessNames.length] + ' Business #' + (i + 1);
-        const business = new Business({
-            name,
-            address: `Calle Falsa ${i + 1}, España`,
-            phone: randomPhone(),
-            email: `contact${i + 1}@${name.replace(/\s/g, '').toLowerCase()}.com`,
-            location: {
-                type: 'Point',
-                coordinates: randomCoordsAcrossSpain(i, 1000)
-            },
-            events: [],
-            managers: [randomFromArray(users)._id],
-            active: true,
-            avatar: ''
-        });
-        await business.save();
-        businesses.push(business);
-    }
-    return businesses;
-}
-
-async function createFriendships(users: any[]) {
-    for (let i = 0; i < users.length; i++) {
-        for (let j = i + 1; j < users.length && j < i + 6; j++) {
-            const requester = users[i];
-            const recipient = users[j];
-            const exists = await Friendship.findOne({
-                $or: [
-                    { requester: requester._id, recipient: recipient._id },
-                    { requester: recipient._id, recipient: requester._id }
-                ]
-            });
-            if (!exists) {
-                const friendship = new Friendship({
-                    requester: requester._id,
-                    recipient: recipient._id,
-                    status: 'accepted'
-                });
-                await friendship.save();
-            }
-        }
-    }
-}
-
 function randomCoordsAcrossSpain(idx: number, total: number): [number, number] {
     // Usa la cuadrícula generada
     if (!globalThis.__spainGrid) {
@@ -237,6 +154,25 @@ function usersNearCoords(users: any[], coords: [number, number], maxDistanceKm: 
     );
 }
 
+// Función auxiliar para crear UserTrust sin duplicados
+async function createUserTrustSafe(ratedId: any, raterId: any, score: number, comment: string, context: string = 'demo') {
+    const existing = await UserTrust.findOne({
+        rated: ratedId,
+        rater: raterId,
+        context: context
+    });
+    
+    if (!existing) {
+        await UserTrust.create({
+            rated: ratedId,
+            rater: raterId,
+            score: score,
+            comment: comment,
+            context: context
+        });
+    }
+}
+
 export async function seedDemoData() {
     try {
         await mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD');
@@ -246,6 +182,8 @@ export async function seedDemoData() {
         await User.deleteMany({});
         await UserInterest.deleteMany({});
         await UserTrust.deleteMany({});
+        await Message.deleteMany({});
+        await Conversation.deleteMany({});
         console.log('Collections cleared');
 
         const interestTags = await createInterestTags();
@@ -286,7 +224,8 @@ export async function seedDemoData() {
                 isOnline: true,
                 lastSeen: new Date(),
                 emergencyContacts: [],
-                authProvider: 'local'
+                authProvider: 'local',
+                onboardingCompleted: true
             },
             {
                 username: 'DavidSanchez',
@@ -322,7 +261,8 @@ export async function seedDemoData() {
                 isOnline: true,
                 lastSeen: new Date(),
                 emergencyContacts: [],
-                authProvider: 'local'
+                authProvider: 'local',
+                onboardingCompleted: true
             }
         ];
 
@@ -389,7 +329,8 @@ export async function seedDemoData() {
                 isOnline: Math.random() > 0.5,
                 lastSeen: randomDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), new Date()),
                 emergencyContacts: [],
-                authProvider: 'local'
+                authProvider: 'local',
+                onboardingCompleted: true
             });
             await user.save();
             users.push(user);
@@ -411,6 +352,21 @@ export async function seedDemoData() {
         const events = [];
         for (let i = 0; i < 1000; i++) {
             const name = eventNames[i % eventNames.length] + ' #' + (i + 1);
+            const participants = users.slice(i % users.length, (i % users.length) + 10);
+            // Selecciona 1 o 2 usuarios distintos de los participantes para las valoraciones
+            const numRatings = Math.random() < 0.5 ? 1 : 2;
+            const ratingUsers: typeof users = [];
+            while (ratingUsers.length < numRatings) {
+                const candidate = randomFromArray(users);
+                if (!participants.some(u => u._id.toString() === candidate._id.toString()) && !ratingUsers.some(u => u._id.toString() === candidate._id.toString())) {
+                    ratingUsers.push(candidate);
+                }
+            }
+            const ratings = ratingUsers.map((u, idx) => ({
+                user: u._id,
+                score: Math.floor(Math.random() * 5) + 1,
+                comment: `Valoración extra demo #${idx + 1}`
+            }));
             const event = new Event({
                 name,
                 schedule: randomDate(new Date(), new Date(Date.now() + 1000 * 60 * 60 * 24 * 180)),
@@ -422,21 +378,75 @@ export async function seedDemoData() {
                 category: randomFromArray(categories),
                 capacity: Math.floor(Math.random() * 2000) + 100,
                 price: Math.floor(Math.random() * 50) + 10,
-                participants: users.slice(i % users.length, (i % users.length) + 10).map(u => u._id),
+                participants: participants.map(u => u._id),
                 likes: Math.floor(Math.random() * 100),
                 likedBy: [],
                 active: true,
                 image: DEFAULT_EVENT_IMAGE,
-                ratings: [
-                    {
-                        user: users[(i + 1) % users.length]._id,
-                        score: Math.floor(Math.random() * 5) + 1,
-                        comment: "¡Gran evento!"
-                    }
-                ]
+                ratings
             });
             await event.save();
             events.push(event);
+        }
+
+        // Añadir a cada usuario a 5 eventos distintos y crear UserTrust
+        for (const user of users) {
+            // Añadir a 5 eventos aleatorios
+            const userEvents: any[] = [];
+            const usedEventIndexes = new Set<number>();
+            while (userEvents.length < 5 && usedEventIndexes.size < events.length) {
+                const idx = Math.floor(Math.random() * events.length);
+                if (!usedEventIndexes.has(idx)) {
+                    usedEventIndexes.add(idx);
+                    userEvents.push(events[idx]);
+                }
+            }
+            for (const event of userEvents) {
+                if (!event.participants.map((id: any) => id.toString()).includes(user._id.toString())) {
+                    event.participants.push(user._id);
+                    await event.save();
+                }
+            }
+            
+            // Crear 3 valoraciones recibidas y 3 dadas (usando la función segura)
+            const otherUsers = users.filter(u => u._id.toString() !== user._id.toString());
+            
+            // Recibidas - Seleccionar 3 usuarios únicos
+            const selectedRaters: any[] = [];
+            while (selectedRaters.length < 3 && selectedRaters.length < otherUsers.length) {
+                const rater = randomFromArray(otherUsers);
+                if (!selectedRaters.some(r => r._id.toString() === rater._id.toString())) {
+                    selectedRaters.push(rater);
+                }
+            }
+            for (let i = 0; i < selectedRaters.length; i++) {
+                await createUserTrustSafe(
+                    user._id,
+                    selectedRaters[i]._id,
+                    Math.floor(Math.random() * 5) + 1,
+                    `Valoración recibida demo #${i + 1}`,
+                    'demo'
+                );
+            }
+            
+            // Dadas - Seleccionar 3 usuarios únicos diferentes de los raters
+            const selectedRated: any[] = [];
+            while (selectedRated.length < 3 && selectedRated.length < otherUsers.length) {
+                const rated = randomFromArray(otherUsers);
+                if (!selectedRated.some(r => r._id.toString() === rated._id.toString()) &&
+                    !selectedRaters.some(r => r._id.toString() === rated._id.toString())) {
+                    selectedRated.push(rated);
+                }
+            }
+            for (let i = 0; i < selectedRated.length; i++) {
+                await createUserTrustSafe(
+                    selectedRated[i]._id,
+                    user._id,
+                    Math.floor(Math.random() * 5) + 1,
+                    `Valoración dada demo #${i + 1}`,
+                    'demo'
+                );
+            }
         }
 
         // Crear 1000 negocios distribuidos por toda España
@@ -468,6 +478,37 @@ export async function seedDemoData() {
         // Crear amistades: Joel y David con 50 amigos, repartidos por España, 15 en Madrid, 20 en Cataluña (10 en Barcelona)
         const joel = specialUsers.find(u => u.username === 'JoelMoreno');
         const david = specialUsers.find(u => u.username === 'DavidSanchez');
+        
+        // Crear 10 solicitudes de amistad pendientes para JoelMoreno
+        if (joel) {
+            // Excluye amigos y solicitudes ya existentes
+            const allFriendships = await Friendship.find({
+                $or: [
+                    { requester: joel._id },
+                    { recipient: joel._id }
+                ]
+            });
+            const alreadyRelatedIds = new Set([
+                ...allFriendships.map(f => f.requester.toString()),
+                ...allFriendships.map(f => f.recipient.toString()),
+                joel._id.toString()
+            ]);
+            const possibleRequesters = users.filter(u => !alreadyRelatedIds.has(u._id.toString()));
+            const chosenRequesters: any[] = [];
+            while (chosenRequesters.length < 10 && possibleRequesters.length > 0) {
+                const idx = Math.floor(Math.random() * possibleRequesters.length);
+                const user = possibleRequesters.splice(idx, 1)[0];
+                chosenRequesters.push(user);
+            }
+            for (const requester of chosenRequesters) {
+                await Friendship.create({
+                    requester: requester._id,
+                    recipient: joel._id,
+                    status: 'pending'
+                });
+            }
+        }
+        
         if (joel && david) {
             // Excluye a Joel y David de la lista de posibles amigos
             const possibleFriends = users.filter(u => ![joel._id.toString(), david._id.toString()].includes(u._id.toString()));
@@ -527,6 +568,7 @@ export async function seedDemoData() {
                     }).save();
                 }
             }
+            
             // Crea las amistades para David
             for (const friend of davidFriends) {
                 const exists = await Friendship.findOne({
@@ -543,88 +585,31 @@ export async function seedDemoData() {
                     }).save();
                 }
             }
+            
             console.log('JoelMoreno friends:');
             console.log(joelFriends.map(u => u.username).join(', '));
 
             console.log('DavidSanchez friends:');
             console.log(davidFriends.map(u => u.username).join(', '));
 
-            // Conversaciones individuales y de grupo para Joel (igual que antes)
-            const participants1 = [joel, joelFriends[0]].map(u => ({
-                participant: u._id,
-                participantModel: 'User'
-            }));
-            const conversation1 = await Conversation.create({
-                participants: participants1,
-                isGroup: false
-            });
-            await Message.create({
-                conversation: conversation1._id,
-                sender: joel._id,
-                senderModel: 'User',
-                text: '¡Hola! ¿Vamos a un evento este finde?',
-                readBy: [joel._id],
-                createdAt: new Date()
-            });
-            await Message.create({
-                conversation: conversation1._id,
-                sender: joelFriends[0]._id,
-                senderModel: 'User',
-                text: '¡Claro! ¿Dónde quedamos?',
-                readBy: [joelFriends[0]._id],
-                createdAt: new Date()
-            });
-            // Dos grupos
-            const group1 = [joel, ...joelFriends.slice(0, 4)].map(u => ({
-                participant: u._id,
-                participantModel: 'User'
-            }));
-            const group2 = [joel, ...joelFriends.slice(5, 10)].map(u => ({
-                participant: u._id,
-                participantModel: 'User'
-            }));
-            const conversationGroup1 = await Conversation.create({
-                participants: group1,
-                isGroup: true,
-                groupName: 'Grupo de Joel y amigos 1'
-            });
-            const conversationGroup2 = await Conversation.create({
-                participants: group2,
-                isGroup: true,
-                groupName: 'Grupo de Joel y amigos 2'
-            });
-            await Message.create({
-                conversation: conversationGroup1._id,
-                sender: joel._id,
-                senderModel: 'User',
-                text: '¡Bienvenidos al grupo!',
-                readBy: [joel._id],
-                createdAt: new Date()
-            });
-            await Message.create({
-                conversation: conversationGroup2._id,
-                sender: joel._id,
-                senderModel: 'User',
-                text: '¡Este es el segundo grupo!',
-                readBy: [joel._id],
-                createdAt: new Date()
-            });
-            // UserTrust para Joel
+            // UserTrust para Joel - usando la función segura
             const raters = joelFriends.slice(0, 20);
             for (let i = 0; i < raters.length; i++) {
-                await UserTrust.create({
-                    rated: joel._id,
-                    rater: raters[i]._id,
-                    score: Math.floor(Math.random() * 5) + 1,
-                    comment: `Trust demo #${i + 1}`,
-                    context: 'demo'
-                });
+                await createUserTrustSafe(
+                    joel._id,
+                    raters[i]._id,
+                    Math.floor(Math.random() * 5) + 1,
+                    `Trust demo #${i + 1}`,
+                    'demo'
+                );
             }
         }
 
         console.log('🎉 Demo data seeded successfully!');
         console.log('👤 Main users: JoelMoreno, DavidSanchez');
         console.log('👥 Users created: ' + users.length);
+        console.log('🎉 Events created: ' + events.length);
+        console.log('🏢 Businesses created: ' + businesses.length);
         console.log('🏙️ All users, events, and businesses distributed across Spain');
         await mongoose.disconnect();
         console.log('Disconnected from MongoDB');

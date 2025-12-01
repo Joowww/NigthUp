@@ -1,13 +1,38 @@
 // conversation.ts
 import mongoose, { Schema, model, Types, Document } from 'mongoose';
 
+export interface IGroupPollOption {
+  text: string;
+  voters: Types.ObjectId[];
+}
+
+export interface IGroupPoll {
+  _id: Types.ObjectId;
+  question: string;
+  options: IGroupPollOption[];
+  creator: Types.ObjectId;
+  isActive: boolean;
+  expiresAt?: Date;
+  createdAt: Date;
+}
+
+export interface IGroupParticipant {
+  participant: Types.ObjectId;
+  participantModel: 'User';
+  role: 'creator' | 'member';
+  joinedAt?: Date;
+}
+
 export interface IConversation extends Document {
   _id: Types.ObjectId;
-  isGroup: boolean; 
-  groupName?: string; 
-  groupAvatar?: string; 
-  groupAdmins?: Types.ObjectId[]; 
-  participants: Types.ObjectId[];
+  isGroup: boolean;
+  groupName?: string;
+  groupAvatar?: string;
+  groupAdmins?: Types.ObjectId[];
+  groupDescription?: string;
+  groupImage?: string;
+  groupPolls?: IGroupPoll[];
+  participants: IGroupParticipant[];
   lastMessage?: {
     message: string;
     senderId: Types.ObjectId;
@@ -22,12 +47,12 @@ const conversationSchema = new Schema<IConversation>(
   {
     isGroup: {
       type: Boolean,
-      default: false 
+      default: false
     },
     groupName: {
       type: String,
       required: function(this: IConversation) {
-        return this.isGroup; 
+        return this.isGroup;
       }
     },
     groupAvatar: {
@@ -36,13 +61,35 @@ const conversationSchema = new Schema<IConversation>(
     },
     groupAdmins: [{
       type: Schema.Types.ObjectId,
-      ref: 'User'
-    }],
-    participants: [{
-      type: Schema.Types.ObjectId,
       ref: 'User',
-      required: true
+      default: []
     }],
+    groupDescription: { type: String, default: '' },
+    groupImage: { type: String, default: '' },
+    groupPolls: [
+      {
+        _id: { type: Schema.Types.ObjectId, required: true },
+        question: { type: String, required: true },
+        options: [
+          {
+            text: { type: String, required: true },
+            voters: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }]
+          }
+        ],
+        creator: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        isActive: { type: Boolean, default: true },
+        expiresAt: { type: Date },
+        createdAt: { type: Date, required: true }
+      }
+    ],
+    participants: [
+      {
+        participant: { type: Schema.Types.ObjectId, ref: 'User', required: true },
+        participantModel: { type: String, enum: ['User'], required: true },
+        role: { type: String, enum: ['creator', 'member'], required: true },
+        joinedAt: { type: Date }
+      }
+    ],
     lastMessage: {
       type: {
         message: { type: String, required: true },
