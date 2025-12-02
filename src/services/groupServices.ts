@@ -1,5 +1,4 @@
 import { Conversation, IConversation, IGroupPoll } from '../models/conversation';
-import { User } from '../models/user';
 import mongoose, { Types } from 'mongoose';
 
 export class GroupService {
@@ -9,12 +8,14 @@ export class GroupService {
             {
                 participant: new Types.ObjectId(creatorId),
                 participantModel: 'User' as const,
-                role: 'creator' as const
+                role: 'creator' as const,
+                joinedAt: new Date()
             },
             ...participantIds.map(id => ({
                 participant: new Types.ObjectId(id),
                 participantModel: 'User' as const,
-                role: 'member' as const
+                role: 'member' as const,
+                joinedAt: new Date()
             }))
         ];
 
@@ -37,7 +38,7 @@ export class GroupService {
             throw new Error('Group not found');
         }
 
-        if (!(group.groupAdmins ?? []).includes(new Types.ObjectId(adminId))) {
+        if (!(group.groupAdmins ?? []).some(admin => admin.toString() === adminId)) {
             throw new Error('Only admins can add participants');
         }
 
@@ -126,7 +127,7 @@ export class GroupService {
             throw new Error('Group not found');
         }
 
-        if (!(group.groupAdmins ?? []).includes(new Types.ObjectId(adminId))) {
+        if (!(group.groupAdmins ?? []).some(admin => admin.toString() === adminId)) {
             throw new Error('Only admins can remove participants');
         }
 
@@ -144,7 +145,7 @@ export class GroupService {
             throw new Error('Group not found');
         }
 
-        if (!(group.groupAdmins ?? []).includes(new Types.ObjectId(adminId))) {
+        if (!(group.groupAdmins ?? []).some(admin => admin.toString() === adminId)) {
             throw new Error('Only admins can update group info');
         }
 

@@ -46,7 +46,10 @@ export function initializeSocket(io: Server) {
 
       try {
         const group = await chatService.createGroup(userId, name, participants);
-        
+        if (!group) {
+          socket.emit('error', { message: 'No se pudo crear el grupo (group es null)' });
+          return;
+        }
         // ✅ Notificar a todos los participantes del grupo
         const allParticipants = [userId, ...participants];
         allParticipants.forEach((participantId) => {
@@ -58,15 +61,12 @@ export function initializeSocket(io: Server) {
             createdAt: group.createdAt
           });
         });
-        
         // Confirmar al creador
         socket.emit('groupCreated', { 
           groupId: group._id,
           name: group.groupName 
         });
-        
         console.log(`✅ Grupo creado: ${group.groupName} por ${userId}`);
-        
       } catch (error: any) {
         console.error('❌ Error al crear grupo:', error);
         socket.emit('error', { message: 'Error al crear grupo', details: error.message });
@@ -109,10 +109,10 @@ socket.on('sendMessage', async (data) => {
       return; // ❌ No enviar el mensaje
     }
 
-    // Verificar acceso a la conversación
+    // Verificar acceso a la conversación (ahora usando participants.participant)
     const conversation = await Conversation.findOne({
       _id: conversationId,
-      participants: userId
+      'participants.participant': userId
     });
 
     if (!conversation) {

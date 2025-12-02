@@ -2,6 +2,7 @@ import { Request, Response } from 'express';
 import { ChatService } from '../services/chatServices';
 import { Conversation } from '../models/conversation';
 import { contentModerationService } from '../services/contentModerationService';
+import mongoose from 'mongoose';
 
 const chatService = new ChatService();
 
@@ -37,6 +38,11 @@ export async function httpCreateConversation(req: AuthenticatedRequest, res: Res
 
     const conversation = await chatService.findOrCreateConversation(req.user.id, recipientId);
     
+    // Verificar que la conversación se creó correctamente
+    if (!conversation) {
+      throw new Error('Failed to create conversation');
+    }
+    
     return res.status(201).json({ 
       conversationId: conversation._id,
       message: 'Conversation ready'
@@ -65,6 +71,11 @@ export async function httpCreateGroup(req: AuthenticatedRequest, res: Response) 
 
     const group = await chatService.createGroup(req.user.id, name, participants);
     
+    // Verificar que el grupo se creó correctamente
+    if (!group) {
+      throw new Error('Failed to create group');
+    }
+    
     return res.status(201).json({
       groupId: group._id,
       name: group.groupName,
@@ -77,7 +88,6 @@ export async function httpCreateGroup(req: AuthenticatedRequest, res: Response) 
   }
 }
 
-
 export async function httpGetMessages(req: AuthenticatedRequest, res: Response) {
   try {
     const { conversationId } = req.params;
@@ -88,7 +98,7 @@ export async function httpGetMessages(req: AuthenticatedRequest, res: Response) 
 
     const conversation = await Conversation.findOne({
       _id: conversationId,
-      participants: req.user.id
+      'participants.participant': new mongoose.Types.ObjectId(req.user.id)
     });
 
     if (!conversation) {
@@ -129,7 +139,7 @@ export async function httpSendMessage(req: AuthenticatedRequest, res: Response) 
   
       const conversation = await Conversation.findOne({
         _id: conversationId,
-        participants: req.user.id
+        'participants.participant': new mongoose.Types.ObjectId(req.user.id)
       });
   
       if (!conversation) {
@@ -139,9 +149,9 @@ export async function httpSendMessage(req: AuthenticatedRequest, res: Response) 
       const messageText = moderationResult.sanitizedMessage || text;
       const msg = await chatService.sendMessage(
         conversationId, 
-        req.user.id, 
-        'User',
-        messageText
+        req.user.id,
+        messageText,
+        replyTo
       );
       
       return res.status(201).json(msg);
@@ -164,7 +174,6 @@ export async function httpEditMessage(req: AuthenticatedRequest, res: Response) 
         return res.status(400).json({ error: 'text is required' });
       }
   
-      // ✅ MODERACIÓN AL EDITAR
       const moderationResult = contentModerationService.moderateMessage(text);
       
       if (!moderationResult.isAllowed) {
