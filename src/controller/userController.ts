@@ -810,3 +810,35 @@ export const resetPasswordWithToken = async (req: Request, res: Response): Promi
     return res.status(500).json({ error: 'Server error' });
   }
 };
+
+export const completeOnboardingHandler = async (req: Request, res: Response): Promise<Response> => {
+    try {
+        const userId = (req as any).user?.id || (req as any).user?._id;7
+        console.log('User ID from token:', userId);
+
+        if (!userId) {
+            return res.status(401).json({ error: 'Usuario no identificado' });
+        }
+
+        const { comunidad, intereses } = req.body;
+
+        if (!comunidad || !intereses) {
+            return res.status(400).json({ error: 'Faltan datos (comunidad o intereses)' });
+        }
+
+        const updatedUser = await userService.updateOnboardingData(userId, { comunidad, intereses });
+
+        if (!updatedUser) {
+            return res.status(404).json({ error: 'Usuario no encontrado' });
+        }
+
+        return res.status(200).json({ 
+            message: 'Onboarding completado con éxito', 
+            user: updatedUser 
+        });
+
+    } catch (error) {
+        console.error('Error en onboarding:', error);
+        return res.status(500).json({ error: 'Error del servidor' });
+    }
+};

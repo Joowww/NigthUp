@@ -29,8 +29,9 @@ import postRoutes from './routes/postRoutes';
 import initialInterestRoutes from './routes/initialInterestRoutes';
 import groupRoutes from './routes/groupRoutes';
 import userStatusRoutes from './routes/userStatusRoutes';
-import User from './models/user';
 import chatRoutes from './routes/chatRoutes';
+
+import User from './models/user';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -144,7 +145,9 @@ mongoose.connect(MONGO_URI)
     app.use('/api/initial-interest', initialInterestRoutes);
     app.use('/api/group', groupRoutes);
     app.use('/api/user-status', userStatusRoutes);
+    console.log('[APP] /api/group routes mounted');
     app.use('/api/chat', chatRoutes);
+    console.log('[APP] /api/post routes mounted');
 
     console.log('All routes registered including new features');
 

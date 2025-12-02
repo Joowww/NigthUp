@@ -1,22 +1,35 @@
+// groupController.ts
 import { Request, Response } from 'express';
-import { GroupService } from '../services/groupServices';
+import { ChatService } from '../services/chatServices';
+import { Conversation } from '../models/conversation';
+import mongoose from 'mongoose';
 
-const groupService = new GroupService();
+const chatService = new ChatService();
 
 export async function createGroup(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
-        const { groupName, participantIds, description, groupImage } = req.body;
+        const { groupName, participantIds } = req.body;
 
         if (!groupName || !Array.isArray(participantIds)) {
             return res.status(400).json({ error: 'Group name and participantIds are required' });
         }
 
-        const group = await groupService.createGroup(userId, groupName, participantIds, description, groupImage);
+        const group = await chatService.createGroup(userId, groupName, participantIds);
+        
+        if (!group) {
+            return res.status(500).json({ error: 'Failed to create group' });
+        }
         
         return res.status(201).json({
             message: 'Group created successfully',
-            group
+            group: {
+                _id: group._id,
+                groupName: group.groupName,
+                participants: group.participants,
+                groupAdmins: group.groupAdmins,
+                createdAt: group.createdAt
+            }
         });
     } catch (error) {
         return res.status(500).json({ 
@@ -36,11 +49,31 @@ export async function addGroupParticipants(req: Request, res: Response): Promise
             return res.status(400).json({ error: 'userIds must be an array' });
         }
 
-        const group = await groupService.addParticipants(groupId, userIds, adminId);
+        const group = await Conversation.findById(groupId);
         
+        if (!group || !group.isGroup) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        // Verificar que el usuario es admin
+        if (!group.groupAdmins?.some(admin => admin.toString() === adminId)) {
+            return res.status(403).json({ error: 'Only admins can add participants' });
+        }
+
+        // Añadir nuevos participantes
+        const newParticipants = userIds.map(userId => ({
+            participant: new mongoose.Types.ObjectId(userId),
+            participantModel: 'User' as const,
+            role: 'member' as const,
+            joinedAt: new Date()
+        }));
+
+        group.participants.push(...newParticipants);
+        await group.save();
+
         return res.status(200).json({
             message: 'Participants added successfully',
-            group
+            group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
         return res.status(500).json({ 
@@ -60,11 +93,39 @@ export async function createGroupPoll(req: Request, res: Response): Promise<Resp
             return res.status(400).json({ error: 'Question and at least 2 options are required' });
         }
 
-        const group = await groupService.createPoll(groupId, userId, question, options, expiresAt ? new Date(expiresAt) : undefined);
+        const group = await Conversation.findById(groupId);
         
+        if (!group || !group.isGroup) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        const isMember = group.participants.some(p => 
+            p.participant.toString() === userId
+        );
+
+        if (!isMember) {
+            return res.status(403).json({ error: 'Only group members can create polls' });
+        }
+
+        const poll = {
+            _id: new mongoose.Types.ObjectId(),
+            question,
+            options: options.map(opt => ({ text: opt, voters: [] })),
+            creator: new mongoose.Types.ObjectId(userId),
+            isActive: true,
+            expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+            createdAt: new Date()
+        };
+
+        if (!group.groupPolls) {
+            group.groupPolls = [];
+        }
+        group.groupPolls.push(poll);
+        await group.save();
+
         return res.status(201).json({
             message: 'Poll created successfully',
-            group
+            group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
         return res.status(500).json({ 
@@ -84,11 +145,33 @@ export async function voteInGroupPoll(req: Request, res: Response): Promise<Resp
             return res.status(400).json({ error: 'optionIndex must be a number' });
         }
 
-        const group = await groupService.voteInPoll(groupId, pollId, userId, optionIndex);
+        const group = await Conversation.findById(groupId);
         
+        if (!group || !group.isGroup) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        const poll = group.groupPolls?.find((p: any) => p._id.toString() === pollId);
+        if (!poll || !poll.isActive) {
+            return res.status(404).json({ error: 'Poll not found or inactive' });
+        }
+
+        const hasVoted = poll.options.some((option: any) => 
+            option.voters.some((voter: any) => voter.toString() === userId)
+        );
+
+        if (hasVoted) {
+            return res.status(400).json({ error: 'You have already voted in this poll' });
+        }
+
+        if (poll.options[optionIndex]) {
+            poll.options[optionIndex].voters.push(new mongoose.Types.ObjectId(userId));
+            await group.save();
+        }
+
         return res.status(200).json({
             message: 'Vote registered successfully',
-            group
+            group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
         return res.status(500).json({ 
@@ -101,7 +184,15 @@ export async function voteInGroupPoll(req: Request, res: Response): Promise<Resp
 export async function getUserGroups(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
-        const groups = await groupService.getUserGroups(userId);
+        
+        const groups = await Conversation.find({
+            isGroup: true,
+            'participants.participant': new mongoose.Types.ObjectId(userId)
+        })
+        .populate('participants.participant', 'name username avatar')
+        .populate('lastMessage')
+        .populate('groupAdmins', 'name username')
+        .sort({ updatedAt: -1 });
         
         return res.status(200).json(groups);
     } catch (error) {
@@ -117,11 +208,34 @@ export async function removeGroupParticipant(req: Request, res: Response): Promi
         const adminId = (req as any).user.id;
         const { groupId, userId } = req.params;
 
-        const group = await groupService.removeParticipant(groupId, userId, adminId);
+        const group = await Conversation.findById(groupId);
         
+        if (!group || !group.isGroup) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        if (!group.groupAdmins?.some(admin => admin.toString() === adminId)) {
+            return res.status(403).json({ error: 'Only admins can remove participants' });
+        }
+
+        // No permitir que el creador se elimine a sí mismo
+        const isCreator = group.participants.some(p => 
+            p.participant.toString() === userId && p.role === 'creator'
+        );
+        
+        if (isCreator) {
+            return res.status(403).json({ error: 'Cannot remove group creator' });
+        }
+
+        group.participants = group.participants.filter(p => 
+            p.participant.toString() !== userId
+        );
+
+        await group.save();
+
         return res.status(200).json({
             message: 'Participant removed successfully',
-            group
+            group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
         return res.status(500).json({ 
@@ -137,15 +251,25 @@ export async function updateGroupInfo(req: Request, res: Response): Promise<Resp
         const { groupId } = req.params;
         const { groupName, groupDescription, groupImage } = req.body;
 
-        const group = await groupService.updateGroupInfo(groupId, adminId, {
-            groupName,
-            groupDescription,
-            groupImage
-        });
+        const group = await Conversation.findById(groupId);
         
+        if (!group || !group.isGroup) {
+            return res.status(404).json({ error: 'Group not found' });
+        }
+
+        if (!group.groupAdmins?.some(admin => admin.toString() === adminId)) {
+            return res.status(403).json({ error: 'Only admins can update group info' });
+        }
+
+        if (groupName) group.groupName = groupName;
+        if (groupDescription !== undefined) group.groupDescription = groupDescription;
+        if (groupImage !== undefined) group.groupImage = groupImage;
+
+        await group.save();
+
         return res.status(200).json({
             message: 'Group updated successfully',
-            group
+            group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
         return res.status(500).json({ 

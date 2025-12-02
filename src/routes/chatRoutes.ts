@@ -1,9 +1,14 @@
+//chatRoutes.ts
 import { Router } from 'express';
 import { 
     httpGetConversations, 
     httpGetMessages,
     httpCreateConversation,
-    httpSendMessage
+    httpCreateGroup,
+    httpSendMessage,
+    httpEditMessage,
+    httpDeleteMessage,
+    httpReactToMessage
 } from '../controller/chatController';
 import { authenticateToken } from '../auth/middleware';
 
@@ -11,22 +16,16 @@ const router = Router();
 
 /**
  * @swagger
- * tags:
- *   name: Chat
- *   description: Endpoints para gestión del chat entre usuarios y negocios
- */
-
-/**
- * @swagger
  * /api/chat:
  *   get:
- *     summary: Obtener la bandeja de entrada (chats) del usuario
+ *     summary: 📋 Obtener todas mis conversaciones
+ *     description: Lista todas las conversaciones donde participo (chats privados y grupos)
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
  *     responses:
  *       200:
- *         description: Lista de conversaciones formateada para la UI
+ *         description: Lista de conversaciones
  *         content:
  *           application/json:
  *             schema:
@@ -36,81 +35,33 @@ const router = Router();
  *                 properties:
  *                   id:
  *                     type: string
- *                     description: ID de la conversación
- *                   participantId:
- *                     type: string
- *                     description: ID del otro usuario o negocio
+ *                     example: "650c1f1e8a9b..."
+ *                   isGroup:
+ *                     type: boolean
+ *                     example: false
  *                   name:
  *                     type: string
- *                     description: Nombre para mostrar
+ *                     example: "John Doe"
  *                   avatar:
  *                     type: string
- *                     description: URL del avatar
- *                   type:
- *                     type: string
- *                     enum: [user, venue]
- *                     description: Tipo de interlocutor
+ *                     example: "https://via.placeholder.com/150"
  *                   lastMessage:
  *                     type: string
- *                     description: Texto del último mensaje
+ *                     example: "Hola, ¿cómo estás?"
  *                   lastMessageTime:
  *                     type: string
  *                     format: date-time
- *                   unreadCount:
- *                     type: integer
  *       401:
- *         description: Token inválido o no enviado
+ *         description: No autorizado
  */
 router.get('/', authenticateToken, httpGetConversations);
 
 /**
  * @swagger
- * /api/chat/messages/{conversationId}:
- *   get:
- *     summary: Obtener historial de mensajes de un chat
- *     tags: [Chat]
- *     security:
- *       - bearerAuth: []
- *     parameters:
- *       - in: path
- *         name: conversationId
- *         required: true
- *         schema:
- *           type: string
- *         description: ID de la conversación
- *     responses:
- *       200:
- *         description: Historial de mensajes
- *         content:
- *           application/json:
- *             schema:
- *               type: array
- *               items:
- *                 type: object
- *                 properties:
- *                   id:
- *                     type: string
- *                   senderId:
- *                     type: string
- *                   text:
- *                     type: string
- *                   timestamp:
- *                     type: string
- *                     format: date-time
- *                   read:
- *                     type: boolean
- *       401:
- *         description: Unauthorized
- *       404:
- *         description: Conversación no encontrada
- */
-router.get('/messages/:conversationId', authenticateToken, httpGetMessages);
-
-/**
- * @swagger
- * /api/chat:
+ * /api/chat/conversation:
  *   post:
- *     summary: Iniciar un nuevo chat (o obtener uno existente)
+ *     summary: 💬 Iniciar chat privado (1 a 1)
+ *     description: Crea o encuentra una conversación privada con otro usuario
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
@@ -122,17 +73,11 @@ router.get('/messages/:conversationId', authenticateToken, httpGetMessages);
  *             type: object
  *             required:
  *               - recipientId
- *               - recipientModel
  *             properties:
  *               recipientId:
  *                 type: string
- *                 description: ID del usuario o negocio con quien quieres hablar
- *                 example: "650c1f1e8a9b..."
- *               recipientModel:
- *                 type: string
- *                 enum: [User, Business]
- *                 description: Indica si el destinatario es un Usuario o un Negocio
- *                 example: "User"
+ *                 description: ID del destinatario
+ *                 example: "690aac54af3cc26097338d6e"
  *     responses:
  *       201:
  *         description: Conversación lista
@@ -143,18 +88,157 @@ router.get('/messages/:conversationId', authenticateToken, httpGetMessages);
  *               properties:
  *                 conversationId:
  *                   type: string
+ *                   example: "691f3e5d57c98c4236367f91"
+ *                 message:
+ *                   type: string
+ *                   example: "Conversation ready"
  *       400:
- *         description: Faltan datos o son incorrectos
+ *         description: recipientId es requerido
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 error:
+ *                   type: string
+ *                   example: "recipientId is required"
  *       401:
  *         description: No autorizado
  */
-router.post('/', authenticateToken, httpCreateConversation);
+router.post('/conversation', authenticateToken, httpCreateConversation);
+
+/**
+ * @swagger
+ * /api/chat/group:
+ *   post:
+ *     summary: 👥 Crear grupo
+ *     description: Crea un nuevo chat grupal con múltiples participantes
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - name
+ *               - participants
+ *             properties:
+ *               name:
+ *                 type: string
+ *                 description: Nombre del grupo
+ *                 example: "Equipo de Fútbol"
+ *               participants:
+ *                 type: array
+ *                 items:
+ *                   type: string
+ *                 description: IDs de usuarios a añadir (sin incluirte)
+ *                 example: ["690aac54af3cc26097338d6e", "690bbc65bg4dd37108449e7f"]
+ *     responses:
+ *       201:
+ *         description: Grupo creado exitosamente
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 groupId:
+ *                   type: string
+ *                   example: "691f3e5d57c98c4236367f91"
+ *                 name:
+ *                   type: string
+ *                   example: "Equipo de Fútbol"
+ *                 participants:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *       400:
+ *         description: Datos inválidos
+ *       401:
+ *         description: No autorizado
+ */
+router.post('/group', authenticateToken, httpCreateGroup);
+
+/**
+ * @swagger
+ * /api/chat/{conversationId}/messages:
+ *   get:
+ *     summary: 📜 Ver historial de mensajes
+ *     description: Obtiene todos los mensajes de una conversación específica
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: conversationId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: ID de la conversación
+ *         example: "691f3e5d57c98c4236367f91"
+ *     responses:
+ *       200:
+ *         description: Lista de mensajes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   id:
+ *                     type: string
+ *                     example: "691f3e5d57c98c4236367f92"
+ *                   sender:
+ *                     type: object
+ *                     properties:
+ *                       _id:
+ *                         type: string
+ *                       name:
+ *                         type: string
+ *                       username:
+ *                         type: string
+ *                       avatar:
+ *                         type: string
+ *                   text:
+ *                     type: string
+ *                     example: "Hola, ¿qué tal?"
+ *                   createdAt:
+ *                     type: string
+ *                     format: date-time
+ *                   isEdited:
+ *                     type: boolean
+ *                   isDeleted:
+ *                     type: boolean
+ *                   reactions:
+ *                     type: array
+ *                     items:
+ *                       type: object
+ *                       properties:
+ *                         user:
+ *                           type: string
+ *                         emoji:
+ *                           type: string
+ *                   read:
+ *                     type: boolean
+ *       403:
+ *         description: No tienes acceso a esta conversación
+ *       404:
+ *         description: Conversación no encontrada
+ */
+router.get('/:conversationId/messages', authenticateToken, httpGetMessages);
 
 /**
  * @swagger
  * /api/chat/message:
  *   post:
- *     summary: Enviar un mensaje de texto
+ *     summary: ✉️ Enviar mensaje
+ *     description: Envía un nuevo mensaje a una conversación
  *     tags: [Chat]
  *     security:
  *       - bearerAuth: []
@@ -170,15 +254,78 @@ router.post('/', authenticateToken, httpCreateConversation);
  *             properties:
  *               conversationId:
  *                 type: string
- *                 description: ID de la conversación (obtenido en POST /api/chat)
- *                 example: "650c1f1e8a9b..."
+ *                 description: ID de la conversación
+ *                 example: "691f3e5d57c98c4236367f91"
  *               text:
  *                 type: string
- *                 description: El mensaje a enviar
- *                 example: "Hola, ¿qué tal?"
+ *                 description: Contenido del mensaje
+ *                 example: "Hola, ¿cómo estás?"
+ *               replyTo:
+ *                 type: string
+ *                 description: (Opcional) ID del mensaje a responder
+ *                 example: "691f3e5d57c98c4236367f92"
  *     responses:
  *       201:
- *         description: Mensaje enviado correctamente
+ *         description: Mensaje enviado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 _id:
+ *                   type: string
+ *                 conversation:
+ *                   type: string
+ *                 sender:
+ *                   type: object
+ *                 text:
+ *                   type: string
+ *                 createdAt:
+ *                   type: string
+ *                   format: date-time
+ *                 isEdited:
+ *                   type: boolean
+ *                 isDeleted:
+ *                   type: boolean
+ *       400:
+ *         description: Datos faltantes
+ *       403:
+ *         description: No tienes acceso a esta conversación
+ */
+router.post('/message', authenticateToken, httpSendMessage);
+
+/**
+ * @swagger
+ * /api/chat/message/{messageId}:
+ *   put:
+ *     summary: ✏️ Editar mensaje
+ *     description: Modifica el texto de un mensaje propio
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "691f3e5d57c98c4236367f92"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - text
+ *             properties:
+ *               text:
+ *                 type: string
+ *                 description: Nuevo texto
+ *                 example: "Mensaje corregido"
+ *     responses:
+ *       200:
+ *         description: Mensaje editado
  *         content:
  *           application/json:
  *             schema:
@@ -188,20 +335,106 @@ router.post('/', authenticateToken, httpCreateConversation);
  *                   type: string
  *                 text:
  *                   type: string
- *                 createdAt:
+ *                 isEdited:
+ *                   type: boolean
+ *                   example: true
+ *       400:
+ *         description: Error al editar
+ *       403:
+ *         description: No eres el autor
+ */
+router.put('/message/:messageId', authenticateToken, httpEditMessage);
+
+/**
+ * @swagger
+ * /api/chat/message/{messageId}:
+ *   delete:
+ *     summary: 🗑️ Eliminar mensaje
+ *     description: Marca el mensaje como eliminado (soft delete)
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "691f3e5d57c98c4236367f92"
+ *     responses:
+ *       200:
+ *         description: Mensaje eliminado
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 success:
+ *                   type: boolean
+ *                   example: true
+ *                 message:
  *                   type: string
- *                   format: date-time
- *                 sender:
- *                   type: string
- *                 conversation:
+ *                   example: "Message deleted"
+ *                 messageId:
  *                   type: string
  *       400:
- *         description: Faltan datos
- *       401:
+ *         description: Error al eliminar
+ *       403:
  *         description: No autorizado
- *       500:
- *         description: Error del servidor
  */
-router.post('/message', authenticateToken, httpSendMessage);
+router.delete('/message/:messageId', authenticateToken, httpDeleteMessage);
+
+/**
+ * @swagger
+ * /api/chat/message/{messageId}/react:
+ *   post:
+ *     summary: 👍 Reaccionar a mensaje
+ *     description: Añade o quita una reacción emoji
+ *     tags: [Chat]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: messageId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         example: "691f3e5d57c98c4236367f92"
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - emoji
+ *             properties:
+ *               emoji:
+ *                 type: string
+ *                 description: Emoji a usar
+ *                 example: "👍"
+ *     responses:
+ *       200:
+ *         description: Reacción actualizada
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 messageId:
+ *                   type: string
+ *                 reactions:
+ *                   type: array
+ *                   items:
+ *                     type: object
+ *                     properties:
+ *                       user:
+ *                         type: string
+ *                       emoji:
+ *                         type: string
+ *       400:
+ *         description: emoji es requerido
+ */
+router.post('/message/:messageId/react', authenticateToken, httpReactToMessage);
 
 export default router;
