@@ -30,6 +30,7 @@ import initialInterestRoutes from './routes/initialInterestRoutes';
 import groupRoutes from './routes/groupRoutes';
 import userStatusRoutes from './routes/userStatusRoutes';
 import User from './models/user';
+import chatRoutes from './routes/chatRoutes';
 
 // Cargar variables de entorno
 dotenv.config();
@@ -38,6 +39,8 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 app.use(express.json());
+setupSwagger(app);
+
 
 // Servir archivos estáticos
 app.use('/uploads', express.static('uploads'));
@@ -141,11 +144,9 @@ mongoose.connect(MONGO_URI)
     app.use('/api/initial-interest', initialInterestRoutes);
     app.use('/api/group', groupRoutes);
     app.use('/api/user-status', userStatusRoutes);
+    app.use('/api/chat', chatRoutes);
 
     console.log('All routes registered including new features');
-
-    // Configurar Swagger
-    setupSwagger(app);
 
     // Rutas de prueba
     app.get('/api/rating/test', (req, res) => {
