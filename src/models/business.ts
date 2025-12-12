@@ -7,14 +7,16 @@ export interface IBusiness {
   phone?: string;
   email?: string;
   location: {
-        type: string;
-        coordinates: [number, number];
-    };
+    type: string;
+    coordinates: [number, number];
+  };
   events: Types.ObjectId[];
   managers: Types.ObjectId[];
   active: boolean;
   avatar?: string;
 }
+
+//prueba antigravity
 
 const businessSchema = new Schema<IBusiness>({
   name: { type: String, required: true },
@@ -22,23 +24,23 @@ const businessSchema = new Schema<IBusiness>({
   phone: { type: String },
   email: { type: String },
   location: {
-        type: {
-            type: String,
-            enum: ['Point'],
-            required: true
-        },
-        coordinates: {
-            type: [Number],
-            required: true
-        }
+    type: {
+      type: String,
+      enum: ['Point'],
+      required: true
     },
+    coordinates: {
+      type: [Number],
+      required: true
+    }
+  },
   events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
   managers: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
   active: { type: Boolean, default: true },
-  avatar: { type: String, default: '' } 
-}, { 
-  timestamps: false, 
-  versionKey: false 
+  avatar: { type: String, default: '' }
+}, {
+  timestamps: false,
+  versionKey: false
 });
 
 // Añade el índice geoespacial para location
