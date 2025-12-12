@@ -142,7 +142,8 @@ const options: swaggerJSDoc.Options = {
         './src/routes/pollRoutes.ts',
         './src/routes/eventTinderRoutes.ts',
         './src/routes/chatRoutes.ts',
-        './src/routes/postRoutes.ts'
+        './src/routes/postRoutes.ts',
+        './src/routes/aiRoutes.ts'
     ],
 };
 
