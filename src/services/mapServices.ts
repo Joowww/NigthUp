@@ -133,4 +133,50 @@ export class MapService {
       users
     };
   }
+
+   // Obtener negocios en un área del mapa (viewport)
+   async getBusinessesInArea(
+    minLng: number,
+    minLat: number,
+    maxLng: number,
+    maxLat: number
+  ): Promise<any[]> {
+    const polygon = [
+      [minLng, minLat],
+      [maxLng, minLat],
+      [maxLng, maxLat],
+      [minLng, maxLat],
+      [minLng, minLat]
+    ];
+
+    return await Business.find({
+      active: true,
+      location: {
+        $geoWithin: {
+          $geometry: {
+            type: 'Polygon',
+            coordinates: [polygon]
+          }
+        }
+      }
+    })
+    .populate('events', 'name date location')
+    .select('name location events avatar address');
+  }
+
+  // Obtener todos los datos para el mapa (negocios + eventos)
+  async getAllMapData(): Promise<{
+    businesses: any[];
+    events: any[];
+  }> {
+    const businesses = await Business.find({ active: true })
+      .populate('events', 'name date location')
+      .select('name location events avatar address');
+
+    const events = await Event.find({ active: true })
+      .select('name date location description');
+
+    return { businesses, events };
+  }
+
 }

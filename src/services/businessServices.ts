@@ -6,6 +6,32 @@ export class BusinessService {
     return await business.save();
   }
 
+
+
+  async getAllBusinesses(
+    skip: number = 0, 
+    limit: number = 10, 
+    query?: string
+  ): Promise<{ businesses: IBusiness[], total: number }> {
+    
+    let filter: any = { active: true };
+
+    if (query) {
+      // Filtro por nombre de la discoteca (case-insensitive)
+      filter.name = { $regex: query, $options: 'i' }; 
+    }
+
+    const businesses = await Business.find(filter)
+      .skip(skip)
+      .limit(limit)
+      .populate('events') // Necesario para "ver los eventos de aquel lugar" en modo lista
+      .populate('managers', 'username email');
+    
+    const total = await Business.countDocuments(filter);
+    
+    return { businesses, total };
+  }
+/*
   async getAllBusinesses(skip: number = 0, limit: number = 10): Promise<{businesses: IBusiness[], total: number}> {
     const businesses = await Business.find({ active: true })
       .skip(skip)
@@ -15,7 +41,7 @@ export class BusinessService {
     
     const total = await Business.countDocuments({ active: true });
     return { businesses, total };
-  }
+  }*/
 
   async getAllBusinessesWithInactive(skip: number = 0, limit: number = 10): Promise<{businesses: IBusiness[], total: number}> {
     const businesses = await Business.find()
@@ -93,4 +119,47 @@ export class BusinessService {
       { new: true }
     ).populate('events').populate('managers', 'username email');
   }
+
+  ///////////////////////FUNCIONES PARA EL MAPA/////////////////////
+
+// Obtener todos los negocios para el mapa (sin paginación)
+async getAllBusinessesForMap(): Promise<IBusiness[]> {
+  return await Business.find({ active: true })
+    .select('name location events avatar')
+    .populate('events', 'name date');
 }
+
+// Obtener negocios en un área específica del mapa
+async getBusinessesInArea(
+  minLng: number,
+  minLat: number,
+  maxLng: number,
+  maxLat: number
+): Promise<IBusiness[]> {
+  const polygon = [
+    [minLng, minLat],
+    [maxLng, minLat],
+    [maxLng, maxLat],
+    [minLng, maxLat],
+    [minLng, minLat]
+  ];
+
+  return await Business.find({
+    active: true,
+    location: {
+      $geoWithin: {
+        $geometry: {
+          type: 'Polygon',
+          coordinates: [polygon]
+        }
+      }
+    }
+  })
+  .populate('events')
+  .populate('managers', 'username email');
+}
+
+}
+
+
+/////////////////////MINIM 2 BRYAN/////////////////////
