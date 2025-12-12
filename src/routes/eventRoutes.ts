@@ -19,7 +19,8 @@ import {
     getEventsByParticipant,
     getEventIdsByParticipant,
     isUserInEvent,
-    getParticipantsByEvent
+    getParticipantsByEvent,
+    getEventsByManager
 } from '../controller/eventController';
 import { authenticateToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager } from '../middleware/roleMiddleware';
@@ -353,9 +354,44 @@ router.get('/with-inactive', authenticateToken, requireAdmin, getAllEventsWithIn
 
 /**
  * @swagger
+ * /api/event/create/{managerId}:
+ *   post:
+ *     summary: Create a new event and assign to manager's business
+ *     tags: [Events - Admin/Manager]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: managerId
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: Manager ID to link the event to their business
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             $ref: '#/components/schemas/EventCreate'
+ *     responses:
+ *       201:
+ *         description: Event created and assigned successfully
+ *       400:
+ *         description: Error in event data
+ *       401:
+ *         description: Unauthorized
+ *       403:
+ *         description: Admin or manager privileges required
+ *       500:
+ *         description: Failed to create event
+ */
+router.post('/create/:managerId', authenticateToken, requireAdminOrManager, createEvent);
+
+/**
+ * @swagger
  * /api/event:
  *   post:
- *     summary: Create a new event - Admin only
+ *     summary: Create a new event - Admin only (Generic)
  *     tags: [Events - Admin Only]
  *     security:
  *       - bearerAuth: []
@@ -417,7 +453,7 @@ router.post('/', authenticateToken, requireAdmin, createEvent);
  *       404:
  *         description: Event not found
  */
-router.patch('/:identifier/disable', authenticateToken, requireAdmin, disableEventByIdentifier);
+router.patch('/:identifier/disable', authenticateToken, requireAdminOrManager, disableEventByIdentifier);
 
 /**
  * @swagger
@@ -453,7 +489,7 @@ router.patch('/:identifier/disable', authenticateToken, requireAdmin, disableEve
  *       404:
  *         description: Event not found
  */
-router.patch('/:identifier/reactivate', authenticateToken, requireAdmin, reactivateEventByIdentifier);
+router.patch('/:identifier/reactivate', authenticateToken, requireAdminOrManager, reactivateEventByIdentifier);
 
 /**
  * @swagger
@@ -752,6 +788,33 @@ router.post('/:identifier/unlike', authenticateToken, unlikeEvent);
  *         description: Event not found
  */
 router.get('/:identifier/like-status', authenticateToken, getLikeStatus);
+
+
+/**
+ * @swagger
+ * /api/event/manager/{userId}:
+ *   get:
+ *     summary: Obtener eventos gestionados por un manager
+ *     tags: [Events - Public]
+ *     parameters:
+ *       - in: path
+ *         name: userId
+ *         required: true
+ *         schema:
+ *           type: string
+ *     responses:
+ *       200:
+ *         description: Lista de eventos del manager
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 $ref: '#/components/schemas/Event'
+ *       500:
+ *         description: Error del servidor
+ */
+router.get('/manager/:userId', getEventsByManager);
 
 /**
  * @swagger
