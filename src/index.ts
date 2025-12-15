@@ -36,7 +36,7 @@ import User from './models/user';
 dotenv.config();
 
 const app = express();
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 app.use(cors());
 app.use(express.json());
@@ -48,7 +48,7 @@ app.use('/public', express.static('public'));
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: "http://localhost:4200",
+        origin: process.env.FRONTEND_URL || "http://localhost:4200",
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     }
 });

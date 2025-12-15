@@ -25,11 +25,13 @@ export class AiService {
         }
 
         try {
+            const dataIn = "hi ha alguna cosa de coding? .... Photography ";
+
             const prompt = `
             Eres un asistente inteligente para una app de eventos.
             Analiza la siguiente consulta de un usuario y extrae los criterios de búsqueda en formato JSON.
             
-            Consulta: "${userQuery}"
+            Consulta: "${userQuery}" sobre aquests dades: ${dataIn}
 
             Reglas:
             1. Corrige errores tipográficos obvios en "keywords" (ej. "Tecnho" -> "Techno").
