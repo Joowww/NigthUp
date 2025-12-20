@@ -12,47 +12,37 @@ export async function searchEventsWithAi(req: Request, res: Response): Promise<R
             return res.status(400).json({ message: 'Query is required' });
         }
 
-        const criteria = await aiService.analyzeQuery(query);
-        console.log('[AI Controller] Criteria extracted:', criteria);
+        // 1. Búsqueda Semántica (Weaviate)
+        // Obtenemos los IDs de los eventos semánticamente relevantes
+        const searchResult = await aiService.analyzeQuery(query);
+        const relevantEventIds = searchResult.eventIds;
 
-        const mongooseFilter: any = { active: true };
+        console.log(`[AI Controller] Weaviate returned ${relevantEventIds.length} candidates.`);
 
-        if (criteria.keywords) {
-            const regex = new RegExp(criteria.keywords, 'i');
-            mongooseFilter.$or = [
-                { name: regex },
-                { description: regex }
-            ];
-        }
+        // 2. Recuperación de datos completos (MongoDB)
+        // Filtramos en Mongo solo los eventos que la IA consideró relevantes
+        // Nota: Mantenemos el filtro { active: true } por seguridad
+        const events = await Event.find({
+            _id: { $in: relevantEventIds },
+            active: true
+        });
 
-        if (criteria.category) {
-            mongooseFilter.category = new RegExp(criteria.category, 'i');
-        }
+        // Opcional: Podríamos reordenarlos para respetar el orden de relevancia de Weaviate
+        const sortedEvents = relevantEventIds
+            .map(id => events.find(e => e._id.toString() === id))
+            .filter(e => e !== undefined);
 
-        if (criteria.maxPrice !== undefined) {
-            mongooseFilter.price = { $lte: criteria.maxPrice };
-        }
-
-        if (criteria.date) {
-            const startDate = new Date(criteria.date);
-            startDate.setHours(0, 0, 0, 0);
-
-            const endDate = new Date(criteria.date);
-            endDate.setHours(23, 59, 59, 999);
-
-            mongooseFilter.schedule = { $gte: startDate, $lte: endDate };
-        }
-        // 3. Ejecutar la búsqueda
-        console.log('[AI Controller] Final Mongoose Filter:', JSON.stringify(mongooseFilter, null, 2));
-        const events = await Event.find(mongooseFilter).limit(20);
+        // 3. Generar respuesta natural (OpenAI)
+        const naturalResponse = await aiService.generateResponse(query, sortedEvents);
 
         return res.status(200).json({
             meta: {
                 originalQuery: query,
-                interpretedCriteria: criteria
+                strategy: 'semantic-search-weaviate + generative-response'
             },
-            count: events.length,
-            events: events
+            message: naturalResponse, // <--- Mensaje generado por GPT
+            count: sortedEvents.length,
+            events: sortedEvents
         });
 
     } catch (error) {

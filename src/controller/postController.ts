@@ -82,14 +82,53 @@ export async function getForYouFeed(req: Request, res: Response): Promise<Respon
     }
 }
 
+export async function createPost(req: Request, res: Response): Promise<Response> {
+    try {
+        const userId = (req as any).user.id;
+        const { caption, location, isVideo, musicTitle, musicArtist, musicCover } = req.body;
+
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const isVideoBool = isVideo === 'true' || isVideo === true;
+        const mediaUrl = `/uploads/posts/${req.file.filename}`;
+
+        const postData: any = {
+            user: userId,
+            caption: caption || '',
+            location: location || '',
+            media: [{
+                url: mediaUrl,
+                type: isVideoBool ? 'video' : 'image'
+            }],
+            music: musicTitle ? {
+                title: musicTitle,
+                artist: musicArtist || 'Unknown Artist',
+                coverUrl: musicCover || ''
+            } : undefined,
+            isPublic: true
+        };
+
+        const post = await postService.createPost(postData);
+        return res.status(201).json(post);
+    } catch (error) {
+        console.error('Error creating post:', error);
+        return res.status(500).json({
+            error: 'Failed to create post',
+            details: (error as Error).message
+        });
+    }
+}
+
 export async function createUserPost(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
         const { caption, location, tags, isPublic } = req.body;
 
         const files = req.files as Express.Multer.File[];
-        const media = files?.map(file => ({ 
-            url: '/uploads/posts/${file.filename}',
+        const media = files?.map(file => ({
+            url: `/uploads/posts/${file.filename}`,
             type: file.mimetype.startsWith('video/') ? 'video' as const : 'image' as const
         })) || [];
 
@@ -115,8 +154,8 @@ export async function createEventPost(req: Request, res: Response): Promise<Resp
         const { eventId, caption, location, tags, isPublic } = req.body;
 
         const files = req.files as Express.Multer.File[];
-        const media = files?.map(file => ({ 
-            url: '/uploads/posts/${file.filename}',
+        const media = files?.map(file => ({
+            url: `/uploads/posts/${file.filename}`,
             type: file.mimetype.startsWith('video/') ? 'video' as const : 'image' as const
         })) || [];
 
@@ -284,6 +323,24 @@ export async function deleteComment(req: Request, res: Response): Promise<Respon
     } catch (error) {
         return res.status(500).json({
             error: 'Error deleting comment',
+            details: (error as Error).message
+        });
+    }
+}
+
+export async function getPostComments(req: Request, res: Response): Promise<Response> {
+    try {
+        const { postId } = req.params;
+        const comments = await postService.getComments(postId);
+
+        if (comments === null) {
+            return res.status(404).json({ error: 'Post not found' });
+        }
+
+        return res.status(200).json(comments);
+    } catch (error) {
+        return res.status(500).json({
+            error: 'Error retrieving comments',
             details: (error as Error).message
         });
     }

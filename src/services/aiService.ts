@@ -2,12 +2,8 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-export interface EventSearchCriteria {
-    keywords?: string;
-    category?: string;
-    date?: Date;
-    maxPrice?: number;
-    city?: string;
+export interface AiSearchResult {
+    eventIds: string[];
 }
 
 export class AiService {
@@ -18,36 +14,69 @@ export class AiService {
         this.apiKey = process.env.OPENAI_API_KEY || '';
     }
 
-    async analyzeQuery(userQuery: string): Promise<EventSearchCriteria> {
+    async analyzeQuery(userQuery: string): Promise<AiSearchResult> {
+        try {
+            const weaviateClient = (await import('../config/weaviate')).default;
+
+            // 1. Búsqueda semántica en Weaviate
+            // Busca eventos cuyo significado se parezca a 'userQuery'
+            const result = await weaviateClient.graphql
+                .get()
+                .withClassName('Event')
+                .withFields('eventId name description category _additional { certainty }')
+                .withNearText({ concepts: [userQuery] })
+                .withLimit(10) // Traemos los 10 más relevantes
+                .do();
+
+            const foundEvents = result.data.Get.Event;
+
+            if (!foundEvents || foundEvents.length === 0) {
+                console.log('[AiService] No candidates found in Weaviate (before filtering).');
+                return { eventIds: [] };
+            }
+
+            console.log(`[AiService] Found ${foundEvents.length} candidates before filtering. Scores:`);
+            foundEvents.forEach((e: any) => console.log(` - ${e.name} (${e.category}): ${e._additional.certainty}`));
+
+            // Exigimos un mínimo de coincidencia (certidumbre > 0.55) para filtrar ruido
+            // Bajamos de 0.65 a 0.55 para permitir consultas más coloquiales
+            const relevantEvents = foundEvents
+                .filter((e: any) => e._additional.certainty > 0.55)
+                .map((e: any) => e.eventId);
+
+            console.log(`[AiService] Semantic search found ${relevantEvents.length} events for query: "${userQuery}"`);
+
+            // Devolvemos la lista de IDs para que el controller los recupere de Mongo
+            return { eventIds: relevantEvents };
+
+        } catch (error) {
+            console.error('[AiService] Error in semantic search:', error);
+            // Si falla Weaviate, devolvemos lista vacía
+            return { eventIds: [] };
+        }
+    }
+
+    async generateResponse(userQuery: string, events: any[]): Promise<string> {
         if (!this.apiKey || this.apiKey === 'PENDING') {
-            console.warn('[AiService] No AI_API_KEY found, using fallback simple search.');
-            return { keywords: userQuery };
+            return "Aquí tienes los eventos que he encontrado:";
         }
 
         try {
-            const dataIn = "hi ha alguna cosa de coding? .... Photography ";
+            const eventNames = events.map(e => e.name).join(', ');
+            const context = events.length > 0
+                ? `Encontré estos eventos: ${eventNames}`
+                : "No encontré eventos exactos pero mostraré lo más cercano.";
 
             const prompt = `
-            Eres un asistente inteligente para una app de eventos.
-            Analiza la siguiente consulta de un usuario y extrae los criterios de búsqueda en formato JSON.
+            Eres un asistente de eventos "cool" y amable llamado NightUp AI.
+            El usuario preguntó: "${userQuery}".
+            ${context}
             
-            Consulta: "${userQuery}" sobre aquests dades: ${dataIn}
-
-            Reglas:
-            1. Corrige errores tipográficos obvios en "keywords" (ej. "Tecnho" -> "Techno").
-            2. Para "category", intenta usar UNA de las siguientes etiquetas en INGLÉS si aplica: 
-               [techno, house, electronic, dj, production, social, dance, clubbing, festivals, underground, photography, cocktails, bars, networking, marketing, venues, coding, technology, fashion, design, music, events].
-               Si la consulta menciona "música" en general, usa "music". Si no encaja clara en ninguna, déjalo vacío.
-            3. Para "keywords": Extrae SOLO nombres específicos o términos distintivos. ELIMINA palabras genéricas como "evento", "fiesta", "buscar", "quiero", "barato", "hoy", "fin de semana" o la propia categoría si ya la has extraído. Si no queda nada relevante, déjalo vacío string "".
-
-            Devuelve SOLO un objeto JSON con esta estructura (campos opcionales):
-            {
-                "keywords": "palabras clave limpias (o string vacío si no hay)",
-                "category": "categoría en inglés de la lista anterior",
-                "date": "YYYY-MM-DD (si se menciona una fecha específica)",
-                "maxPrice": number (ej. 20),
-                "city": "nombre de la ciudad o ubicación"
-            }
+            Genera una respuesta CORTA (una frase o dos) para introducir estos resultados al usuario.
+            Sé variado, natural y entusiasta. No uses siempre la misma fórmula.
+            Ejemplos de tono: "¡Mira lo que tengo para ti!", "Uff, estos planes pintan bien...", "He encontrado esto que encaja contigo:".
+            
+            Respuesta:
             `;
 
             const response = await fetch(this.apiUrl, {
@@ -59,37 +88,19 @@ export class AiService {
                 body: JSON.stringify({
                     model: "gpt-3.5-turbo",
                     messages: [
-                        { role: "system", content: "You are a helpful assistant that outputs JSON. You fix typos, map categories to English tags, and clean keywords." },
+                        { role: "system", content: "You are a helpful, dynamic event assistant." },
                         { role: "user", content: prompt }
                     ],
-                    temperature: 0.1
+                    temperature: 0.9 // Alta temperatura para más variedad (randomness)
                 })
             });
 
-            if (!response.ok) {
-                throw new Error(`AI API Error: ${response.statusText}`);
-            }
-
             const data = await response.json();
-            const content = data.choices[0]?.message?.content;
-
-            const jsonStart = content.indexOf('{');
-            const jsonEnd = content.lastIndexOf('}');
-            if (jsonStart !== -1 && jsonEnd !== -1) {
-                const jsonStr = content.substring(jsonStart, jsonEnd + 1);
-                const criteria = JSON.parse(jsonStr);
-
-                if (criteria.date) {
-                    criteria.date = new Date(criteria.date);
-                }
-                return criteria;
-            }
-
-            return { keywords: userQuery };
+            return data.choices[0]?.message?.content || "Aquí tienes algunos eventos:";
 
         } catch (error) {
-            console.error('[AiService] Error analyzing query:', error);
-            return { keywords: userQuery };
+            console.error('[AiService] Error generating response:', error);
+            return "He encontrado estos eventos para ti:";
         }
     }
 }

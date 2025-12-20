@@ -8,6 +8,7 @@ import { UserInterest } from '../models/userInterest';
 import { Business } from '../models/business';
 import { UserTrust } from '../models/userTrust';
 import { Message } from '../models/message';
+import { Post } from '../models/post';
 
 // Extiende el tipo globalThis para incluir __spainGrid
 declare global {
@@ -131,7 +132,7 @@ async function createUserInterests(user: any, interestTags: any) {
 function randomCoordsAcrossSpain(idx: number, total: number): [number, number] {
     // Usa la cuadrícula generada
     if (!globalThis.__spainGrid) {
-        globalThis.__spainGrid = generateGridPoints([ -3.7038, 40.4168 ], total);
+        globalThis.__spainGrid = generateGridPoints([-3.7038, 40.4168], total);
     }
     return globalThis.__spainGrid[idx];
 }
@@ -161,7 +162,7 @@ async function createUserTrustSafe(ratedId: any, raterId: any, score: number, co
         rater: raterId,
         context: context
     });
-    
+
     if (!existing) {
         await UserTrust.create({
             rated: ratedId,
@@ -183,8 +184,52 @@ export async function seedDemoData() {
         await UserInterest.deleteMany({});
         await UserTrust.deleteMany({});
         await Message.deleteMany({});
+        await Message.deleteMany({});
         await Conversation.deleteMany({});
         console.log('Collections cleared');
+
+        // Limpiar Weaviate
+        const weaviateClient = (await import('../config/weaviate')).default;
+        try {
+            await weaviateClient.schema.classDeleter().withClassName('Event').do();
+            console.log('Weaviate "Event" class deleted');
+        } catch (e) {
+            // Ignorar error si la clase no existe aún
+        }
+
+        // Crear esquema en Weaviate si no existe
+        const classObj = {
+            class: 'Event',
+            vectorizer: 'text2vec-transformers',
+            moduleConfig: {
+                'text2vec-transformers': {},
+            },
+            properties: [
+                {
+                    name: 'name',
+                    dataType: ['text'],
+                },
+                {
+                    name: 'description',
+                    dataType: ['text'],
+                },
+                {
+                    name: 'category',
+                    dataType: ['text'],
+                },
+                {
+                    name: 'eventId',
+                    dataType: ['string'], // Guardamos el ID de Mongo para vincularlos
+                }
+            ],
+        };
+
+        try {
+            await weaviateClient.schema.classCreator().withClass(classObj).do();
+            console.log('Weaviate "Event" class created');
+        } catch (e) {
+            console.log('Weaviate class already exists or error:', e);
+        }
 
         const interestTags = await createInterestTags();
 
@@ -213,7 +258,7 @@ export async function seedDemoData() {
                 },
                 location: {
                     type: 'Point',
-                    coordinates: [-3.7038, 40.4168] 
+                    coordinates: [-3.7038, 40.4168]
                 },
                 isVisibleOnMap: true,
                 lastLocationUpdate: new Date(),
@@ -277,7 +322,7 @@ export async function seedDemoData() {
         const names = ['Alex', 'Sarah', 'Mike', 'Emma', 'Chris', 'Jessica', 'Kevin', 'Rachel', 'Laura', 'Daniel', 'Sofia', 'Luis', 'Marta', 'Carlos', 'Lucia', 'Pablo', 'Elena', 'Jorge', 'Ana', 'Victor'];
         const surnames = ['Johnson', 'Miller', 'Davis', 'Wilson', 'Taylor', 'Brown', 'Lee', 'Green', 'Martinez', 'Garcia', 'Lopez', 'Sanchez', 'Perez', 'Gomez', 'Ruiz', 'Diaz', 'Morales', 'Torres', 'Ramos', 'Castro'];
         const users = [...specialUsers];
-        const userCoords = generateGridPoints([ -3.7038, 40.4168 ], 1000);
+        const userCoords = generateGridPoints([-3.7038, 40.4168], 1000);
         for (let i = 0; i < 1000; i++) {
             const firstName = randomFromArray(names);
             const lastName = randomFromArray(surnames);
@@ -342,7 +387,7 @@ export async function seedDemoData() {
         }
 
         // Crear 1000 eventos distribuidos por toda España
-        const eventCoords = generateGridPoints([ -3.7038, 40.4168 ], 1000);
+        const eventCoords = generateGridPoints([-3.7038, 40.4168], 1000);
         const eventNames = [
             'Techno Night', 'Sunset House Party', 'Electronic Festival',
             'House Vibes', 'Underground Session', 'Clubbing Madness', 'Photography Meetup', 'Cocktail Night',
@@ -386,6 +431,22 @@ export async function seedDemoData() {
                 ratings
             });
             await event.save();
+
+            // Indexar en Weaviate
+            try {
+                await weaviateClient.data.creator()
+                    .withClassName('Event')
+                    .withProperties({
+                        name: event.name,
+                        description: event.description,
+                        category: event.category,
+                        eventId: event._id.toString()
+                    })
+                    .do();
+            } catch (error) {
+                console.error(`Error indexing event ${event.name} in Weaviate:`, error);
+            }
+
             events.push(event);
         }
 
@@ -407,10 +468,10 @@ export async function seedDemoData() {
                     await event.save();
                 }
             }
-            
+
             // Crear 3 valoraciones recibidas y 3 dadas (usando la función segura)
             const otherUsers = users.filter(u => u._id.toString() !== user._id.toString());
-            
+
             // Recibidas - Seleccionar 3 usuarios únicos
             const selectedRaters: any[] = [];
             while (selectedRaters.length < 3 && selectedRaters.length < otherUsers.length) {
@@ -428,7 +489,7 @@ export async function seedDemoData() {
                     'demo'
                 );
             }
-            
+
             // Dadas - Seleccionar 3 usuarios únicos diferentes de los raters
             const selectedRated: any[] = [];
             while (selectedRated.length < 3 && selectedRated.length < otherUsers.length) {
@@ -450,7 +511,7 @@ export async function seedDemoData() {
         }
 
         // Crear 1000 negocios distribuidos por toda España
-        const businessCoords = generateGridPoints([ -3.7038, 40.4168 ], 1000);
+        const businessCoords = generateGridPoints([-3.7038, 40.4168], 1000);
         const businessNames = [
             'Razzmatazz', 'Opium', 'Pacha', 'Shoko', 'Bling Bling', 'Sutton', 'Macarena Club', 'Jamboree', 'Moog', 'Input', 'City Hall', 'La Terrrazza'
         ];
@@ -478,7 +539,7 @@ export async function seedDemoData() {
         // Crear amistades: Joel y David con 50 amigos, repartidos por España, 15 en Madrid, 20 en Cataluña (10 en Barcelona)
         const joel = specialUsers.find(u => u.username === 'JoelMoreno');
         const david = specialUsers.find(u => u.username === 'DavidSanchez');
-        
+
         // Crear 10 solicitudes de amistad pendientes para JoelMoreno
         if (joel) {
             // Excluye amigos y solicitudes ya existentes
@@ -508,7 +569,7 @@ export async function seedDemoData() {
                 });
             }
         }
-        
+
         if (joel && david) {
             // Excluye a Joel y David de la lista de posibles amigos
             const possibleFriends = users.filter(u => ![joel._id.toString(), david._id.toString()].includes(u._id.toString()));
@@ -568,7 +629,7 @@ export async function seedDemoData() {
                     }).save();
                 }
             }
-            
+
             // Crea las amistades para David
             for (const friend of davidFriends) {
                 const exists = await Friendship.findOne({
@@ -585,7 +646,7 @@ export async function seedDemoData() {
                     }).save();
                 }
             }
-            
+
             console.log('JoelMoreno friends:');
             console.log(joelFriends.map(u => u.username).join(', '));
 
@@ -602,6 +663,50 @@ export async function seedDemoData() {
                     `Trust demo #${i + 1}`,
                     'demo'
                 );
+            }
+
+            // --- SEED POSTS FOR FRIENDS ---
+            console.log('Seeding posts for friends...');
+            const postThemes = [
+                { caption: 'Amazing night! 🌟', isVideo: false },
+                { caption: 'Check this out! 🎬', isVideo: true },
+                { caption: 'Loving the vibes here.', isVideo: false },
+                { caption: 'Best party ever! 🔥', isVideo: true }
+            ];
+
+            const songs = [
+                { title: 'Blinding Lights', artist: 'The Weeknd', coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/4a/59/2c/4a592c3a-231a-6379-373a-4467c69992c3/19UMGIM83808.rgb.jpg/100x100bb.jpg' },
+                { title: 'Dance Monkey', artist: 'Tones and I', coverUrl: 'https://is4-ssl.mzstatic.com/image/thumb/Music123/v4/64/0e/01/640e0149-a2e6-7788-2949-07920155660b/075679822604.jpg/100x100bb.jpg' },
+                { title: 'Techno Vibe', artist: 'Underground DJ', coverUrl: 'https://via.placeholder.com/100' }
+            ];
+
+            for (const friend of joelFriends.slice(0, 10)) {
+                const theme = postThemes[Math.floor(Math.random() * postThemes.length)];
+                const song = songs[Math.floor(Math.random() * songs.length)];
+
+                const mediaUrl = theme.isVideo
+                    ? 'https://www.w3schools.com/html/mov_bbb.mp4'
+                    : 'https://images.unsplash.com/photo-1514525253344-781f39994a1a?w=500';
+
+                await new Post({
+                    user: friend._id,
+                    caption: theme.caption,
+                    media: [{
+                        url: mediaUrl,
+                        type: theme.isVideo ? 'video' : 'image'
+                    }],
+                    location: 'Barcelona, Spain',
+                    isPublic: true,
+                    music: {
+                        title: song.title,
+                        artist: song.artist,
+                        coverUrl: song.coverUrl
+                    },
+                    likes: users.slice(0, Math.floor(Math.random() * 20)).map(u => u._id),
+                    comments: [
+                        { user: users[0]._id, text: 'Que guapo!', createdAt: new Date() }
+                    ]
+                }).save();
             }
         }
 

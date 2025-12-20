@@ -5,7 +5,7 @@ import { Event } from '../models/event';
 import mongoose from 'mongoose';
 
 export interface PostFeedResponse {
-    posts: IPost[];
+    posts: any[];
     total: number;
 }
 
@@ -27,15 +27,15 @@ export class PostService {
                     }
                 ]
             })
-            .populate('user', 'username avatar coverPhoto bio')
-            .populate('event', 'name schedule location category image')
-            .populate('tags', 'name color')
-            .sort({
-                createdAt: -1,
-                'likes': -1
-            })
-            .skip(skip)
-            .limit(limit);
+                .populate('user', 'username avatar coverPhoto bio')
+                .populate('event', 'name schedule location category image')
+                .populate('tags', 'name color')
+                .sort({
+                    createdAt: -1,
+                    'likes': -1
+                })
+                .skip(skip)
+                .limit(limit);
 
             const total = await Post.countDocuments({
                 $or: [
@@ -47,7 +47,9 @@ export class PostService {
                     }
                 ]
             });
-            return { posts, total };
+
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
         }
@@ -62,20 +64,22 @@ export class PostService {
                 user: { $in: allUserIds },
                 event: { $exists: false }
             })
-            .populate('user', 'username avatar coverPhoto bio isOnline lastSeen')
-            .populate('tags', 'name color')
-            .sort({
-                createdAt: -1,
-                isOnline: -1
-            })
-            .skip(skip)
-            .limit(limit);
+                .populate('user', 'username avatar coverPhoto bio isOnline lastSeen')
+                .populate('tags', 'name color')
+                .sort({
+                    createdAt: -1,
+                    isOnline: -1
+                })
+                .skip(skip)
+                .limit(limit);
 
             const total = await Post.countDocuments({
                 user: { $in: allUserIds },
                 event: { $exists: false }
             });
-            return { posts, total };
+
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
         }
@@ -94,15 +98,15 @@ export class PostService {
                     { event: { $exists: true, $ne: null }, 'likes': { $size: { $gte: 10 } } }
                 ]
             })
-            .populate('user', 'username avatar coverPhoto bio')
-            .populate('event', 'name schedule location category image')
-            .populate('tags', 'name color')
-            .sort({
-                createdAt: -1,
-                likes: -1
-            })
-            .skip(skip)
-            .limit(limit);
+                .populate('user', 'username avatar coverPhoto bio')
+                .populate('event', 'name schedule location category image')
+                .populate('tags', 'name color')
+                .sort({
+                    createdAt: -1,
+                    likes: -1
+                })
+                .skip(skip)
+                .limit(limit);
 
             const total = await Post.countDocuments({
                 $or: [
@@ -112,7 +116,8 @@ export class PostService {
                 ]
             });
 
-            return { posts, total };
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
         }
@@ -158,15 +163,16 @@ export class PostService {
     async getEventPosts(eventId: string, skip: number = 0, limit: number = 10): Promise<PostFeedResponse> {
         try {
             const posts = await Post.find({ event: eventId })
-            .populate('user', 'username avatar')
-            .populate('event', 'name schedule location image')
-            .populate('tags', 'name color')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
+                .populate('user', 'username avatar')
+                .populate('event', 'name schedule location image')
+                .populate('tags', 'name color')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit);
 
             const total = await Post.countDocuments({ event: eventId });
-            return { posts, total };
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
         }
@@ -178,77 +184,93 @@ export class PostService {
                 user: userId,
                 event: { $exists: false }
             })
-            .populate('user', 'username avatar coverPhoto bio')
-            .populate('tags', 'name color')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
+                .populate('user', 'username avatar coverPhoto bio')
+                .populate('tags', 'name color')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit);
 
             const total = await Post.countDocuments({
                 user: userId,
                 event: { $exists: false }
             });
-            return { posts, total };
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
         }
     }
 
-    async getPostById(postId: string): Promise<IPost | null> {
+    async getPostById(postId: string): Promise<any | null> {
         try {
-            return await Post.findById(postId)
-            .populate('user', 'username avatar coverPhoto bio isOnline lastSeen')
-            .populate('event', 'name schedule location category image')
-            .populate('tags', 'name color')
-            .populate('likes', 'username avatar')
-            .populate('comments.user', 'username avatar');
+            const post = await Post.findById(postId)
+                .populate('user', 'username avatar coverPhoto bio isOnline lastSeen')
+                .populate('event', 'name schedule location category image')
+                .populate('tags', 'name color')
+                .populate('likes', 'username avatar')
+                .populate('comments.user', 'username avatar');
+
+            return post ? this.mapToFeedFormat(post) : null;
         } catch (error) {
             throw new Error((error as Error).message);
         }
     }
 
-    async likePost(postId: string, userId: string): Promise<IPost | null> {
+    async likePost(postId: string, userId: string): Promise<any | null> {
         try {
-            return await Post.findByIdAndUpdate(
+            const post = await Post.findByIdAndUpdate(
                 postId,
                 { $addToSet: { likes: userId } },
                 { new: true }
             );
+            return post ? this.mapToFeedFormat(post) : null;
         } catch (error) {
             throw new Error((error as Error).message);
         }
     }
 
-    async unlikePost(postId: string, userId: string): Promise<IPost | null> {
+    async unlikePost(postId: string, userId: string): Promise<any | null> {
         try {
-            return await Post.findByIdAndUpdate(
+            const post = await Post.findByIdAndUpdate(
                 postId,
                 { $pull: { likes: userId } },
                 { new: true }
             );
+            return post ? this.mapToFeedFormat(post) : null;
         } catch (error) {
             throw new Error((error as Error).message);
         }
     }
 
-    async addComment(postId: string, userId: string, text: string): Promise<IPost | null> {
+    async addComment(postId: string, userId: string, text: string): Promise<any | null> {
         try {
             const comment = {
                 user: userId,
                 text: text
             };
 
-            return await Post.findByIdAndUpdate(
+            const post = await Post.findByIdAndUpdate(
                 postId,
                 { $push: { comments: comment } },
                 { new: true }
             ).populate('comments.user', 'username avatar');
+            return post ? this.mapToFeedFormat(post) : null;
         } catch (error) {
             throw new Error((error as Error).message);
         }
     }
 
-    async deleteComment(postId: string, commentIndex: number): Promise<IPost | null> {
+    async getComments(postId: string): Promise<any[] | null> {
+        try {
+            const post = await Post.findById(postId)
+                .populate('comments.user', 'username avatar');
+            return post ? post.comments : null;
+        } catch (error) {
+            throw new Error((error as Error).message);
+        }
+    }
+
+    async deleteComment(postId: string, commentIndex: number): Promise<any | null> {
         try {
             return await Post.findByIdAndUpdate(
                 postId,
@@ -300,12 +322,12 @@ export class PostService {
                 ],
                 isPublic: true
             })
-            .populate('user', 'username avatar')
-            .populate('event', 'name schedule location image')
-            .populate('tags', 'name color')
-            .sort({ createdAt: -1 })
-            .skip(skip)
-            .limit(limit);
+                .populate('user', 'username avatar')
+                .populate('event', 'name schedule location image')
+                .populate('tags', 'name color')
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit);
 
             const total = await Post.countDocuments({
                 $or: [
@@ -314,9 +336,34 @@ export class PostService {
                 ],
                 isPublic: true
             });
-            return { posts, total };
+
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
         }
+    }
+
+    private mapToFeedFormat(post: any) {
+        const postObj = post.toObject ? post.toObject() : post;
+
+        // Determinar si es video y obtener URL
+        const firstMedia = postObj.media && postObj.media.length > 0 ? postObj.media[0] : null;
+        const isVideo = firstMedia ? firstMedia.type === 'video' : false;
+        const mediaUrl = firstMedia ? firstMedia.url : '';
+
+        return {
+            ...postObj,
+            mediaUrl: mediaUrl,
+            isVideo: isVideo,
+            likesCount: postObj.likes ? postObj.likes.length : 0,
+            commentCount: postObj.comments ? postObj.comments.length : 0,
+            // Asegurar que music tenga el formato esperado
+            music: postObj.music ? {
+                title: postObj.music.title,
+                artist: postObj.music.artist,
+                cover: postObj.music.coverUrl // El frontend espera 'cover'
+            } : null
+        };
     }
 }

@@ -13,15 +13,18 @@ import {
     getDiscoverFeed,
     getFriendsFeed,
     getForYouFeed,
-    searchPosts
+    searchPosts,
+    createPost,
+    getPostComments
 } from '../controller/postController';
 import { authenticateToken } from '../auth/middleware';
 import { requireAdminOrManager } from '../middleware/roleMiddleware';
-import { uploadPostMedia } from '../middleware/upload';
+import { uploadPostMedia, uploadSinglePostFile } from '../middleware/upload';
 
 const router = Router();
 
 // ============ CREAR POSTS ============
+router.post('/create', authenticateToken, uploadSinglePostFile, createPost); // ✅ TikTok style
 router.post('/user', authenticateToken, uploadPostMedia, createUserPost);
 router.post('/event', authenticateToken, requireAdminOrManager, uploadPostMedia, createEventPost);
 
@@ -34,6 +37,7 @@ router.get('/feed/for-you', authenticateToken, getForYouFeed);
 router.get('/event/:eventId', getEventPosts);
 router.get('/user/:userId', getUserPosts);
 router.get('/:postId', getPostById);
+router.get('/:postId/comments', getPostComments);
 router.get('/search', searchPosts);
 
 // ============ INTERACCIONES ============

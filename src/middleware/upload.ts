@@ -19,7 +19,7 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     let folder = 'uploads/';
 
-    if (req.path.includes('/profile-picture')) {
+    if (req.path.includes('/profile-picture') || req.path.includes('/avatar')) {
       folder += 'profile-pictures/';
     } else if (req.path.includes('/cover-photo')) {
       folder += 'cover-photos/';
@@ -65,13 +65,14 @@ export const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 10 * 1024 * 1024, 
+    fileSize: 10 * 1024 * 1024,
   }
 });
 
 
 export const uploadSingle = upload.single('file');
-export const uploadProfilePicture = upload.single('profilePicture');
+export const uploadProfilePicture = upload.single('avatar'); // ✅ Cambiado de 'profilePicture' a 'avatar'
 export const uploadCoverPhoto = upload.single('coverPhoto');
-export const uploadPostMedia = upload.array('media', 5); 
+export const uploadPostMedia = upload.array('media', 5);
 export const uploadEventImage = upload.single('image');
+export const uploadSinglePostFile = upload.single('file'); // ✅ Para el nuevo sistema de posts (campo 'file')

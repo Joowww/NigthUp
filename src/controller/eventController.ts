@@ -33,9 +33,9 @@ export async function getAllEvents(req: Request, res: Response): Promise<Respons
     try {
         const skip = parseInt(req.query.skip as string) || 0;
         const limit = parseInt(req.query.limit as string) || 10;
-        
+
         const result = await eventService.getAllEvents(skip, limit);
-        
+
         return res.status(200).json({
             events: result.events,
             pagination: {
@@ -52,17 +52,17 @@ export async function getAllEvents(req: Request, res: Response): Promise<Respons
 
 export async function getAllEventsWithInactive(req: Request, res: Response): Promise<Response> {
     console.log('[DEBUG] getAllEventsWithInactive - INICIANDO');
-    
+
     try {
         const skip = parseInt(req.query.skip as string) || 0;
         const limit = parseInt(req.query.limit as string) || 10;
-        
+
         console.log(`[DEBUG] Params - skip: ${skip}, limit: ${limit}`);
-        
+
         const result = await eventService.getAllEventsWithInactive(skip, limit);
-        
+
         console.log(`[DEBUG] Encontrados ${result.events.length} eventos de ${result.total} totales`);
-        
+
         return res.status(200).json({
             events: result.events,
             pagination: {
@@ -334,7 +334,18 @@ export async function getEventsByParticipant(req: Request, res: Response) {
     try {
         const userId = req.params.userId;
         const events = await Event.find({ participants: userId });
-        return res.json({ events });
+
+        // Mapear para asegurar compatibilidad con el frontend
+        const mappedEvents = events.map(event => {
+            const eventObj = event.toObject();
+            return {
+                ...eventObj,
+                date: eventObj.schedule, // Frontend espera 'date'
+                id: eventObj._id         // Frontend a veces busca 'id' en lugar de '_id'
+            };
+        });
+
+        return res.json({ events: mappedEvents });
     } catch (error) {
         return res.status(500).json({ message: 'Error fetching events', error: (error as Error).message });
     }
