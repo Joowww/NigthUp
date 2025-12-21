@@ -43,7 +43,7 @@ const PORT = process.env.PORT || 3000;
 app.use(cors());
 app.use(express.json());
 
-// Servir archivos estáticos (imágenes subidas)
+
 app.use('/uploads', express.static('uploads'));
 app.use('/public', express.static('public'));
 
@@ -56,12 +56,12 @@ const io = new Server(httpServer, {
 });
 initializeSocket(io);
 
-// CONEXION A MONGODB
+
 mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     .then(async () => {
         console.log('SUCCESSFUL CONNECTION TO MONGODB DATABASE');
 
-        // Crear admins si no existen
+
         const initialAdmins = [
             // {
             //     username: 'JoelMoreno',
@@ -114,7 +114,7 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
             }
         }
 
-        // REGISTRAR RUTAS ANTES DE INICIAR EL SERVIDOR
+
         app.use('/api/user', userRoutes);
         app.use('/api/event', eventRoutes);
         console.log('[APP] /api/event routes mounted');
@@ -142,11 +142,11 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
 
         console.log('All routes registered including new features');
 
-        // Configurar Swagger
+
         setupSwagger(app);
         console.log('Swagger configured');
 
-        // Rutas de prueba
+
         app.get('/api/rating/test', (req, res) => {
             res.json({ message: 'Ratings API is working!', timestamp: new Date() });
         });
@@ -154,12 +154,6 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
         app.get('/api/test', (req, res) => {
             res.json({ message: 'API is working!', allRoutes: ['/api/user', '/api/event', '/api/business', '/api/rating', '/api/post'] });
         });
-
-        /*app.listen(PORT, () => {
-             console.log(`SERVER URL http://localhost:${PORT}`);
-             console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
-             console.log('Server is running!');
-         });*/
 
         httpServer.listen(PORT, () => {
             console.log(`SERVER URL http://localhost:${PORT}`);

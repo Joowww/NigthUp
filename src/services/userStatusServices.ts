@@ -33,11 +33,9 @@ export class UserStatusService {
   }
 
   async getFriendsWithStatus(userId: string): Promise<any[]> {
-    // Esta función se integrará con el servicio de amigos real
-    // Por ahora devuelve usuarios con su estado
-    return await User.find({ 
+    return await User.find({
       _id: { $ne: userId },
-      active: true 
+      active: true
     }).select('username email isOnline lastSeen profilePicture');
   }
 }

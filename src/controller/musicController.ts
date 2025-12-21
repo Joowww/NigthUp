@@ -13,8 +13,6 @@ export async function searchMusic(req: Request, res: Response): Promise<Response
         const response = await fetch(url);
         const data = await response.json();
 
-        // Mapeamos para que coincida con lo que el frontend espera si es necesario
-        // Pero el requerimiento dice "retornar el JSON"
         return res.status(200).json(data);
     } catch (error) {
         console.error('Error in music proxy:', error);

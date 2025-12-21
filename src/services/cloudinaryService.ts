@@ -3,11 +3,11 @@ import dotenv from 'dotenv';
 
 dotenv.config();
 
-console.log('[CLOUDINARY SERVICE] ⚙️ Checking config...');
+console.log('[CLOUDINARY SERVICE] Checking config...');
 if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
-    console.error('[CLOUDINARY SERVICE] ❌ MISSING CREDENTIALS IN .ENV');
+    console.error('[CLOUDINARY SERVICE] MISSING CREDENTIALS IN .ENV');
 } else {
-    console.log('[CLOUDINARY SERVICE] ✅ Credentials found for cloud:', process.env.CLOUDINARY_CLOUD_NAME);
+    console.log('[CLOUDINARY SERVICE] Credentials found for cloud:', process.env.CLOUDINARY_CLOUD_NAME);
 }
 
 cloudinary.config({
@@ -31,13 +31,13 @@ export const uploadImage = async (fileBuffer: Buffer, folder: string): Promise<s
             options,
             (error, result) => {
                 if (error) {
-                    console.error('[CLOUDINARY SERVICE] ❌ Upload error:', error);
+                    console.error('[CLOUDINARY SERVICE] Upload error:', error);
                     resolve(null);
                 } else if (result) {
-                    console.log('[CLOUDINARY SERVICE] ✅ Upload success:', result.secure_url);
+                    console.log('[CLOUDINARY SERVICE] Upload success:', result.secure_url);
                     resolve(result.secure_url);
                 } else {
-                    console.error('[CLOUDINARY SERVICE] ❌ Upload failed without specific error');
+                    console.error('[CLOUDINARY SERVICE] Upload failed without specific error');
                     resolve(null);
                 }
             }

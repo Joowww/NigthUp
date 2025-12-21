@@ -18,14 +18,12 @@ export class AiService {
         try {
             const weaviateClient = (await import('../config/weaviate')).default;
 
-            // 1. Búsqueda semántica en Weaviate
-            // Busca eventos cuyo significado se parezca a 'userQuery'
             const result = await weaviateClient.graphql
                 .get()
                 .withClassName('Event')
                 .withFields('eventId name description category _additional { certainty }')
                 .withNearText({ concepts: [userQuery] })
-                .withLimit(10) // Traemos los 10 más relevantes
+                .withLimit(10)
                 .do();
 
             const foundEvents = result.data.Get.Event;
@@ -38,20 +36,16 @@ export class AiService {
             console.log(`[AiService] Found ${foundEvents.length} candidates before filtering. Scores:`);
             foundEvents.forEach((e: any) => console.log(` - ${e.name} (${e.category}): ${e._additional.certainty}`));
 
-            // Exigimos un mínimo de coincidencia (certidumbre > 0.55) para filtrar ruido
-            // Bajamos de 0.65 a 0.55 para permitir consultas más coloquiales
             const relevantEvents = foundEvents
                 .filter((e: any) => e._additional.certainty > 0.55)
                 .map((e: any) => e.eventId);
 
             console.log(`[AiService] Semantic search found ${relevantEvents.length} events for query: "${userQuery}"`);
 
-            // Devolvemos la lista de IDs para que el controller los recupere de Mongo
             return { eventIds: relevantEvents };
 
         } catch (error) {
             console.error('[AiService] Error in semantic search:', error);
-            // Si falla Weaviate, devolvemos lista vacía
             return { eventIds: [] };
         }
     }
@@ -91,7 +85,7 @@ export class AiService {
                         { role: "system", content: "You are a helpful, dynamic event assistant." },
                         { role: "user", content: prompt }
                     ],
-                    temperature: 0.9 // Alta temperatura para más variedad (randomness)
+                    temperature: 0.9
                 })
             });
 

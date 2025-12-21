@@ -1,7 +1,6 @@
-//chatRoutes.ts
 import { Router } from 'express';
-import { 
-    httpGetConversations, 
+import {
+    httpGetConversations,
     httpGetMessages,
     httpCreateConversation,
     httpCreateGroup,
@@ -18,7 +17,7 @@ const router = Router();
  * @swagger
  * /api/chat:
  *   get:
- *     summary: 📋 Obtener todas mis conversaciones
+ *     summary: Obtener todas mis conversaciones
  *     description: Lista todas las conversaciones donde participo (chats privados y grupos)
  *     tags: [Chat]
  *     security:
@@ -60,7 +59,7 @@ router.get('/', authenticateToken, httpGetConversations);
  * @swagger
  * /api/chat/conversation:
  *   post:
- *     summary: 💬 Iniciar chat privado (1 a 1)
+ *     summary: Iniciar chat privado (1 a 1)
  *     description: Crea o encuentra una conversación privada con otro usuario
  *     tags: [Chat]
  *     security:
@@ -111,7 +110,7 @@ router.post('/conversation', authenticateToken, httpCreateConversation);
  * @swagger
  * /api/chat/group:
  *   post:
- *     summary: 👥 Crear grupo
+ *     summary: Crear grupo
  *     description: Crea un nuevo chat grupal con múltiples participantes
  *     tags: [Chat]
  *     security:
@@ -168,7 +167,7 @@ router.post('/group', authenticateToken, httpCreateGroup);
  * @swagger
  * /api/chat/{conversationId}/messages:
  *   get:
- *     summary: 📜 Ver historial de mensajes
+ *     summary: Ver historial de mensajes
  *     description: Obtiene todos los mensajes de una conversación específica
  *     tags: [Chat]
  *     security:
@@ -237,7 +236,7 @@ router.get('/:conversationId/messages', authenticateToken, httpGetMessages);
  * @swagger
  * /api/chat/message:
  *   post:
- *     summary: ✉️ Enviar mensaje
+ *     summary: Enviar mensaje
  *     description: Envía un nuevo mensaje a una conversación
  *     tags: [Chat]
  *     security:
@@ -298,7 +297,7 @@ router.post('/message', authenticateToken, httpSendMessage);
  * @swagger
  * /api/chat/message/{messageId}:
  *   put:
- *     summary: ✏️ Editar mensaje
+ *     summary: Editar mensaje
  *     description: Modifica el texto de un mensaje propio
  *     tags: [Chat]
  *     security:
@@ -349,7 +348,7 @@ router.put('/message/:messageId', authenticateToken, httpEditMessage);
  * @swagger
  * /api/chat/message/{messageId}:
  *   delete:
- *     summary: 🗑️ Eliminar mensaje
+ *     summary: Eliminar mensaje
  *     description: Marca el mensaje como eliminado (soft delete)
  *     tags: [Chat]
  *     security:
@@ -388,7 +387,7 @@ router.delete('/message/:messageId', authenticateToken, httpDeleteMessage);
  * @swagger
  * /api/chat/message/{messageId}/react:
  *   post:
- *     summary: 👍 Reaccionar a mensaje
+ *     summary: Reaccionar a mensaje
  *     description: Añade o quita una reacción emoji
  *     tags: [Chat]
  *     security:
@@ -412,7 +411,7 @@ router.delete('/message/:messageId', authenticateToken, httpDeleteMessage);
  *               emoji:
  *                 type: string
  *                 description: Emoji a usar
- *                 example: "👍"
+ *                 example: "thumbs_up"
  *     responses:
  *       200:
  *         description: Reacción actualizada

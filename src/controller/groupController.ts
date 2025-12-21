@@ -16,11 +16,11 @@ export async function createGroup(req: Request, res: Response): Promise<Response
         }
 
         const group = await chatService.createGroup(userId, groupName, participantIds);
-        
+
         if (!group) {
             return res.status(500).json({ error: 'Failed to create group' });
         }
-        
+
         return res.status(201).json({
             message: 'Group created successfully',
             group: {
@@ -32,9 +32,9 @@ export async function createGroup(req: Request, res: Response): Promise<Response
             }
         });
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'Failed to create group', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'Failed to create group',
+            details: (error as Error).message
         });
     }
 }
@@ -50,17 +50,17 @@ export async function addGroupParticipants(req: Request, res: Response): Promise
         }
 
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             return res.status(404).json({ error: 'Group not found' });
         }
 
-        // Verificar que el usuario es admin
+
         if (!group.groupAdmins?.some(admin => admin.toString() === adminId)) {
             return res.status(403).json({ error: 'Only admins can add participants' });
         }
 
-        // Añadir nuevos participantes
+
         const newParticipants = userIds.map(userId => ({
             participant: new mongoose.Types.ObjectId(userId),
             participantModel: 'User' as const,
@@ -76,9 +76,9 @@ export async function addGroupParticipants(req: Request, res: Response): Promise
             group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'Failed to add participants', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'Failed to add participants',
+            details: (error as Error).message
         });
     }
 }
@@ -94,12 +94,12 @@ export async function createGroupPoll(req: Request, res: Response): Promise<Resp
         }
 
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             return res.status(404).json({ error: 'Group not found' });
         }
 
-        const isMember = group.participants.some(p => 
+        const isMember = group.participants.some(p =>
             p.participant.toString() === userId
         );
 
@@ -128,9 +128,9 @@ export async function createGroupPoll(req: Request, res: Response): Promise<Resp
             group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'Failed to create poll', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'Failed to create poll',
+            details: (error as Error).message
         });
     }
 }
@@ -146,7 +146,7 @@ export async function voteInGroupPoll(req: Request, res: Response): Promise<Resp
         }
 
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             return res.status(404).json({ error: 'Group not found' });
         }
@@ -156,7 +156,7 @@ export async function voteInGroupPoll(req: Request, res: Response): Promise<Resp
             return res.status(404).json({ error: 'Poll not found or inactive' });
         }
 
-        const hasVoted = poll.options.some((option: any) => 
+        const hasVoted = poll.options.some((option: any) =>
             option.voters.some((voter: any) => voter.toString() === userId)
         );
 
@@ -174,9 +174,9 @@ export async function voteInGroupPoll(req: Request, res: Response): Promise<Resp
             group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'Failed to vote in poll', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'Failed to vote in poll',
+            details: (error as Error).message
         });
     }
 }
@@ -184,21 +184,21 @@ export async function voteInGroupPoll(req: Request, res: Response): Promise<Resp
 export async function getUserGroups(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
-        
+
         const groups = await Conversation.find({
             isGroup: true,
             'participants.participant': new mongoose.Types.ObjectId(userId)
         })
-        .populate('participants.participant', 'name username avatar')
-        .populate('lastMessage')
-        .populate('groupAdmins', 'name username')
-        .sort({ updatedAt: -1 });
-        
+            .populate('participants.participant', 'name username avatar')
+            .populate('lastMessage')
+            .populate('groupAdmins', 'name username')
+            .sort({ updatedAt: -1 });
+
         return res.status(200).json(groups);
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'Failed to get user groups', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'Failed to get user groups',
+            details: (error as Error).message
         });
     }
 }
@@ -209,7 +209,7 @@ export async function removeGroupParticipant(req: Request, res: Response): Promi
         const { groupId, userId } = req.params;
 
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             return res.status(404).json({ error: 'Group not found' });
         }
@@ -218,16 +218,16 @@ export async function removeGroupParticipant(req: Request, res: Response): Promi
             return res.status(403).json({ error: 'Only admins can remove participants' });
         }
 
-        // No permitir que el creador se elimine a sí mismo
-        const isCreator = group.participants.some(p => 
+
+        const isCreator = group.participants.some(p =>
             p.participant.toString() === userId && p.role === 'creator'
         );
-        
+
         if (isCreator) {
             return res.status(403).json({ error: 'Cannot remove group creator' });
         }
 
-        group.participants = group.participants.filter(p => 
+        group.participants = group.participants.filter(p =>
             p.participant.toString() !== userId
         );
 
@@ -238,9 +238,9 @@ export async function removeGroupParticipant(req: Request, res: Response): Promi
             group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'Failed to remove participant', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'Failed to remove participant',
+            details: (error as Error).message
         });
     }
 }
@@ -252,7 +252,7 @@ export async function updateGroupInfo(req: Request, res: Response): Promise<Resp
         const { groupName, groupDescription, groupImage } = req.body;
 
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             return res.status(404).json({ error: 'Group not found' });
         }
@@ -272,9 +272,9 @@ export async function updateGroupInfo(req: Request, res: Response): Promise<Resp
             group: await Conversation.findById(groupId).populate('participants.participant', 'name username avatar')
         });
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'Failed to update group', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'Failed to update group',
+            details: (error as Error).message
         });
     }
 }

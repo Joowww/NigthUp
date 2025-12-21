@@ -1,4 +1,3 @@
-// routes/initialInterestRoutes.ts
 import { Router } from 'express';
 import { getTagsByType } from '../controller/tagController';
 import { createInitialInterests } from '../controller/initialInterestController';

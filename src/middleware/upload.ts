@@ -5,7 +5,7 @@ import fs from 'fs';
 const createFolderIfNotExists = (folderPath: string) => {
   if (!fs.existsSync(folderPath)) {
     fs.mkdirSync(folderPath, { recursive: true });
-    console.log(`📁 Carpeta creada: ${folderPath}`);
+    console.log(` Carpeta creada: ${folderPath}`);
   }
 };
 
@@ -71,8 +71,8 @@ export const upload = multer({
 
 
 export const uploadSingle = upload.single('file');
-export const uploadProfilePicture = upload.single('avatar'); // ✅ Cambiado de 'profilePicture' a 'avatar'
+export const uploadProfilePicture = upload.single('avatar');
 export const uploadCoverPhoto = upload.single('coverPhoto');
 export const uploadPostMedia = upload.array('media', 5);
 export const uploadEventImage = upload.single('image');
-export const uploadSinglePostFile = upload.single('file'); // ✅ Para el nuevo sistema de posts (campo 'file')
+export const uploadSinglePostFile = upload.single('file'); 

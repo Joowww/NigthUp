@@ -3,18 +3,18 @@ import { Message } from '../models/message';
 import mongoose from 'mongoose';
 
 export class ChatService {
-    
+
   async getConversationsForUser(userId: string) {
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
     const conversations = await Conversation.find({
       'participants.participant': userObjectId
     })
-    .populate({
-      path: 'participants.participant',
-      select: 'name username avatar email'
-    })
-    .sort({ updatedAt: -1 });
+      .populate({
+        path: 'participants.participant',
+        select: 'name username avatar email'
+      })
+      .sort({ updatedAt: -1 });
 
     const formattedConversations = await Promise.all(conversations.map(async (convo) => {
       const isGroup = convo.isGroup;
@@ -24,36 +24,33 @@ export class ChatService {
         name = convo.groupName || 'Grupo';
         avatar = convo.groupAvatar || 'https://via.placeholder.com/150';
       } else {
-        // Buscar el otro participante
         const otherParticipant = convo.participants.find(
           (p: any) => p.participant && p.participant._id.toString() !== userId
         ) as any;
-        
+
         if (otherParticipant && otherParticipant.participant) {
-          name = otherParticipant.participant.name || 
-                 otherParticipant.participant.username || 
-                 'Usuario Desconocido';
-          avatar = otherParticipant.participant.avatar || 
-                   'https://via.placeholder.com/150';
+          name = otherParticipant.participant.name ||
+            otherParticipant.participant.username ||
+            'Usuario Desconocido';
+          avatar = otherParticipant.participant.avatar ||
+            'https://via.placeholder.com/150';
         } else {
-          // Si no encontramos al otro participante, mostramos información genérica
           name = 'Usuario Desconocido';
           avatar = 'https://via.placeholder.com/150';
         }
       }
 
-      // Obtener el último mensaje
-      const lastMessage = await Message.findOne({ 
-        conversation: convo._id 
+      const lastMessage = await Message.findOne({
+        conversation: convo._id
       })
-      .sort({ createdAt: -1 })
-      .populate('sender', 'name username');
+        .sort({ createdAt: -1 })
+        .populate('sender', 'name username');
 
       let previewText = '';
       let lastMessageTime = convo.updatedAt;
 
       if (lastMessage) {
-        previewText = lastMessage.isDeleted ? '🚫 Mensaje eliminado' : lastMessage.text;
+        previewText = lastMessage.isDeleted ? 'Mensaje eliminado' : lastMessage.text;
         lastMessageTime = lastMessage.createdAt;
       }
 
@@ -101,7 +98,6 @@ export class ChatService {
     const senderObjectId = new mongoose.Types.ObjectId(senderId);
     const recipientObjectId = new mongoose.Types.ObjectId(recipientId);
 
-    // Buscar conversación existente
     let conversation = await Conversation.findOne({
       isGroup: false,
       $and: [
@@ -111,7 +107,6 @@ export class ChatService {
     }).populate('participants.participant', 'name username avatar');
 
     if (!conversation) {
-      // Crear nueva conversación
       conversation = new Conversation({
         isGroup: false,
         participants: [
@@ -129,8 +124,7 @@ export class ChatService {
         settings: []
       });
       await conversation.save();
-      
-      // Poblar después de guardar
+
       conversation = await Conversation.findById(conversation._id)
         .populate('participants.participant', 'name username avatar');
     }
@@ -139,7 +133,7 @@ export class ChatService {
 
   async createGroup(creatorId: string, name: string, participants: string[]) {
     const allParticipants = Array.from(new Set([creatorId, ...participants]));
-    
+
     const participantsArray = allParticipants.map(id => ({
       participant: new mongoose.Types.ObjectId(id),
       participantModel: 'User',
@@ -154,18 +148,17 @@ export class ChatService {
       participants: participantsArray,
       settings: []
     });
-    
+
     await group.save();
-    
-    // Poblar los participantes después de guardar
+
     return await Conversation.findById(group._id)
       .populate('participants.participant', 'name username avatar email');
   }
 
   async sendMessage(
-    conversationId: string, 
-    senderId: string, 
-    text: string, 
+    conversationId: string,
+    senderId: string,
+    text: string,
     replyToId?: string
   ) {
     if (!mongoose.Types.ObjectId.isValid(conversationId)) {
@@ -182,14 +175,13 @@ export class ChatService {
 
     await newMessage.save();
 
-    // Actualizar la conversación con el último mensaje
-    await Conversation.findByIdAndUpdate(conversationId, { 
+    await Conversation.findByIdAndUpdate(conversationId, {
       lastMessage: {
         message: text,
         senderId: new mongoose.Types.ObjectId(senderId),
         createdAt: newMessage.createdAt
       },
-      updatedAt: new Date() 
+      updatedAt: new Date()
     });
 
     return await Message.findById(newMessage._id)
@@ -201,44 +193,44 @@ export class ChatService {
   }
 
   async deleteMessage(messageId: string, userId: string) {
-     const msg = await Message.findOne({ 
-       _id: messageId, 
-       sender: new mongoose.Types.ObjectId(userId) 
-     });
-     if (!msg) throw new Error("No encontrado o no autorizado");
-     msg.isDeleted = true;
-     await msg.save();
-     return msg;
+    const msg = await Message.findOne({
+      _id: messageId,
+      sender: new mongoose.Types.ObjectId(userId)
+    });
+    if (!msg) throw new Error("No encontrado o no autorizado");
+    msg.isDeleted = true;
+    await msg.save();
+    return msg;
   }
 
   async editMessage(messageId: string, userId: string, text: string) {
-      const msg = await Message.findOne({ 
-        _id: messageId, 
-        sender: new mongoose.Types.ObjectId(userId) 
-      });
-      if (!msg || msg.isDeleted) throw new Error("Error editando mensaje");
-      msg.text = text;
-      msg.isEdited = true;
-      await msg.save();
-      return msg;
+    const msg = await Message.findOne({
+      _id: messageId,
+      sender: new mongoose.Types.ObjectId(userId)
+    });
+    if (!msg || msg.isDeleted) throw new Error("Error editando mensaje");
+    msg.text = text;
+    msg.isEdited = true;
+    await msg.save();
+    return msg;
   }
 
   async reactToMessage(messageId: string, userId: string, emoji: string) {
-      const msg = await Message.findById(messageId);
-      if (!msg) throw new Error("Mensaje no encontrado");
-      
-      const userObjectId = new mongoose.Types.ObjectId(userId);
-      const idx = msg.reactions.findIndex(r => 
-        r.user.toString() === userId && r.emoji === emoji
-      );
-      
-      if (idx > -1) {
-        msg.reactions.splice(idx, 1); 
-      } else {
-        msg.reactions.push({ user: userObjectId, emoji }); 
-      }
-      
-      await msg.save();
-      return msg;
+    const msg = await Message.findById(messageId);
+    if (!msg) throw new Error("Mensaje no encontrado");
+
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+    const idx = msg.reactions.findIndex(r =>
+      r.user.toString() === userId && r.emoji === emoji
+    );
+
+    if (idx > -1) {
+      msg.reactions.splice(idx, 1);
+    } else {
+      msg.reactions.push({ user: userObjectId, emoji });
+    }
+
+    await msg.save();
+    return msg;
   }
 }

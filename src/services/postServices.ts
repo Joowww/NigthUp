@@ -347,7 +347,6 @@ export class PostService {
     private mapToFeedFormat(post: any) {
         const postObj = post.toObject ? post.toObject() : post;
 
-        // Determinar si es video y obtener URL
         const firstMedia = postObj.media && postObj.media.length > 0 ? postObj.media[0] : null;
         const isVideo = firstMedia ? firstMedia.type === 'video' : false;
         const mediaUrl = firstMedia ? firstMedia.url : '';
@@ -358,11 +357,10 @@ export class PostService {
             isVideo: isVideo,
             likesCount: postObj.likes ? postObj.likes.length : 0,
             commentCount: postObj.comments ? postObj.comments.length : 0,
-            // Asegurar que music tenga el formato esperado
             music: postObj.music ? {
                 title: postObj.music.title,
                 artist: postObj.music.artist,
-                cover: postObj.music.coverUrl // El frontend espera 'cover'
+                cover: postObj.music.coverUrl
             } : null
         };
     }

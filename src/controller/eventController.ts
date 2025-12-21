@@ -231,7 +231,7 @@ export async function leaveEvent(req: Request, res: Response): Promise<Response>
     }
 }
 
-// ... tus controladores existentes ...
+
 
 export async function likeEvent(req: Request, res: Response): Promise<Response> {
     try {
@@ -247,12 +247,12 @@ export async function likeEvent(req: Request, res: Response): Promise<Response> 
             return res.status(404).json({ message: 'EVENT NOT FOUND' });
         }
 
-        // Verificar si ya dio like
+
         if (event.likedBy.includes(new mongoose.Types.ObjectId(userId))) {
             return res.status(400).json({ message: 'EVENT ALREADY LIKED' });
         }
 
-        // Añadir like
+
         event.likedBy.push(new mongoose.Types.ObjectId(userId));
         event.likes += 1;
 
@@ -282,12 +282,12 @@ export async function unlikeEvent(req: Request, res: Response): Promise<Response
             return res.status(404).json({ message: 'EVENT NOT FOUND' });
         }
 
-        // Verificar si dio like
+
         if (!event.likedBy.includes(new mongoose.Types.ObjectId(userId))) {
             return res.status(400).json({ message: 'EVENT NOT LIKED' });
         }
 
-        // Quitar like
+
         event.likedBy = event.likedBy.filter(
             id => id.toString() !== userId
         );
@@ -335,13 +335,13 @@ export async function getEventsByParticipant(req: Request, res: Response) {
         const userId = req.params.userId;
         const events = await Event.find({ participants: userId });
 
-        // Mapear para asegurar compatibilidad con el frontend
+
         const mappedEvents = events.map(event => {
             const eventObj = event.toObject();
             return {
                 ...eventObj,
-                date: eventObj.schedule, // Frontend espera 'date'
-                id: eventObj._id         // Frontend a veces busca 'id' en lugar de '_id'
+                date: eventObj.schedule,
+                id: eventObj._id
             };
         });
 

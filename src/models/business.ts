@@ -16,7 +16,6 @@ export interface IBusiness {
   avatar?: string;
 }
 
-//prueba antigravity
 
 const businessSchema = new Schema<IBusiness>({
   name: { type: String, required: true },
@@ -43,7 +42,7 @@ const businessSchema = new Schema<IBusiness>({
   versionKey: false
 });
 
-// Añade el índice geoespacial para location
+
 businessSchema.index({ location: '2dsphere' });
 
 export const Business = model<IBusiness>('Business', businessSchema);
