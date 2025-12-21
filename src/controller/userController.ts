@@ -1,6 +1,6 @@
 import { Request, Response } from 'express';
 import { IUser, SECURITY_QUESTION_KEYS, SECURITY_QUESTIONS_FALLBACK } from '../models/user';
-import User from '../models/user'; 
+import User from '../models/user';
 import { UserService, UserProfileResponse } from '../services/userServices';
 import { validationResult } from 'express-validator';
 import { generateToken, generateRefreshToken, generateResetToken } from '../auth/token';
@@ -36,7 +36,7 @@ export async function getUserProfile(req: Request, res: Response): Promise<Respo
 export async function updateUserProfile(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
-        const { firstName, lastName, bio, gender, city, country, website, socialMedia } = req.body;
+        const { firstName, lastName, bio, gender, city, country, website, socialMedia, avatar, coverPhoto } = req.body;
 
         const updatedUser = await userService.updateUserProfile(userId, {
             firstName,
@@ -46,7 +46,9 @@ export async function updateUserProfile(req: Request, res: Response): Promise<Re
             city,
             country,
             website,
-            socialMedia
+            socialMedia,
+            avatar,
+            coverPhoto
         });
 
         if (!updatedUser) {
@@ -68,7 +70,7 @@ export async function updateUserProfile(req: Request, res: Response): Promise<Re
 export async function updateAvatar(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
-        
+
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
@@ -95,7 +97,7 @@ export async function updateAvatar(req: Request, res: Response): Promise<Respons
 export async function updateCoverPhoto(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
-        
+
         if (!req.file) {
             return res.status(400).json({ error: 'No file uploaded' });
         }
@@ -231,8 +233,8 @@ export async function createUser(req: Request, res: Response): Promise<Response>
         }
 
         if (securityAnswer.trim().length < 2) {
-            return res.status(400).json({ 
-                error: 'Security answer must be at least 2 characters long' 
+            return res.status(400).json({
+                error: 'Security answer must be at least 2 characters long'
             });
         }
 
@@ -254,9 +256,9 @@ export async function createUser(req: Request, res: Response): Promise<Response>
 
         return res.status(201).json(removePassword(user));
     } catch (error) {
-        return res.status(500).json({ 
-            error: 'FAILED TO CREATE USER', 
-            details: (error as Error).message 
+        return res.status(500).json({
+            error: 'FAILED TO CREATE USER',
+            details: (error as Error).message
         });
     }
 }
@@ -335,9 +337,9 @@ export async function updateUserByIdentifier(req: Request, res: Response): Promi
         const updatedUser = await userService.updateUserByIdentifier(identifier, userData);
         if (!updatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
 
-        return res.status(200).json({ 
-            message: 'User updated successfully', 
-            user: updatedUser 
+        return res.status(200).json({
+            message: 'User updated successfully',
+            user: updatedUser
         });
     } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
@@ -349,7 +351,7 @@ export async function disableUserByIdentifier(req: Request, res: Response): Prom
         const { identifier } = req.params;
         const disabledUser = await userService.disableUserByIdentifier(identifier);
         if (!disabledUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-        
+
         return res.status(200).json({
             message: 'User disabled successfully',
             user: disabledUser
@@ -364,7 +366,7 @@ export async function reactivateUserByIdentifier(req: Request, res: Response): P
         const { identifier } = req.params;
         const reactivatedUser = await userService.reactivateUserByIdentifier(identifier);
         if (!reactivatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-        
+
         return res.status(200).json({
             message: 'User reactivated successfully',
             user: reactivatedUser
@@ -379,7 +381,7 @@ export async function makeUserAdminByIdentifier(req: Request, res: Response): Pr
         const { identifier } = req.params;
         const adminUser = await userService.makeUserAdminByIdentifier(identifier);
         if (!adminUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-        
+
         return res.status(200).json({
             message: 'User converted to administrator',
             user: adminUser
@@ -395,9 +397,9 @@ export async function removeUserAdminByIdentifier(req: Request, res: Response): 
         const normalUser = await userService.removeUserAdminByIdentifier(identifier);
         if (!normalUser) return res.status(404).json({ message: 'USER NOT FOUND' });
 
-        return res.status(200).json({ 
-            message: 'Administrator permissions removed', 
-            user: normalUser 
+        return res.status(200).json({
+            message: 'Administrator permissions removed',
+            user: normalUser
         });
     } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
@@ -410,9 +412,9 @@ export async function makeUserManagerByIdentifier(req: Request, res: Response): 
         const managerUser = await userService.makeUserManagerByIdentifier(identifier);
         if (!managerUser) return res.status(404).json({ message: 'USER NOT FOUND' });
 
-        return res.status(200).json({ 
-            message: 'User converted to manager', 
-            user: managerUser 
+        return res.status(200).json({
+            message: 'User converted to manager',
+            user: managerUser
         });
     } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
@@ -424,7 +426,7 @@ export async function removeUserManagerByIdentifier(req: Request, res: Response)
         const { identifier } = req.params;
         const normalUser = await userService.removeUserManagerByIdentifier(identifier);
         if (!normalUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-        
+
         return res.status(200).json({
             message: 'Manager permissions removed',
             user: normalUser
@@ -439,7 +441,7 @@ export async function deleteUserByIdentifier(req: Request, res: Response): Promi
         const { identifier } = req.params;
         const deletedUser = await userService.deleteUserByIdentifier(identifier);
         if (!deletedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
-        
+
         return res.status(200).json({
             message: 'User permanently deleted',
             user: removePassword(deletedUser)
@@ -454,10 +456,10 @@ export async function addEventToUser(req: Request, res: Response): Promise<Respo
         const { identifier } = req.params;
         const { eventIdentifier } = req.body;
         if (!eventIdentifier) return res.status(400).json({ message: 'Missing eventIdentifier' });
-        
+
         const updated = await userService.addEventToUser(identifier, eventIdentifier);
         if (!updated) return res.status(404).json({ message: 'USER NOT FOUND' });
-        
+
         return res.status(200).json(updated);
     } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
@@ -468,7 +470,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response> 
     try {
         const { username, password } = req.body;
         const user = await userService.loginUser(username, password);
-        
+
         if (!user) {
             return res.status(401).json({ error: 'Invalid credentials or user inactive' });
         }
@@ -477,7 +479,7 @@ export const loginUser = async (req: Request, res: Response): Promise<Response> 
         const refreshToken = generateRefreshToken(user);
         const safeUser = removePassword(user);
 
-        return res.status(200).json({ 
+        return res.status(200).json({
             user: safeUser,
             message: 'LOGIN EXITOSO',
             token,
@@ -492,7 +494,7 @@ export const refreshAccessToken = async (req: Request, res: Response): Promise<R
     try {
         const userId = (req as any).user.id;
         const user = await userService.getUserByIdentifier(userId);
-        
+
         if (!user) {
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
@@ -520,7 +522,7 @@ export async function getMyProfile(req: Request, res: Response): Promise<Respons
     try {
         const userId = (req as any).user.id;
         const user = await userService.getUserByIdentifier(userId);
-        
+
         if (!user) {
             return res.status(404).json({ message: 'USER NOT FOUND' });
         }
@@ -537,21 +539,21 @@ export async function updateMyProfile(req: Request, res: Response): Promise<Resp
         const userData = req.body;
 
         if (userData.password || userData.role) {
-            return res.status(400).json({ 
-                message: 'Password and role cannot be updated from this endpoint' 
+            return res.status(400).json({
+                message: 'Password and role cannot be updated from this endpoint'
             });
         }
 
         const filteredData: Partial<IUser> = {};
-        
+
         if (userData.username !== undefined && typeof userData.username === 'string') {
             filteredData.username = userData.username;
         }
-        
+
         if (userData.email !== undefined && typeof userData.email === 'string') {
             filteredData.email = userData.email;
         }
-        
+
         if (userData.birthday !== undefined) {
             const birthday = new Date(userData.birthday);
             if (!isNaN(birthday.getTime())) {
@@ -566,9 +568,9 @@ export async function updateMyProfile(req: Request, res: Response): Promise<Resp
         const updatedUser = await userService.updateUserByIdentifier(userId, filteredData);
         if (!updatedUser) return res.status(404).json({ message: 'USER NOT FOUND' });
 
-        return res.status(200).json({ 
-            message: 'Profile updated successfully', 
-            user: updatedUser 
+        return res.status(200).json({
+            message: 'Profile updated successfully',
+            user: updatedUser
         });
     } catch (error) {
         return res.status(400).json({ message: (error as Error).message });
@@ -592,228 +594,228 @@ export const verifyTokenHandler = async (req: Request, res: Response): Promise<R
 };
 
 export const changePassword = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const userId = (req as any).user.id;
-    const { currentPassword, newPassword } = req.body;
+    try {
+        const userId = (req as any).user.id;
+        const { currentPassword, newPassword } = req.body;
 
-    if (!currentPassword || !newPassword) {
-      return res.status(400).json({ error: 'Current password and new password are required' });
+        if (!currentPassword || !newPassword) {
+            return res.status(400).json({ error: 'Current password and new password are required' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const isCurrentPasswordValid = await user.comparePassword(currentPassword);
+        if (!isCurrentPasswordValid) {
+            return res.status(400).json({ error: 'Current password is incorrect' });
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        return res.status(200).json({ message: 'Password changed successfully' });
+    } catch (error) {
+        console.error('Error changing password:', error);
+        return res.status(500).json({ error: 'Failed to change password' });
     }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const isCurrentPasswordValid = await user.comparePassword(currentPassword);
-    if (!isCurrentPasswordValid) {
-      return res.status(400).json({ error: 'Current password is incorrect' });
-    }
-
-    user.password = newPassword;
-    await user.save();
-
-    return res.status(200).json({ message: 'Password changed successfully' });
-  } catch (error) {
-    console.error('Error changing password:', error);
-    return res.status(500).json({ error: 'Failed to change password' });
-  }
 };
 
 export const changeEmail = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const userId = (req as any).user.id;
-    const { newEmail, password } = req.body;
+    try {
+        const userId = (req as any).user.id;
+        const { newEmail, password } = req.body;
 
-    if (!newEmail || !password) {
-      return res.status(400).json({ error: 'New email and password are required' });
+        if (!newEmail || !password) {
+            return res.status(400).json({ error: 'New email and password are required' });
+        }
+
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(newEmail)) {
+            return res.status(400).json({ error: 'Invalid email format' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const isPasswordValid = await user.comparePassword(password);
+        if (!isPasswordValid) {
+            return res.status(400).json({ error: 'Password is incorrect' });
+        }
+
+        const existingUser = await User.findOne({ email: newEmail });
+        if (existingUser && existingUser._id.toString() !== userId) {
+            return res.status(400).json({ error: 'Email is already in use' });
+        }
+
+        user.email = newEmail;
+        await user.save();
+
+        const safeUser = removePassword(user);
+
+        return res.status(200).json({
+            message: 'Email changed successfully',
+            user: safeUser
+        });
+    } catch (error) {
+        console.error('Error changing email:', error);
+        return res.status(500).json({ error: 'Failed to change email' });
     }
-
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(newEmail)) {
-      return res.status(400).json({ error: 'Invalid email format' });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const isPasswordValid = await user.comparePassword(password);
-    if (!isPasswordValid) {
-      return res.status(400).json({ error: 'Password is incorrect' });
-    }
-
-    const existingUser = await User.findOne({ email: newEmail });
-    if (existingUser && existingUser._id.toString() !== userId) {
-      return res.status(400).json({ error: 'Email is already in use' });
-    }
-
-    user.email = newEmail;
-    await user.save();
-
-    const safeUser = removePassword(user);
-
-    return res.status(200).json({ 
-      message: 'Email changed successfully',
-      user: safeUser
-    });
-  } catch (error) {
-    console.error('Error changing email:', error);
-    return res.status(500).json({ error: 'Failed to change email' });
-  }
 };
 
 export const getSecurityQuestions = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    return res.status(200).json({ 
-      securityQuestionKeys: SECURITY_QUESTION_KEYS,
-      fallbackTexts: process.env.NODE_ENV === 'development' ? SECURITY_QUESTIONS_FALLBACK : undefined
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'Server error' });
-  }
+    try {
+        return res.status(200).json({
+            securityQuestionKeys: SECURITY_QUESTION_KEYS,
+            fallbackTexts: process.env.NODE_ENV === 'development' ? SECURITY_QUESTIONS_FALLBACK : undefined
+        });
+    } catch (error) {
+        return res.status(500).json({ error: 'Server error' });
+    }
 };
 
 export const setSecurityQuestion = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const userId = (req as any).user.id;
-    const { securityQuestionKey, securityAnswer, currentPassword } = req.body;
+    try {
+        const userId = (req as any).user.id;
+        const { securityQuestionKey, securityAnswer, currentPassword } = req.body;
 
-    if (!securityQuestionKey || !securityAnswer || !currentPassword) {
-      return res.status(400).json({ 
-        error: 'Security question key, answer, and current password are required' 
-      });
+        if (!securityQuestionKey || !securityAnswer || !currentPassword) {
+            return res.status(400).json({
+                error: 'Security question key, answer, and current password are required'
+            });
+        }
+
+        if (!SECURITY_QUESTION_KEYS.includes(securityQuestionKey)) {
+            return res.status(400).json({ error: 'Invalid security question key' });
+        }
+
+        if (securityAnswer.trim().length < 2) {
+            return res.status(400).json({ error: 'Security answer must be at least 2 characters long' });
+        }
+
+        const user = await User.findById(userId);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        const isPasswordValid = await user.comparePassword(currentPassword);
+        if (!isPasswordValid) {
+            return res.status(400).json({ error: 'Current password is incorrect' });
+        }
+
+        user.securityQuestion = securityQuestionKey;
+        user.securityAnswer = securityAnswer;
+        await user.save();
+
+        return res.status(200).json({
+            message: 'Security question set successfully',
+            securityQuestionKey: user.securityQuestion
+        });
+    } catch (error) {
+        return res.status(500).json({ error: 'Failed to set security question' });
     }
-
-    if (!SECURITY_QUESTION_KEYS.includes(securityQuestionKey)) {
-      return res.status(400).json({ error: 'Invalid security question key' });
-    }
-
-    if (securityAnswer.trim().length < 2) {
-      return res.status(400).json({ error: 'Security answer must be at least 2 characters long' });
-    }
-
-    const user = await User.findById(userId);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const isPasswordValid = await user.comparePassword(currentPassword);
-    if (!isPasswordValid) {
-      return res.status(400).json({ error: 'Current password is incorrect' });
-    }
-
-    user.securityQuestion = securityQuestionKey;
-    user.securityAnswer = securityAnswer;
-    await user.save();
-
-    return res.status(200).json({ 
-      message: 'Security question set successfully',
-      securityQuestionKey: user.securityQuestion
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'Failed to set security question' });
-  }
 };
 
 export const forgotPassword = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const { email } = req.body;
-    if (!email) {
-      return res.status(400).json({ error: 'Email is required' });
-    }
+    try {
+        const { email } = req.body;
+        if (!email) {
+            return res.status(400).json({ error: 'Email is required' });
+        }
 
-    const user = await User.findOne({ email, active: true });
-    if (!user) {
-      return res.status(200).json({ message: 'If the email exists, security question will be shown.' });
-    }
+        const user = await User.findOne({ email, active: true });
+        if (!user) {
+            return res.status(200).json({ message: 'If the email exists, security question will be shown.' });
+        }
 
-    if (!user.securityQuestion) {
-      return res.status(400).json({ 
-        error: 'No security question set for this account. Please contact support.' 
-      });
-    }
+        if (!user.securityQuestion) {
+            return res.status(400).json({
+                error: 'No security question set for this account. Please contact support.'
+            });
+        }
 
-    return res.status(200).json({ 
-      message: 'User found',
-      securityQuestionKey: user.securityQuestion,
-      email: user.email
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'Server error' });
-  }
+        return res.status(200).json({
+            message: 'User found',
+            securityQuestionKey: user.securityQuestion,
+            email: user.email
+        });
+    } catch (error) {
+        return res.status(500).json({ error: 'Server error' });
+    }
 };
 
 export const verifySecurityAnswer = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const { email, securityAnswer } = req.body;
-    
-    if (!email || !securityAnswer) {
-      return res.status(400).json({ error: 'Email and security answer are required' });
-    }
+    try {
+        const { email, securityAnswer } = req.body;
 
-    const user = await User.findOne({ email, active: true });
-    if (!user || !user.securityQuestion) {
-      return res.status(404).json({ error: 'User not found or no security question set' });
-    }
+        if (!email || !securityAnswer) {
+            return res.status(400).json({ error: 'Email and security answer are required' });
+        }
 
-    const isAnswerCorrect = await user.compareSecurityAnswer(securityAnswer);
-    if (!isAnswerCorrect) {
-      return res.status(400).json({ error: 'Incorrect security answer' });
-    }
+        const user = await User.findOne({ email, active: true });
+        if (!user || !user.securityQuestion) {
+            return res.status(404).json({ error: 'User not found or no security question set' });
+        }
 
-    const resetToken = generateResetToken(user);
-    
-    return res.status(200).json({ 
-      message: 'Security answer verified successfully',
-      resetToken
-    });
-  } catch (error) {
-    return res.status(500).json({ error: 'Server error' });
-  }
+        const isAnswerCorrect = await user.compareSecurityAnswer(securityAnswer);
+        if (!isAnswerCorrect) {
+            return res.status(400).json({ error: 'Incorrect security answer' });
+        }
+
+        const resetToken = generateResetToken(user);
+
+        return res.status(200).json({
+            message: 'Security answer verified successfully',
+            resetToken
+        });
+    } catch (error) {
+        return res.status(500).json({ error: 'Server error' });
+    }
 };
 
 export const resetPasswordWithToken = async (req: Request, res: Response): Promise<Response> => {
-  try {
-    const { resetToken, newPassword } = req.body;
-    
-    if (!resetToken || !newPassword) {
-      return res.status(400).json({ error: 'Reset token and new password are required' });
+    try {
+        const { resetToken, newPassword } = req.body;
+
+        if (!resetToken || !newPassword) {
+            return res.status(400).json({ error: 'Reset token and new password are required' });
+        }
+
+        if (newPassword.length < 6) {
+            return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+        }
+
+        const { verifyToken } = await import('../auth/token');
+        const decoded = verifyToken(resetToken) as any;
+
+        if (!decoded || decoded.type !== 'password_reset') {
+            return res.status(400).json({ error: 'Invalid or expired reset token' });
+        }
+
+        const user = await User.findById(decoded.id);
+        if (!user) {
+            return res.status(404).json({ error: 'User not found' });
+        }
+
+        user.password = newPassword;
+        await user.save();
+
+        return res.status(200).json({ message: 'Password reset successfully' });
+    } catch (error) {
+        return res.status(500).json({ error: 'Server error' });
     }
-
-    if (newPassword.length < 6) {
-      return res.status(400).json({ error: 'New password must be at least 6 characters long' });
-    }
-
-    const { verifyToken } = await import('../auth/token');
-    const decoded = verifyToken(resetToken) as any;
-    
-    if (!decoded || decoded.type !== 'password_reset') {
-      return res.status(400).json({ error: 'Invalid or expired reset token' });
-    }
-
-    const user = await User.findById(decoded.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    user.password = newPassword;
-    await user.save();
-
-    return res.status(200).json({ message: 'Password reset successfully' });
-  } catch (error) {
-    return res.status(500).json({ error: 'Server error' });
-  }
 };
 
 export const completeOnboardingHandler = async (req: Request, res: Response): Promise<Response> => {
     try {
-        const userId = (req as any).user?.id || (req as any).user?._id;7
+        const userId = (req as any).user?.id || (req as any).user?._id; 7
         console.log('User ID from token:', userId);
 
         if (!userId) {
@@ -832,9 +834,9 @@ export const completeOnboardingHandler = async (req: Request, res: Response): Pr
             return res.status(404).json({ error: 'Usuario no encontrado' });
         }
 
-        return res.status(200).json({ 
-            message: 'Onboarding completado con éxito', 
-            user: updatedUser 
+        return res.status(200).json({
+            message: 'Onboarding completado con éxito',
+            user: updatedUser
         });
 
     } catch (error) {

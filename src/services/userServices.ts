@@ -62,12 +62,12 @@ export class UserService {
     async createUser(userData: Partial<IUser>): Promise<IUser | null> {
         try {
             const userWithDefaults = {
-            avatar: DEFAULT_AVATAR,
-            coverPhoto: DEFAULT_COVER_PHOTO,
-            interests: [],
-            friends: [],
-            ...userData
-        };
+                avatar: DEFAULT_AVATAR,
+                coverPhoto: DEFAULT_COVER_PHOTO,
+                interests: [],
+                friends: [],
+                ...userData
+            };
 
             const newUser = new User(userWithDefaults);
             return await newUser.save();
@@ -153,10 +153,10 @@ export class UserService {
             userData,
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
     }
 
     async updateUserProfile(userId: string, profileData: {
@@ -173,16 +173,18 @@ export class UserService {
             facebook?: string;
             tiktok?: string;
         };
+        avatar?: string;
+        coverPhoto?: string;
     }): Promise<IUser | null> {
         return await User.findByIdAndUpdate(
             userId,
             profileData,
             { new: true }
         )
-        .populate('events', 'name schedule location')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar coverPhoto bio isOnline lastSeen')
-        .select('-password -securityAnswer');
+            .populate('events', 'name schedule location')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar coverPhoto bio isOnline lastSeen')
+            .select('-password -securityAnswer');
     }
 
     async updateAvatar(userId: string, avatarUrl: string): Promise<IUser | null> {
@@ -191,7 +193,7 @@ export class UserService {
             { avatar: avatarUrl },
             { new: true }
         )
-        .select('-password -securityAnswer');
+            .select('-password -securityAnswer');
     }
 
     async updateCoverPhoto(userId: string, coverPhotoUrl: string): Promise<IUser | null> {
@@ -200,7 +202,7 @@ export class UserService {
             { coverPhoto: coverPhotoUrl },
             { new: true }
         )
-        .select('-password -securityAnswer');
+            .select('-password -securityAnswer');
     }
 
     async addUserInterests(userId: string, interestIds: string[]): Promise<IUser | null> {
@@ -209,8 +211,8 @@ export class UserService {
             { $addToSet: { interests: { $each: interestIds } } },
             { new: true }
         )
-        .populate('interests', 'name color type')
-        .select('-password -securityAnswer');
+            .populate('interests', 'name color type')
+            .select('-password -securityAnswer');
     }
 
     async removeUserInterests(userId: string, interestIds: string[]): Promise<IUser | null> {
@@ -219,8 +221,8 @@ export class UserService {
             { $pull: { interests: { $in: interestIds } } },
             { new: true }
         )
-        .populate('interests', 'name color type')
-        .select('-password -securityAnswer');
+            .populate('interests', 'name color type')
+            .select('-password -securityAnswer');
     }
 
     async disableUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -230,10 +232,10 @@ export class UserService {
             { active: false },
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
     }
 
     async reactivateUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -243,10 +245,10 @@ export class UserService {
             { active: true },
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
     }
 
     async deleteUserByIdentifier(identifier: string): Promise<IUser | null> {
@@ -267,10 +269,10 @@ export class UserService {
             { $addToSet: { events: event._id } },
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
 
         if (updatedUser) {
             await EventModel.findByIdAndUpdate(
@@ -290,9 +292,9 @@ export class UserService {
                     { email: username, active: true }
                 ]
             })
-            .populate('events', 'username email')
-            .populate('interests', 'name color type')
-            .populate('friends', 'username avatar');
+                .populate('events', 'username email')
+                .populate('interests', 'name color type')
+                .populate('friends', 'username avatar');
 
             if (!userWithPass) return null;
 
@@ -436,10 +438,10 @@ export class UserService {
             { role: 'admin' },
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
     }
 
     async removeUserAdminByIdentifier(identifier: string): Promise<IUser | null> {
@@ -449,10 +451,10 @@ export class UserService {
             { role: 'user' },
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
     }
 
     async makeUserManagerByIdentifier(identifier: string): Promise<IUser | null> {
@@ -462,10 +464,10 @@ export class UserService {
             { role: 'manager' },
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
     }
 
     async removeUserManagerByIdentifier(identifier: string): Promise<IUser | null> {
@@ -475,10 +477,10 @@ export class UserService {
             { role: 'user' },
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
     }
 
     async removeEventFromUser(identifier: string, eventIdentifier: string): Promise<IUser | null> {
@@ -493,10 +495,10 @@ export class UserService {
             { $pull: { events: event._id } },
             { new: true }
         )
-        .populate('events', 'username email')
-        .populate('interests', 'name color type')
-        .populate('friends', 'username avatar')
-        .select('-password');
+            .populate('events', 'username email')
+            .populate('interests', 'name color type')
+            .populate('friends', 'username avatar')
+            .select('-password');
 
         if (updatedUser) {
             await EventModel.findByIdAndUpdate(
@@ -546,10 +548,10 @@ export class UserService {
                 { friends: { $in: user.friends } }
             ]
         })
-        .select('username avatar coverPhoto bio interests isOnline lastSeen')
-        .populate('interests', 'name color')
-        .limit(limit)
-        .sort({ isOnline: -1, lastSeen: -1 });
+            .select('username avatar coverPhoto bio interests isOnline lastSeen')
+            .populate('interests', 'name color')
+            .limit(limit)
+            .sort({ isOnline: -1, lastSeen: -1 });
     }
 
     async updateOnboardingData(userId: string, data: { comunidad: string; intereses: string[] }): Promise<IUser | null> {
@@ -559,10 +561,10 @@ export class UserService {
                 $set: {
                     comunidad: data.comunidad,
                     intereses: data.intereses,
-                    onboardingCompleted: true 
+                    onboardingCompleted: true
                 }
             },
-            { new: true } 
+            { new: true }
         );
     }
 }
