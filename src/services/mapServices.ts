@@ -134,7 +134,6 @@ export class MapService {
     };
   }
 
-   // Obtener negocios en un área del mapa (viewport)
    async getBusinessesInArea(
     minLng: number,
     minLat: number,
@@ -164,7 +163,6 @@ export class MapService {
     .select('name location events avatar address');
   }
 
-  // Obtener todos los datos para el mapa (negocios + eventos)
   async getAllMapData(): Promise<{
     businesses: any[];
     events: any[];

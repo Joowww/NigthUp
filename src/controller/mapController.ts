@@ -10,7 +10,6 @@ export async function updateLocation(req: Request, res: Response): Promise<Respo
     const userId = (req as any).user.id;
     let coordinates: [number, number] | undefined = undefined;
 
-    // Permitir ambos formatos
     if (Array.isArray(req.body.coordinates) && req.body.coordinates.length === 2) {
       coordinates = req.body.coordinates as [number, number];
     } else if (typeof req.body.latitude === 'number' && typeof req.body.longitude === 'number') {
@@ -49,7 +48,6 @@ export async function setVisibility(req: Request, res: Response): Promise<Respon
 export async function getNearbyUsers(req: Request, res: Response): Promise<Response> {
   try {
     const userId = (req as any).user.id;
-    // Radius por defecto 50000 metros, máximo 100 usuarios
     const radius = parseInt(req.query.radius as string) || 50000;
     const limit = 100;
 
@@ -114,7 +112,6 @@ export async function getNearbyBusinessesOnly(req: Request, res: Response): Prom
 }
 
 
-// Obtener negocios en el área visible del mapa
 export async function getBusinessesInArea(req: Request, res: Response): Promise<Response> {
   try {
     const { minLng, minLat, maxLng, maxLat } = req.query;
@@ -141,7 +138,6 @@ export async function getBusinessesInArea(req: Request, res: Response): Promise<
   }
 }
 
-// Obtener todos los negocios y eventos para el mapa
 export async function getAllMapData(req: Request, res: Response): Promise<Response> {
   try {
     const data = await mapService.getAllMapData();
@@ -154,7 +150,6 @@ export async function getAllMapData(req: Request, res: Response): Promise<Respon
   }
 }
 
-// Obtener negocios cercanos a coordenadas específicas
 export async function getNearbyBusinessesByCoordinates(req: Request, res: Response): Promise<Response> {
   try {
     const { longitude, latitude } = req.query;

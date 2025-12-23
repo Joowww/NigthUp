@@ -74,8 +74,6 @@ const router = Router();
  *           example: "bar@central.com"
  */
 
-// --- RUTAS PÚBLICAS ---
-
 /**
  * @swagger
  * /api/business:
@@ -150,7 +148,6 @@ router.get('/', getAllBusinesses);
  */
 router.get('/:id', getBusinessById);
 
-// --- RUTAS ADMIN ONLY ---
 /**
  * @swagger
  * /api/business:
@@ -394,7 +391,6 @@ router.put('/:businessId/manager/:managerId', authenticateToken, requireAdmin, a
  */
 router.delete('/:businessId/manager/:managerId', authenticateToken, requireAdmin, removeManagerFromBusiness);
 
-// --- RUTAS ADMIN/MANAGER ---
 /**
  * @swagger
  * /api/business/{id}:
@@ -501,9 +497,6 @@ router.put('/:businessId/event/:eventId', authenticateToken, requireAdminOrManag
  */
 router.delete('/:businessId/event/:eventId', authenticateToken, requireAdminOrManager, removeEventFromBusiness);
 
-// --- RUTAS PÚBLICAS PARA EL MAPA ---
-
-// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/business:

@@ -41,25 +41,6 @@ export async function getAllBusinesses(req: Request, res: Response): Promise<Res
     return res.status(500).json({ message: 'ERROR AL OBTENER NEGOCIOS', details: (error as Error).message });
   }
 }
-/*
-export async function getAllBusinesses(req: Request, res: Response): Promise<Response> {
-  try {
-    const skip = parseInt(req.query.skip as string) || 0;
-    const limit = parseInt(req.query.limit as string) || 10;
-    const result = await businessService.getAllBusinesses(skip, limit);
-    return res.status(200).json({
-      businesses: result.businesses,
-      pagination: {
-        skip,
-        limit,
-        total: result.total,
-        hasMore: (skip + limit) < result.total
-      }
-    });
-  } catch (error) {
-    return res.status(404).json({ message: (error as Error).message });
-  }
-}*/
 
 export async function getAllBusinessesWithInactive(req: Request, res: Response): Promise<Response> {
   try {
@@ -203,9 +184,6 @@ export async function updateBusiness(req: Request, res: Response): Promise<Respo
   }
 }
 
-////////////MINIMO 2 BRYAN//////////////
-
-// Obtener todos los negocios para el mapa
 export async function getAllBusinessesForMap(req: Request, res: Response): Promise<Response> {
   try {
     const businesses = await businessService.getAllBusinessesForMap();
@@ -215,7 +193,6 @@ export async function getAllBusinessesForMap(req: Request, res: Response): Promi
   }
 }
 
-// Obtener negocios en un área específica del mapa
 export async function getBusinessesInArea(req: Request, res: Response): Promise<Response> {
   try {
     const { minLng, minLat, maxLng, maxLat } = req.query;
