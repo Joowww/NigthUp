@@ -10,8 +10,8 @@ export interface IBusiness {
     type: string;
     coordinates: [number, number];
   };
-  events: Types.ObjectId[];
-  managers: Types.ObjectId[];
+  events?: Types.ObjectId[];
+  managers?: Types.ObjectId[];
   active: boolean;
   avatar?: string;
 }

@@ -1,5 +1,6 @@
 import Event, { IEvent } from '../models/event';
 import User from '../models/user';
+import Business from '../models/business';
 import mongoose from 'mongoose';
 
 export interface EventStats {
@@ -28,33 +29,33 @@ export class EventService {
         }
     }
 
-    async getAllEvents(skip: number = 0, limit: number = 10): Promise<{events: IEvent[], total: number}> {
+    async getAllEvents(skip: number = 0, limit: number = 10): Promise<{ events: IEvent[], total: number }> {
         const events = await Event.find({ active: true })
             .skip(skip)
             .limit(limit)
             .populate('participants', 'username email')
-            .populate('likedBy', 'username email') 
+            .populate('likedBy', 'username email')
             .sort({ createdAt: -1 });
 
         const total = await Event.countDocuments({ active: true });
         return { events, total };
     }
 
-    async getAllEventsWithInactive(skip: number = 0, limit: number = 10): Promise<{events: IEvent[], total: number}> {
+    async getAllEventsWithInactive(skip: number = 0, limit: number = 10): Promise<{ events: IEvent[], total: number }> {
         console.log('[DEBUG SERVICE] getAllEventsWithInactive - Buscando eventos...');
-        
+
         try {
             const events = await Event.find()
                 .skip(skip)
                 .limit(limit)
                 .populate('participants', 'username email')
-                .populate('likedBy', 'username email') 
+                .populate('likedBy', 'username email')
                 .sort({ createdAt: -1 });
 
             const total = await Event.countDocuments();
-            
+
             console.log(`[DEBUG SERVICE] Encontrados ${events.length} eventos de ${total} totales`);
-            
+
             return { events, total };
         } catch (error) {
             console.error('[DEBUG SERVICE] Error en getAllEventsWithInactive:', error);
@@ -66,18 +67,18 @@ export class EventService {
         const filter = this.buildEventIdentifierFilter(identifier);
         return await Event.findOne({ ...filter, active: true })
             .populate('participants', 'username email')
-            .populate('likedBy', 'username email'); 
+            .populate('likedBy', 'username email');
     }
 
     async updateEventByIdentifier(identifier: string, eventData: Partial<IEvent>): Promise<IEvent | null> {
         const filter = this.buildEventIdentifierFilter(identifier);
         return await Event.findOneAndUpdate(
-            { ...filter, active: true },
+            { ...filter },
             eventData,
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email'); 
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
     }
 
     async disableEventByIdentifier(identifier: string): Promise<IEvent | null> {
@@ -87,8 +88,8 @@ export class EventService {
             { active: false },
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email'); 
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
     }
 
     async reactivateEventByIdentifier(identifier: string): Promise<IEvent | null> {
@@ -98,8 +99,8 @@ export class EventService {
             { active: true },
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email');
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
     }
 
     async deleteEventByIdentifier(identifier: string): Promise<IEvent | null> {
@@ -132,8 +133,8 @@ export class EventService {
             { $addToSet: { participants: user._id } },
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email'); 
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
 
         if (updatedEvent) {
             await User.findByIdAndUpdate(
@@ -171,8 +172,8 @@ export class EventService {
             { $pull: { participants: user._id } },
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email'); 
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
 
         if (updatedEvent) {
             await User.findByIdAndUpdate(
@@ -204,7 +205,7 @@ export class EventService {
 
     async addSelfToEvent(eventIdentifier: string, userId: string): Promise<IEvent | null> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
-        
+
         const user = await User.findById(userId);
         if (!user) {
             throw new Error('USER NOT FOUND');
@@ -215,8 +216,8 @@ export class EventService {
             { $addToSet: { participants: user._id } },
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email'); 
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
 
         if (updatedEvent) {
             await User.findByIdAndUpdate(
@@ -231,7 +232,7 @@ export class EventService {
 
     async removeSelfFromEvent(eventIdentifier: string, userId: string): Promise<IEvent | null> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
-        
+
         const user = await User.findById(userId);
         if (!user) {
             throw new Error('USER NOT FOUND');
@@ -242,8 +243,8 @@ export class EventService {
             { $pull: { participants: user._id } },
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email'); 
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
 
         if (updatedEvent) {
             await User.findByIdAndUpdate(
@@ -258,7 +259,7 @@ export class EventService {
 
     async likeEvent(eventIdentifier: string, userId: string): Promise<IEvent | null> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
-        
+
         const user = await User.findById(userId);
         if (!user) {
             throw new Error('USER NOT FOUND');
@@ -275,21 +276,21 @@ export class EventService {
 
         const updatedEvent = await Event.findOneAndUpdate(
             eventFilter,
-            { 
+            {
                 $addToSet: { likedBy: user._id },
                 $inc: { likes: 1 }
             },
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email');
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
 
         return updatedEvent;
     }
 
     async unlikeEvent(eventIdentifier: string, userId: string): Promise<IEvent | null> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
-        
+
         const user = await User.findById(userId);
         if (!user) {
             throw new Error('USER NOT FOUND');
@@ -306,28 +307,28 @@ export class EventService {
 
         const updatedEvent = await Event.findOneAndUpdate(
             eventFilter,
-            { 
+            {
                 $pull: { likedBy: user._id },
                 $inc: { likes: -1 }
             },
             { new: true }
         )
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email');
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email');
 
         return updatedEvent;
     }
 
     async getLikeStatus(eventIdentifier: string, userId: string): Promise<{ liked: boolean; likesCount: number }> {
         const eventFilter = this.buildEventIdentifierFilter(eventIdentifier);
-        
+
         const event = await Event.findOne(eventFilter);
         if (!event) {
             throw new Error('EVENT NOT FOUND');
         }
 
         const liked = event.likedBy.includes(new mongoose.Types.ObjectId(userId));
-        
+
         return {
             liked: liked,
             likesCount: event.likes
@@ -343,12 +344,35 @@ export class EventService {
     }
 
     async getLikedEvents(userId: string): Promise<IEvent[]> {
-        return await Event.find({ 
+        return await Event.find({
             active: true,
             likedBy: new mongoose.Types.ObjectId(userId)
         })
-        .populate('participants', 'username email')
-        .populate('likedBy', 'username email')
-        .sort({ createdAt: -1 });
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email')
+            .sort({ createdAt: -1 });
+    }
+
+    async getEventsByManager(userId: string): Promise<IEvent[]> {
+        const businesses = await Business.find({
+            managers: userId,
+            active: true
+        });
+
+        // Collect all event IDs from all businesses managed by the user
+        const eventIds = businesses.reduce((acc, business) => {
+            if (business.events && Array.isArray(business.events)) {
+                acc.push(...business.events);
+            }
+            return acc;
+        }, [] as mongoose.Types.ObjectId[]);
+
+        // Explicitly find all events with these IDs, including inactive ones
+        const allEvents = await Event.find({ _id: { $in: eventIds } })
+            .populate('participants', 'username email')
+            .populate('likedBy', 'username email')
+            .sort({ createdAt: -1 });
+
+        return allEvents;
     }
 }

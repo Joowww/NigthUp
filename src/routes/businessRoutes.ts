@@ -11,7 +11,8 @@ import {
     removeEventFromBusiness,
     addManagerToBusiness,
     removeManagerFromBusiness,
-    updateBusiness
+    updateBusiness,
+    assignManager
 } from '../controller/businessController';
 import { authenticateToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager } from '../middleware/roleMiddleware';
@@ -73,6 +74,36 @@ const router = Router();
  *           type: string
  *           example: "bar@central.com"
  */
+
+/**
+ * @swagger
+ * /api/business/assign-manager:
+ *   post:
+ *     summary: Asignar un usuario como manager de un negocio
+ *     tags: [Business - Public]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - businessId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               businessId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Manager asignado correctamente
+ *       400:
+ *         description: Datos faltantes
+ *       404:
+ *         description: Negocio o usuario no encontrado
+ */
+router.post('/assign-manager', assignManager);
 
 // --- RUTAS PÚBLICAS ---
 /**
@@ -175,7 +206,7 @@ router.get('/:id', getBusinessById);
  *       500:
  *         description: Error del servidor
  */
-router.post('/', authenticateToken, requireAdmin, createBusiness);
+router.post('/', createBusiness);
 
 /**
  * @swagger
@@ -226,7 +257,7 @@ router.post('/', authenticateToken, requireAdmin, createBusiness);
  *       403:
  *         description: Privilegios de administrador requeridos
  */
-router.get('/all/inactive-included', authenticateToken, requireAdmin, getAllBusinessesWithInactive);
+router.get('/all/inactive-included', requireAdmin, getAllBusinessesWithInactive);
 
 /**
  * @swagger

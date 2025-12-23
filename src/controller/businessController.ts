@@ -11,8 +11,8 @@ export async function createBusiness(req: Request, res: Response): Promise<Respo
     return res.status(400).json({ errors: errors.array() });
   }
   try {
-    const { name, address, phone, email } = req.body as IBusiness;
-    const newBusiness: Partial<IBusiness> = { name, address, phone, email };
+    const { name, address, phone, email, location } = req.body as IBusiness;
+    const newBusiness: Partial<IBusiness> = { name, address, phone, email, location };
     const business = await businessService.createBusiness(newBusiness);
     return res.status(201).json(business);
   } catch (error) {
@@ -172,6 +172,24 @@ export async function updateBusiness(req: Request, res: Response): Promise<Respo
     const { name, address, phone, email } = req.body as IBusiness;
     const updatedBusiness: Partial<IBusiness> = { name, address, phone, email };
     const business = await businessService.updateBusiness(id, updatedBusiness);
+    if (!business) {
+      return res.status(404).json({ message: 'NEGOCIO NO ENCONTRADO' });
+    }
+    return res.status(200).json(business);
+  } catch (error) {
+    return res.status(400).json({ message: (error as Error).message });
+  }
+}
+
+export async function assignManager(req: Request, res: Response): Promise<Response> {
+  try {
+    const { userId, businessId } = req.body;
+
+    if (!userId || !businessId) {
+      return res.status(400).json({ message: 'userId and businessId are required' });
+    }
+
+    const business = await businessService.assignManager(businessId, userId);
     if (!business) {
       return res.status(404).json({ message: 'NEGOCIO NO ENCONTRADO' });
     }

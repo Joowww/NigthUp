@@ -4,7 +4,10 @@ import { EventService } from '../services/eventServices';
 import { validationResult } from 'express-validator';
 import mongoose from 'mongoose';
 
+import { BusinessService } from '../services/businessServices';
+
 const eventService = new EventService();
+const businessService = new BusinessService();
 
 export async function createEvent(req: Request, res: Response): Promise<Response> {
     const errors = validationResult(req);
@@ -14,10 +17,24 @@ export async function createEvent(req: Request, res: Response): Promise<Response
 
     try {
         const eventData: Partial<IEvent> = req.body;
+
+        // Force active: true if not specified (safeguard)
+        if (eventData.active === undefined) {
+            eventData.active = true;
+        }
+
+        console.log('[DEBUG] Creating event with data:', JSON.stringify(eventData, null, 2));
+
         const event = await eventService.createEvent(eventData);
 
         if (!event) {
             return res.status(500).json({ error: 'FAILED TO CREATE EVENT' });
+        }
+
+        // Si se pasa un managerId en los params, asociamos el evento al negocio de ese manager
+        const { managerId } = req.params;
+        if (managerId) {
+            await businessService.addEventToBusinessByManagerId(managerId, event._id.toString());
         }
 
         return res.status(201).json(event);
@@ -385,3 +402,18 @@ export async function getParticipantsByEvent(req: Request, res: Response) {
     }
 }
 
+
+export async function getEventsByManager(req: Request, res: Response): Promise<Response> {
+    try {
+        const { userId } = req.params;
+
+        if (!userId) {
+            return res.status(400).json({ message: 'User ID is required' });
+        }
+
+        const events = await eventService.getEventsByManager(userId);
+        return res.status(200).json(events);
+    } catch (error) {
+        return res.status(500).json({ message: (error as Error).message });
+    }
+}
