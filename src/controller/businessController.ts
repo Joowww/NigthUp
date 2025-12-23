@@ -24,10 +24,7 @@ export async function getAllBusinesses(req: Request, res: Response): Promise<Res
   try {
     const skip = parseInt(req.query.skip as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
-    const query = req.query.q as string | undefined;
-
-    const result = await businessService.getAllBusinesses(skip, limit, query);
-
+    const result = await businessService.getAllBusinesses(skip, limit);
     return res.status(200).json({
       businesses: result.businesses,
       pagination: {
@@ -38,7 +35,7 @@ export async function getAllBusinesses(req: Request, res: Response): Promise<Res
       }
     });
   } catch (error) {
-    return res.status(500).json({ message: 'ERROR AL OBTENER NEGOCIOS', details: (error as Error).message });
+    return res.status(404).json({ message: (error as Error).message });
   }
 }
 
@@ -184,32 +181,20 @@ export async function updateBusiness(req: Request, res: Response): Promise<Respo
   }
 }
 
-export async function getAllBusinessesForMap(req: Request, res: Response): Promise<Response> {
+export async function assignManager(req: Request, res: Response): Promise<Response> {
   try {
-    const businesses = await businessService.getAllBusinessesForMap();
-    return res.status(200).json(businesses);
-  } catch (error) {
-    return res.status(500).json({ error: 'ERROR AL OBTENER NEGOCIOS PARA MAPA', details: (error as Error).message });
-  }
-}
+    const { userId, businessId } = req.body;
 
-export async function getBusinessesInArea(req: Request, res: Response): Promise<Response> {
-  try {
-    const { minLng, minLat, maxLng, maxLat } = req.query;
-
-    if (!minLng || !minLat || !maxLng || !maxLat) {
-      return res.status(400).json({ error: 'PARAMETROS DE AREA REQUERIDOS: minLng, minLat, maxLng, maxLat' });
+    if (!userId || !businessId) {
+      return res.status(400).json({ message: 'userId and businessId are required' });
     }
 
-    const businesses = await businessService.getBusinessesInArea(
-      parseFloat(minLng as string),
-      parseFloat(minLat as string),
-      parseFloat(maxLng as string),
-      parseFloat(maxLat as string)
-    );
-
-    return res.status(200).json(businesses);
+    const business = await businessService.assignManager(businessId, userId);
+    if (!business) {
+      return res.status(404).json({ message: 'NEGOCIO NO ENCONTRADO' });
+    }
+    return res.status(200).json(business);
   } catch (error) {
-    return res.status(500).json({ error: 'ERROR AL OBTENER NEGOCIOS EN AREA', details: (error as Error).message });
+    return res.status(400).json({ message: (error as Error).message });
   }
 }

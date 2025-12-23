@@ -42,6 +42,7 @@ const businessSchema = new Schema<IBusiness>({
   versionKey: false
 });
 
+
 businessSchema.index({ location: '2dsphere' });
 
 export const Business = model<IBusiness>('Business', businessSchema);

@@ -5,8 +5,7 @@
       "outDir": "./dist",
       "rootDir": "./src",
       "strict": true,
-      "esModuleInterop": true,
-      "removeComments": false  
-      }
+      "esModuleInterop": true
+    }
   }
   

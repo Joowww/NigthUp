@@ -54,22 +54,13 @@ export class ChatService {
         lastMessageTime = lastMessage.createdAt;
       }
 
-      const unreadCount = await Message.countDocuments({
-        conversation: convo._id,
-        readBy: { $ne: userId }
-      });
-
       return {
         id: convo._id,
         isGroup,
         name,
         avatar,
-        unreadCount,
         lastMessage: previewText,
         lastMessageTime,
-        isPinned: false, // o tu lógica de pinned
-        
-        participants: convo.participants.map(p => p.participant),
       };
     }));
 

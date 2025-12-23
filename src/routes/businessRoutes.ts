@@ -12,6 +12,7 @@ import {
     addManagerToBusiness,
     removeManagerFromBusiness,
     updateBusiness,
+    assignManager
 } from '../controller/businessController';
 import { authenticateToken } from '../auth/middleware';
 import { requireAdmin, requireAdminOrManager } from '../middleware/roleMiddleware';
@@ -76,9 +77,40 @@ const router = Router();
 
 /**
  * @swagger
+ * /api/business/assign-manager:
+ *   post:
+ *     summary: Asignar un usuario como manager de un negocio
+ *     tags: [Business - Public]
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - userId
+ *               - businessId
+ *             properties:
+ *               userId:
+ *                 type: string
+ *               businessId:
+ *                 type: string
+ *     responses:
+ *       200:
+ *         description: Manager asignado correctamente
+ *       400:
+ *         description: Datos faltantes
+ *       404:
+ *         description: Negocio o usuario no encontrado
+ */
+router.post('/assign-manager', assignManager);
+
+// --- RUTAS PÚBLICAS ---
+/**
+ * @swagger
  * /api/business:
  *   get:
- *     summary: Obtener lista de negocios activos (con paginación y búsqueda)
+ *     summary: Obtener todos los negocios activos
  *     tags: [Business - Public]
  *     parameters:
  *       - in: query
@@ -86,18 +118,13 @@ const router = Router();
  *         schema:
  *           type: integer
  *           default: 0
- *         description: Número de elementos a saltar (para paginación)
+ *         description: Número de elementos a saltar
  *       - in: query
  *         name: limit
  *         schema:
  *           type: integer
  *           default: 10
  *         description: Número máximo de elementos a retornar
- *       - in: query
- *         name: q
- *         schema:
- *           type: string
- *         description: Término de búsqueda por nombre del local (case-insensitive)
  *     responses:
  *       200:
  *         description: Lista de negocios activos
@@ -148,6 +175,7 @@ router.get('/', getAllBusinesses);
  */
 router.get('/:id', getBusinessById);
 
+// --- RUTAS ADMIN ONLY ---
 /**
  * @swagger
  * /api/business:
@@ -391,6 +419,7 @@ router.put('/:businessId/manager/:managerId', authenticateToken, requireAdmin, a
  */
 router.delete('/:businessId/manager/:managerId', authenticateToken, requireAdmin, removeManagerFromBusiness);
 
+// --- RUTAS ADMIN/MANAGER ---
 /**
  * @swagger
  * /api/business/{id}:
@@ -496,74 +525,5 @@ router.put('/:businessId/event/:eventId', authenticateToken, requireAdminOrManag
  *         description: Negocio no encontrado
  */
 router.delete('/:businessId/event/:eventId', authenticateToken, requireAdminOrManager, removeEventFromBusiness);
-
-/**
- * @swagger
- * /api/business:
- *   get:
- *     summary: Obtener todos los negocios activos
- *     tags: [Business - Public]
- *     parameters:
- *       - in: query
- *         name: skip
- *         schema:
- *           type: integer
- *           default: 0
- *         description: Número de elementos a saltar
- *       - in: query
- *         name: limit
- *         schema:
- *           type: integer
- *           default: 10
- *         description: Número máximo de elementos a retornar
- *     responses:
- *       200:
- *         description: Lista de negocios activos
- *         content:
- *           application/json:
- *             schema:
- *               type: object
- *               properties:
- *                 businesses:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/Business'
- *                 pagination:
- *                   type: object
- *                   properties:
- *                     skip:
- *                       type: integer
- *                     limit:
- *                       type: integer
- *                     total:
- *                       type: integer
- *                     hasMore:
- *                       type: boolean
- */
-router.get('/', getAllBusinesses);
-
-/**
- * @swagger
- * /api/business/{id}:
- *   get:
- *     summary: Obtener negocio por ID
- *     tags: [Business - Public]
- *     parameters:
- *       - in: path
- *         name: id
- *         required: true
- *         schema:
- *           type: string
- *     responses:
- *       200:
- *         description: Detalles del negocio
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/Business'
- *       404:
- *         description: Negocio no encontrado
- */
-router.get('/:id', getBusinessById);
 
 export default router;
