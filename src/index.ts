@@ -11,6 +11,7 @@ import http from 'http';
 import { Server } from 'socket.io';
 import { initializeSocket } from './socket/socketHandler';
 
+// Importación de rutas
 import userRoutes from './routes/userRoutes';
 import eventRoutes from './routes/eventRoutes';
 import businessRoutes from './routes/businessRoutes';
@@ -35,17 +36,31 @@ import fileRoutes from './routes/fileRoutes';
 
 import User from './models/user';
 
+// Cargar variables de entorno
 dotenv.config();
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors());
 app.use(express.json());
+setupSwagger(app);
 
 
 app.use('/uploads', express.static('uploads'));
 app.use('/public', express.static('public'));
+
+// --- CONFIGURACIÓN CORS ---
+app.use(cors({
+    origin: process.env.FRONTEND_URL?.split(',') || [
+        'http://localhost:4200',
+        'http://localhost:8080',
+        'http://localhost:5173',
+        'https://ea1.upc.edu',
+        'https://ea1-api.upc.edu'
+    ],
+    credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS']
+}));
 
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {

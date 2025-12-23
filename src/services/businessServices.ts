@@ -7,14 +7,26 @@ export class BusinessService {
     return await business.save();
   }
 
-  async getAllBusinesses(skip: number = 0, limit: number = 10): Promise<{ businesses: IBusiness[], total: number }> {
-    const businesses = await Business.find({ active: true })
+  async getAllBusinesses(
+    skip: number = 0,
+    limit: number = 10,
+    query?: string
+  ): Promise<{ businesses: IBusiness[], total: number }> {
+
+    let filter: any = { active: true };
+
+    if (query) {
+      filter.name = { $regex: query, $options: 'i' };
+    }
+
+    const businesses = await Business.find(filter)
       .skip(skip)
       .limit(limit)
       .populate('events')
       .populate('managers', 'username email');
 
-    const total = await Business.countDocuments({ active: true });
+    const total = await Business.countDocuments(filter);
+
     return { businesses, total };
   }
 
@@ -95,28 +107,41 @@ export class BusinessService {
     ).populate('events').populate('managers', 'username email');
   }
 
-  async assignManager(businessId: string, userId: string): Promise<IBusiness | null> {
-    const user = await User.findById(userId);
-    if (!user) {
-      throw new Error('USER NOT FOUND');
-    }
-
-    if (user.role !== 'manager' && user.role !== 'admin') {
-      user.role = 'manager';
-      await user.save();
-    }
-
-    return await Business.findByIdAndUpdate(
-      businessId,
-      { $addToSet: { managers: userId } },
-      { new: true }
-    ).populate('managers', 'username email').populate('events');
+  async getAllBusinessesForMap(): Promise<IBusiness[]> {
+    return await Business.find({ active: true })
+      .select('name location events avatar')
+      .populate('events', 'name date');
   }
-  async addEventToBusinessByManagerId(managerId: string, eventId: string): Promise<IBusiness | null> {
-    return await Business.findOneAndUpdate(
-      { managers: managerId, active: true },
-      { $addToSet: { events: eventId } },
-      { new: true }
-    ).populate('events').populate('managers', 'username email');
+
+
+  async getBusinessesInArea(
+    minLng: number,
+    minLat: number,
+    maxLng: number,
+    maxLat: number
+  ): Promise<IBusiness[]> {
+    const polygon = [
+      [minLng, minLat],
+      [maxLng, minLat],
+      [maxLng, maxLat],
+      [minLng, maxLat],
+      [minLng, minLat]
+    ];
+
+    return await Business.find({
+      active: true,
+      location: {
+        $geoWithin: {
+          $geometry: {
+            type: 'Polygon',
+            coordinates: [polygon]
+          }
+        }
+      }
+    })
+      .populate('events')
+      .populate('managers', 'username email');
   }
+
 }
+

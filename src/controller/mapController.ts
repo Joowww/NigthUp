@@ -110,3 +110,68 @@ export async function getNearbyBusinessesOnly(req: Request, res: Response): Prom
     return res.status(500).json({ error: (error as Error).message });
   }
 }
+
+
+export async function getBusinessesInArea(req: Request, res: Response): Promise<Response> {
+  try {
+    const { minLng, minLat, maxLng, maxLat } = req.query;
+
+    if (!minLng || !minLat || !maxLng || !maxLat) {
+      return res.status(400).json({ 
+        error: 'PARAMETROS REQUERIDOS: minLng, minLat, maxLng, maxLat' 
+      });
+    }
+
+    const businesses = await mapService.getBusinessesInArea(
+      parseFloat(minLng as string),
+      parseFloat(minLat as string),
+      parseFloat(maxLng as string),
+      parseFloat(maxLat as string)
+    );
+
+    return res.status(200).json({ businesses });
+  } catch (error) {
+    return res.status(500).json({ 
+      error: 'ERROR AL OBTENER NEGOCIOS EN AREA', 
+      details: (error as Error).message 
+    });
+  }
+}
+
+export async function getAllMapData(req: Request, res: Response): Promise<Response> {
+  try {
+    const data = await mapService.getAllMapData();
+    return res.status(200).json(data);
+  } catch (error) {
+    return res.status(500).json({ 
+      error: 'ERROR AL OBTENER DATOS DEL MAPA', 
+      details: (error as Error).message 
+    });
+  }
+}
+
+export async function getNearbyBusinessesByCoordinates(req: Request, res: Response): Promise<Response> {
+  try {
+    const { longitude, latitude } = req.query;
+    const radius = parseInt(req.query.radius as string) || 5000;
+
+    if (!longitude || !latitude) {
+      return res.status(400).json({ 
+        error: 'longitude y latitude son requeridos' 
+      });
+    }
+
+    const coordinates: [number, number] = [
+      parseFloat(longitude as string), 
+      parseFloat(latitude as string)
+    ];
+
+    const businesses = await mapService.getNearbyBusinesses(coordinates, radius);
+    return res.status(200).json({ businesses });
+  } catch (error) {
+    return res.status(500).json({ 
+      error: 'ERROR AL OBTENER NEGOCIOS CERCANOS', 
+      details: (error as Error).message 
+    });
+  }
+}
