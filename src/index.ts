@@ -50,7 +50,7 @@ app.use('/public', express.static('public'));
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:4200",
+        origin: process.env.FRONTEND_URL || "http://localhost:4200" || "http://localhost:5000" || "http://localhost:3000",
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     }
 });

@@ -7,7 +7,7 @@ import { Tag } from '../models/tag';
 import { UserInterest } from '../models/userInterest';
 import { Business } from '../models/business';
 import { UserTrust } from '../models/userTrust';
-import { Message } from '../models/message';
+import Message from '../models/message';
 import { Post } from '../models/post';
 
 
@@ -181,7 +181,6 @@ export async function seedDemoData() {
         await User.deleteMany({});
         await UserInterest.deleteMany({});
         await UserTrust.deleteMany({});
-        await Message.deleteMany({});
         await Message.deleteMany({});
         await Conversation.deleteMany({});
         console.log('Collections cleared');

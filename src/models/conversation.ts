@@ -24,6 +24,9 @@ export interface IGroupParticipant {
 }
 
 export interface IConversation extends Document {
+  question: any;
+  options: any;
+  creator: any;
   _id: Types.ObjectId;
   isGroup: boolean;
   groupName?: string;
@@ -51,7 +54,7 @@ const conversationSchema = new Schema<IConversation>(
     },
     groupName: {
       type: String,
-      required: function(this: IConversation) {
+      required: function (this: IConversation) {
         return this.isGroup;
       }
     },

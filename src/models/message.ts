@@ -1,76 +1,87 @@
-import mongoose, { Schema, model, Types, Document } from 'mongoose';
+import mongoose, { Schema, Document } from 'mongoose';
 
 export interface IReaction {
-  user: Types.ObjectId;
+  user: mongoose.Types.ObjectId;
   emoji: string;
 }
 
 export interface IMessage extends Document {
-  _id: Types.ObjectId;
-  conversation: Types.ObjectId;
-  sender: Types.ObjectId;
+  conversation: mongoose.Types.ObjectId;
+  sender: mongoose.Types.ObjectId;
   text: string;
-  readBy: Types.ObjectId[];
-
+  messageType: 'text' | 'image'; // ✅ NUEVO
+  imageUrl?: string; // ✅ NUEVO
+  readBy: mongoose.Types.ObjectId[];
   isEdited: boolean;
   isDeleted: boolean;
-  replyTo?: Types.ObjectId;
+  replyTo?: mongoose.Types.ObjectId;
   reactions: IReaction[];
-
   createdAt: Date;
   updatedAt: Date;
 }
 
-const messageSchema = new Schema<IMessage>({
-  conversation: {
-    type: Schema.Types.ObjectId,
-    ref: 'Conversation',
-    required: true,
-    index: true
-  },
-  sender: {
-    type: Schema.Types.ObjectId,
-    ref: 'User',
-    required: true
-  },
-
-  text: {
-    type: String,
-    required: true
-  },
-  readBy: [{
-    type: Schema.Types.ObjectId,
-    ref: 'User'
-  }],
-
-  isEdited: {
-    type: Boolean,
-    default: false
-  },
-  isDeleted: {
-    type: Boolean,
-    default: false
-  },
-  replyTo: {
-    type: Schema.Types.ObjectId,
-    ref: 'Message',
-    default: null
-  },
-  reactions: [{
-    _id: false,
-    user: {
+const MessageSchema: Schema = new Schema(
+  {
+    conversation: {
       type: Schema.Types.ObjectId,
-      ref: 'User'
+      ref: 'Conversation',
+      required: true,
+      index: true,
     },
-    emoji: String
-  }]
-}, {
-  timestamps: true,
-  versionKey: false
-});
+    sender: {
+      type: Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+      index: true,
+    },
+    text: {
+      type: String,
+      default: '',
+    },
+    messageType: {
+      type: String,
+      enum: ['text', 'image'],
+      default: 'text',
+    },
+    imageUrl: {
+      type: String,
+    },
+    readBy: [
+      {
+        type: Schema.Types.ObjectId,
+        ref: 'User',
+      },
+    ],
+    isEdited: {
+      type: Boolean,
+      default: false,
+    },
+    isDeleted: {
+      type: Boolean,
+      default: false,
+    },
+    replyTo: {
+      type: Schema.Types.ObjectId,
+      ref: 'Message',
+    },
+    reactions: [
+      {
+        user: {
+          type: Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        emoji: {
+          type: String,
+        },
+      },
+    ],
+  },
+  {
+    timestamps: true,
+  }
+);
 
-messageSchema.index({ conversation: 1, createdAt: -1 });
-messageSchema.index({ sender: 1 });
+MessageSchema.index({ conversation: 1, createdAt: -1 });
+MessageSchema.index({ sender: 1 });
 
-export const Message = model<IMessage>('Message', messageSchema);
-export default Message;
+export default mongoose.model<IMessage>('Message', MessageSchema);
