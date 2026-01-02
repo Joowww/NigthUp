@@ -1,5 +1,5 @@
 import User, { DEFAULT_AVATAR, DEFAULT_COVER_PHOTO, IUser } from '../models/user';
-import EventModel from '../models/event';
+import EventModel, { IEvent } from '../models/event';
 import mongoose from 'mongoose';
 
 export interface UserStats {
@@ -555,16 +555,114 @@ export class UserService {
     }
 
     async updateOnboardingData(userId: string, data: { comunidad: string; intereses: string[] }): Promise<IUser | null> {
+        const { comunidad, intereses } = data;
+        const MAX_EVENTS = 6;
+        let fypIds: mongoose.Types.ObjectId[] = [];
+
+        const cityRegex = new RegExp(`^${comunidad}$`, 'i');
+
+        // 1. Primary: Match City AND Interests
+        const exactMatches = await EventModel.find({
+            active: true,
+            city: cityRegex,
+            category: { $in: intereses }
+        }).limit(MAX_EVENTS);
+
+        fypIds = exactMatches.map(e => e._id);
+
+        // 2. Secondary: Match City only
+        if (fypIds.length < MAX_EVENTS) {
+            const cityMatches = await EventModel.find({
+                active: true,
+                city: cityRegex,
+                _id: { $nin: fypIds }
+            }).limit(MAX_EVENTS - fypIds.length);
+
+            fypIds = [...fypIds, ...cityMatches.map(e => e._id)];
+        }
+
+        // 3. Tertiary: Match Interests (Any City)
+        if (fypIds.length < MAX_EVENTS) {
+            const interestMatches = await EventModel.find({
+                active: true,
+                category: { $in: intereses },
+                _id: { $nin: fypIds }
+            }).limit(MAX_EVENTS - fypIds.length);
+
+            fypIds = [...fypIds, ...interestMatches.map(e => e._id)];
+        }
+
+        // 4. Fallback: Random Events
+        if (fypIds.length < MAX_EVENTS) {
+            const remainingCount = MAX_EVENTS - fypIds.length;
+            const randomEvents = await EventModel.aggregate([
+                { $match: { active: true, _id: { $nin: fypIds } } },
+                { $sample: { size: remainingCount } }
+            ]);
+
+            const randomIds = randomEvents.map(e => e._id as mongoose.Types.ObjectId);
+            fypIds = [...fypIds, ...randomIds];
+        }
+
         return await User.findByIdAndUpdate(
             userId,
             {
                 $set: {
                     comunidad: data.comunidad,
                     intereses: data.intereses,
-                    onboardingCompleted: true
+                    onboardingCompleted: true,
+                    fyp: fypIds.slice(0, 6) // Ensure strict 6
                 }
             },
             { new: true }
         );
+    }
+
+    async getFyp(identifier: string): Promise<IEvent[]> {
+        const filter = this.buildIdentifierFilter(identifier);
+        const user = await User.findOne({ ...filter, active: true }).populate({
+            path: 'fyp',
+            populate: { path: 'participants likedBy', select: 'username email' }
+        });
+
+        if (!user || !user.fyp) return [];
+
+        // Filter out any events that couldn't be populated (e.g. deleted or inactive) and return max 6
+        return (user.fyp as any[])
+            .filter(event => event !== null && typeof event === 'object')
+            .slice(0, 6) as IEvent[];
+    }
+
+    async addEventToRelevantFyps(event: IEvent): Promise<void> {
+        try {
+            // Filter users who are active, interested in the category, AND belong to the same community/city
+            // We use regex for case-insensitive matching if needed, or direct match if data is normalized.
+            // Assuming 'comunidad' in User corresponds to 'city' in Event.
+
+            const filter: any = {
+                active: true,
+                intereses: event.category
+            };
+
+            if (event.city) {
+                // Using regex for flexibility (case insensitive user.comunidad == event.city)
+                filter.comunidad = { $regex: new RegExp(`^${event.city}$`, 'i') };
+            }
+
+            await User.updateMany(
+                filter,
+                {
+                    $push: {
+                        fyp: {
+                            $each: [event._id],
+                            $position: 0,
+                            $slice: 6 // Keep only the latest 6 events
+                        }
+                    }
+                }
+            );
+        } catch (error) {
+            console.error('Error updating FYPs with new event:', error);
+        }
     }
 }

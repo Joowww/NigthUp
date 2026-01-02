@@ -844,3 +844,14 @@ export const completeOnboardingHandler = async (req: Request, res: Response): Pr
         return res.status(500).json({ error: 'Error del servidor' });
     }
 };
+
+export async function getFyp(req: Request, res: Response): Promise<Response> {
+    try {
+        const { identifier } = req.params;
+        const events = await userService.getFyp(identifier);
+        return res.status(200).json({ events });
+    } catch (error) {
+        console.error('Error getting FYP:', error);
+        return res.status(500).json({ error: 'Error retrieving FYP' });
+    }
+}

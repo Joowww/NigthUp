@@ -33,7 +33,8 @@ import {
     addUserInterests,
     removeUserInterests,
     getSuggestedUsers,
-    completeOnboardingHandler
+    completeOnboardingHandler,
+    getFyp
 } from '../controller/userController';
 
 import { googleAuth, connectGoogleAccount } from '../controller/googleAuthController';
@@ -270,7 +271,7 @@ router.post('/', createUser);
  *       500:
  *         description: Error del servidor
  */
-router.patch('/complete-onboarding',authenticateToken,completeOnboardingHandler);
+router.patch('/complete-onboarding', authenticateToken, completeOnboardingHandler);
 
 /**
  * @swagger
@@ -779,6 +780,29 @@ router.get('/with-inactive', authenticateToken, requireAdmin, getAllUsersWithIna
  *         description: User not found
  */
 router.get('/:identifier', authenticateToken, requireAdmin, getUserByIdentifier);
+
+/**
+ * @swagger
+ * /api/user/{identifier}/fyp:
+ *   get:
+ *     summary: Obtener el For You Page (FYP) de eventos personalizados
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: path
+ *         name: identifier
+ *         required: true
+ *         schema:
+ *           type: string
+ *         description: User ID
+ *     responses:
+ *       200:
+ *         description: Lista de eventos FYP
+ *       404:
+ *         description: Usuario no encontrado
+ */
+router.get('/:identifier/fyp', authenticateToken, getFyp);
 
 /**
  * @swagger
