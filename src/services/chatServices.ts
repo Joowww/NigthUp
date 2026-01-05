@@ -131,6 +131,7 @@ export class ChatService {
       text: msg.isDeleted ? 'Mensaje eliminado' : msg.text,
       messageType: msg.messageType,
       imageUrl: msg.imageUrl,
+      audioUrl: msg.audioUrl,
       createdAt: msg.createdAt,
       updatedAt: msg.updatedAt,
       isEdited: msg.isEdited,
@@ -280,7 +281,8 @@ export class ChatService {
     senderId: string;
     text: string;
     imageUrl?: string;
-    messageType?: 'text' | 'image';
+    audioUrl?: string; // ✅ AÑADIDO
+    messageType?: 'text' | 'image' | 'audio'; // ✅ ACTUALIZADO
     replyTo?: string;
   }) {
     const conversation = await Conversation.findById(data.conversationId);
@@ -300,12 +302,21 @@ export class ChatService {
       text: data.text || '',
       messageType: data.messageType || 'text',
       imageUrl: data.imageUrl,
+      audioUrl: data.audioUrl, // ✅ AÑADIDO
       replyTo: data.replyTo,
       readBy: [data.senderId],
     });
 
     // Actualizar último mensaje
-    conversation.lastMessage = message._id as any;
+    let previewText = message.text;
+    if (message.messageType === 'image') previewText = '📸 Imagen';
+    if (message.messageType === 'audio') previewText = '🎵 Audio';
+
+    conversation.lastMessage = {
+      message: previewText,
+      senderId: message.sender,
+      createdAt: message.createdAt
+    } as any;
     await conversation.save();
 
     // Poblar información

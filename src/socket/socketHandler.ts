@@ -48,16 +48,17 @@ export function initializeSocket(io: Server) {
     // ==================== ENVIAR MENSAJE ====================
 
     socket.on('sendMessage', async (data) => {
-      const { conversationId, text, imageUrl, messageType, replyTo } = data;
+      console.log('📨 [SOCKET] Intento de envío de mensaje recibido:', JSON.stringify(data, null, 2));
+      const { conversationId, text, imageUrl, audioUrl, messageType, replyTo } = data;
 
       if (!conversationId) {
         socket.emit('error', { message: 'conversationId es requerido' });
         return;
       }
 
-      // Validar que haya texto o imagen
-      if (!text && !imageUrl) {
-        socket.emit('error', { message: 'El mensaje debe tener texto o imagen' });
+      // Validar que haya texto, imagen o audio
+      if (!text && !imageUrl && !audioUrl) {
+        socket.emit('error', { message: 'El mensaje debe tener texto, imagen o audio' });
         return;
       }
 
@@ -68,6 +69,7 @@ export function initializeSocket(io: Server) {
           senderId: userId,
           text: text?.trim() || '',
           imageUrl,
+          audioUrl,
           messageType: messageType || 'text',
           replyTo
         });
@@ -83,6 +85,7 @@ export function initializeSocket(io: Server) {
           text: newMessage.text,
           messageType: newMessage.messageType,
           imageUrl: newMessage.imageUrl,
+          audioUrl: newMessage.audioUrl,
           replyTo: newMessage.replyTo,
           reactions: newMessage.reactions,
           isEdited: newMessage.isEdited,

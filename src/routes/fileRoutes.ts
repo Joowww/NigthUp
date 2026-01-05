@@ -17,7 +17,7 @@ const upload = multer({ storage: multer.memoryStorage() });
  * @swagger
  * /api/files/upload:
  *   post:
- *     summary: Upload an image to Cloudinary
+ *     summary: Upload a file (image, audio, video) to Cloudinary
  *     tags: [Files]
  *     security:
  *       - bearerAuth: []
@@ -31,12 +31,18 @@ const upload = multer({ storage: multer.memoryStorage() });
  *               image:
  *                 type: string
  *                 format: binary
+ *                 description: The file to upload
  *               folder:
  *                 type: string
- *                 example: "profile"
+ *                 example: "chat"
+ *               resourceType:
+ *                 type: string
+ *                 enum: [auto, image, video, raw]
+ *                 default: auto
+ *                 description: Type of resource (use 'video' for audio)
  *     responses:
  *       201:
- *         description: Image uploaded successfully
+ *         description: File uploaded successfully
  *         content:
  *           application/json:
  *             schema:
@@ -44,7 +50,13 @@ const upload = multer({ storage: multer.memoryStorage() });
  *               properties:
  *                 status:
  *                   type: string
+ *                 file_url:
+ *                   type: string
  *                 image_url:
+ *                   type: string
+ *                 url:
+ *                   type: string
+ *                 secure_url:
  *                   type: string
  *       400:
  *         description: Missing file or invalid request

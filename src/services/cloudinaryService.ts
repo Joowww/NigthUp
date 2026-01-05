@@ -17,11 +17,11 @@ cloudinary.config({
     secure: true,
 });
 
-export const uploadImage = async (fileBuffer: Buffer, folder: string): Promise<string | null> => {
+export const uploadImage = async (fileBuffer: Buffer, folder: string, resourceType: 'auto' | 'image' | 'video' | 'raw' = 'auto'): Promise<string | null> => {
     return new Promise((resolve, reject) => {
         const options = {
             folder: `nightup_${folder}`,
-            resource_type: 'image' as const,
+            resource_type: resourceType,
             use_filename: true,
             unique_filename: true,
             overwrite: true,

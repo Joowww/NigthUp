@@ -9,20 +9,24 @@ export const uploadImageHandler = async (req: Request, res: Response): Promise<v
         }
 
         const folder = req.body.folder || 'general';
-        console.log(`[FILE CONTROLLER] 🚀 New upload request. File: ${req.file.originalname}, Folder: ${folder}`);
+        const resourceType = req.body.resourceType || 'auto';
+        console.log(`[FILE CONTROLLER] 🚀 New upload request. File: ${req.file.originalname}, Folder: ${folder}, Type: ${resourceType}`);
 
-        const imageUrl = await uploadImage(req.file.buffer, folder);
+        const fileUrl = await uploadImage(req.file.buffer, folder, resourceType as any);
 
-        if (!imageUrl) {
+        if (!fileUrl) {
             console.error('[FILE CONTROLLER] ❌ Failed to get URL from Cloudinary');
-            res.status(500).json({ status: 'error', message: 'Failed to upload image to Cloudinary' });
+            res.status(500).json({ status: 'error', message: 'Failed to upload file to Cloudinary' });
             return;
         }
 
-        console.log('[FILE CONTROLLER] ✨ Image processed successfully:', imageUrl);
+        console.log('[FILE CONTROLLER] ✨ File processed successfully:', fileUrl);
         res.status(201).json({
             status: 'success',
-            image_url: imageUrl,
+            file_url: fileUrl,
+            image_url: fileUrl,  // Mantener para compatibilidad
+            url: fileUrl,        // Alias para compatibilidad
+            secure_url: fileUrl  // Alias para compatibilidad
         });
     } catch (error) {
         console.error('Error in uploadImageHandler:', error);
