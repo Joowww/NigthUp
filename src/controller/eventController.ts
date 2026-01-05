@@ -37,6 +37,12 @@ export async function createEvent(req: Request, res: Response): Promise<Response
             await businessService.addEventToBusinessByManagerId(managerId, event._id.toString());
         }
 
+        // PUSH EVENT TO RELEVANT USERS (FYP)
+        // We do this asynchronously to not block the response
+        const { UserService } = require('../services/userServices'); // Dynamic import to avoid circular dependency issues if any
+        const userService = new UserService();
+        userService.addEventToRelevantFyps(event).catch((err: any) => console.error('Background FYP update failed:', err));
+
         return res.status(201).json(event);
     } catch (error) {
         return res.status(500).json({
@@ -114,6 +120,11 @@ export async function updateEventByIdentifier(req: Request, res: Response): Prom
 
         const updatedEvent = await eventService.updateEventByIdentifier(identifier, eventData);
         if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
+
+        // PUSH UPDATED EVENT TO RELEVANT USERS (FYP)
+        const { UserService } = require('../services/userServices');
+        const userService = new UserService();
+        userService.addEventToRelevantFyps(updatedEvent).catch((err: any) => console.error('Background FYP update failed:', err));
 
         return res.status(200).json({ message: 'Event updated successfully', event: updatedEvent });
     } catch (error) {

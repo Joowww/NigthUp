@@ -56,6 +56,7 @@ export interface IUser {
     };
     comunidad?: string;
     intereses?: string[];
+    fyp: Types.ObjectId[];
     onboardingCompleted?: boolean;
     comparePassword(candidatePassword: string): Promise<boolean>;
     compareSecurityAnswer(candidateAnswer: string): Promise<boolean>;
@@ -109,7 +110,7 @@ const userSchema = new Schema<IUser>({
         type: String,
         required: false,
         validate: {
-            validator: function(v: string) {
+            validator: function (v: string) {
                 if (!v) return true;
                 return /^[\+]?[(]?[\d\s\-\(\)]{10,}$/.test(v);
             },
@@ -118,18 +119,19 @@ const userSchema = new Schema<IUser>({
         default: null
     },
     comunidad: { type: String, default: '' },
-   intereses: { type: [String], default: [] },
-   onboardingCompleted: { type: Boolean, default: false },
+    intereses: { type: [String], default: [] },
+    fyp: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
+    onboardingCompleted: { type: Boolean, default: false },
     events: [{ type: Schema.Types.ObjectId, ref: 'Event', default: [] }],
     active: { type: Boolean, default: true },
     role: { type: String, required: true, enum: ['admin', 'manager', 'user'], default: 'user' },
-    avatar: { 
-        type: String, 
-        default: DEFAULT_AVATAR 
+    avatar: {
+        type: String,
+        default: DEFAULT_AVATAR
     },
-    coverPhoto: { 
-        type: String, 
-        default: DEFAULT_COVER_PHOTO 
+    coverPhoto: {
+        type: String,
+        default: DEFAULT_COVER_PHOTO
     },
     googleId: { type: String, sparse: true },
     googleProfile: {

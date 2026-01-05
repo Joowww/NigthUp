@@ -13,13 +13,14 @@ export interface IEvent {
     };
     description: string;
     category: string;
+    city: string;
     capacity: number;
     price: number;
     participants: Types.ObjectId[];
-    likes: number; 
-    likedBy: Types.ObjectId[]; 
+    likes: number;
+    likedBy: Types.ObjectId[];
     active: boolean;
-    image: string; 
+    image: string;
     createdAt?: Date;
     updatedAt?: Date;
 }
@@ -40,15 +41,16 @@ const eventSchema = new Schema<IEvent>({
     },
     description: { type: String, required: true },
     category: { type: String, required: true },
+    city: { type: String, required: false, default: '' },
     capacity: { type: Number, required: true },
     price: { type: Number, required: true },
     participants: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
-    likes: { type: Number, default: 0 }, 
-    likedBy: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }], 
+    likes: { type: Number, default: 0 },
+    likedBy: [{ type: Schema.Types.ObjectId, ref: 'User', default: [] }],
     active: { type: Boolean, default: true },
-    image: { 
-        type: String, 
-        default: DEFAULT_EVENT_IMAGE 
+    image: {
+        type: String,
+        default: DEFAULT_EVENT_IMAGE
     }
 }, {
     timestamps: true,
