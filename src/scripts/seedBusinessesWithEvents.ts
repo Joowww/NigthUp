@@ -1,3 +1,4 @@
+// backend/scripts/seed.ts
 import mongoose from 'mongoose';
 import dotenv from 'dotenv';
 import { Business } from '../models/business';
@@ -15,7 +16,7 @@ const businessesData = [
     phone: '+34 933 196 000',
     email: 'info@pachabarcelona.com',
     coordinates: [2.1734, 41.3851], // [lng, lat]
-    avatar: 'https://example.com/pacha.jpg'
+    avatar: '/images/businesses/pacha-barcelona.jpg' // ✅ Ruta local
   },
   {
     name: 'Razzmatazz',
@@ -23,7 +24,7 @@ const businessesData = [
     phone: '+34 933 208 200',
     email: 'info@salarazzmatazz.com',
     coordinates: [2.1966, 41.3950],
-    avatar: 'https://example.com/razzmatazz.jpg'
+    avatar: '/images/businesses/razzmatazz.jpg' // ✅ Ruta local
   },
   {
     name: 'Opium Barcelona',
@@ -31,7 +32,7 @@ const businessesData = [
     phone: '+34 932 251 660',
     email: 'reservas@opiumbarcelona.com',
     coordinates: [2.1950, 41.3776],
-    avatar: 'https://example.com/opium.jpg'
+    avatar: '/images/businesses/opium.jpg' // ✅ Ruta local
   },
   {
     name: 'Shôko Barcelona',
@@ -39,7 +40,7 @@ const businessesData = [
     phone: '+34 932 250 710',
     email: 'info@shokobarcelona.com',
     coordinates: [2.1960, 41.3780],
-    avatar: 'https://example.com/shoko.jpg'
+    avatar: '/images/businesses/shoko.jpg' // ✅ Ruta local
   },
   {
     name: 'Sutton Club Barcelona',
@@ -47,7 +48,7 @@ const businessesData = [
     phone: '+34 933 629 500',
     email: 'info@thesuttonclub.com',
     coordinates: [2.1520, 41.3960],
-    avatar: 'https://example.com/sutton.jpg'
+    avatar: '/images/businesses/sutton.jpg' // ✅ Ruta local
   },
   {
     name: 'Jamboree Jazz Club',
@@ -55,7 +56,7 @@ const businessesData = [
     phone: '+34 933 191 789',
     email: 'info@masimas.com',
     coordinates: [2.1750, 41.3800],
-    avatar: 'https://example.com/jamboree.jpg'
+    avatar: '/images/businesses/jamboree.jpg' // ✅ Ruta local
   },
   {
     name: 'City Hall Barcelona',
@@ -63,7 +64,7 @@ const businessesData = [
     phone: '+34 933 178 722',
     email: 'info@grup-cityhall.com',
     coordinates: [2.1700, 41.3870],
-    avatar: 'https://example.com/cityhall.jpg'
+    avatar: '/images/businesses/cityhall.jpg' // ✅ Ruta local
   },
   {
     name: 'Eclipse Barcelona',
@@ -71,7 +72,7 @@ const businessesData = [
     phone: '+34 932 952 800',
     email: 'eclipse.w@w-barcelona.com',
     coordinates: [2.1890, 41.3690],
-    avatar: 'https://example.com/eclipse.jpg'
+    avatar: '/images/businesses/eclipse.jpg' // ✅ Ruta local
   },
   {
     name: 'Sala Apolo',
@@ -79,7 +80,7 @@ const businessesData = [
     phone: '+34 934 414 001',
     email: 'info@sala-apolo.com',
     coordinates: [2.1680, 41.3750],
-    avatar: 'https://example.com/apolo.jpg'
+    avatar: '/images/businesses/apolo.jpg' // ✅ Ruta local
   },
   {
     name: 'Input High Fidelity Dance Club',
@@ -87,7 +88,7 @@ const businessesData = [
     phone: '+34 933 157 333',
     email: 'info@inputbarcelona.com',
     coordinates: [2.1900, 41.4050],
-    avatar: 'https://example.com/input.jpg'
+    avatar: '/images/businesses/input.jpg' // ✅ Ruta local
   }
 ];
 
@@ -95,72 +96,82 @@ const eventsData = [
   {
     name: 'Noche de Techno en Pacha',
     description: 'La mejor noche de techno en Barcelona con DJs internacionales',
-    category: 'Música Electrónica',
+    category: 'Techno',
     capacity: 500,
-    price: 25
+    price: 25,
+    image: '/images/events/techno.jpg'
   },
   {
     name: 'Razz Night - Indie Rock',
     description: 'Concierto de indie rock con bandas emergentes',
     category: 'Rock',
     capacity: 800,
-    price: 15
+    price: 15,
+    image: '/images/events/rock.jpg'
   },
   {
     name: 'Opium Beach Party',
     description: 'Fiesta en la playa con los mejores DJs de house',
-    category: 'Beach Party',
+    category: 'House',
     capacity: 600,
-    price: 20
+    price: 20,
+    image: '/images/events/beach.jpg'
   },
   {
     name: 'Shôko Reggaeton Night',
     description: 'La mejor música latina y reggaeton',
-    category: 'Latino',
+    category: 'Reggaeton',
     capacity: 400,
-    price: 18
+    price: 18,
+    image: '/images/events/reggaeton.jpg'
   },
   {
     name: 'Sutton VIP Experience',
     description: 'Noche exclusiva con champagne y música comercial',
-    category: 'Comercial',
+    category: 'Pop',
     capacity: 300,
-    price: 30
+    price: 30,
+    image: '/images/events/vip.jpg'
   },
   {
     name: 'Jazz Live at Jamboree',
     description: 'Concierto de jazz en vivo con artistas reconocidos',
-    category: 'Jazz',
+    category: 'Loofy',
     capacity: 200,
-    price: 22
+    price: 22,
+    image: '/images/events/jazz.jpg'
   },
   {
     name: 'City Hall 90s Party',
     description: 'Fiesta temática de los 90s con los mejores hits',
-    category: 'Retro',
+    category: 'Pop',
     capacity: 700,
-    price: 12
+    price: 12,
+    image: '/images/events/90s.jpg'
   },
   {
     name: 'Eclipse Rooftop Sunset',
     description: 'Atardecer con cócteles y música chill en la azotea',
-    category: 'Lounge',
+    category: 'Loofy',
     capacity: 150,
-    price: 35
+    price: 35,
+    image: '/images/events/sunset.jpg'
   },
   {
     name: 'Nasty Mondays at Apolo',
     description: 'Los lunes más salvajes con música alternativa',
-    category: 'Alternativo',
+    category: 'Indie',
     capacity: 900,
-    price: 10
+    price: 10,
+    image: '/images/events/alternative.jpg'
   },
   {
     name: 'Input Underground',
     description: 'Sesión de techno underground hasta el amanecer',
     category: 'Techno',
     capacity: 450,
-    price: 20
+    price: 20,
+    image: '/images/events/underground.jpg'
   }
 ];
 
@@ -170,7 +181,7 @@ async function seedBusinessesWithEvents() {
     await mongoose.connect(MONGO_URI);
     console.log('✅ Conectado a MongoDB');
 
-    // Limpiar colecciones (opcional - comenta si no quieres borrar datos existentes)
+    // Limpiar colecciones
     await Business.deleteMany({});
     await Event.deleteMany({});
     console.log('🗑️  Colecciones limpiadas');
@@ -184,7 +195,7 @@ async function seedBusinessesWithEvents() {
 
       // Crear evento
       const eventDate = new Date();
-      eventDate.setDate(eventDate.getDate() + Math.floor(Math.random() * 30) + 1); // Evento en los próximos 30 días
+      eventDate.setDate(eventDate.getDate() + Math.floor(Math.random() * 30) + 1);
 
       const event = new Event({
         name: eventData.name,
@@ -201,7 +212,7 @@ async function seedBusinessesWithEvents() {
         likes: Math.floor(Math.random() * 100),
         likedBy: [],
         active: true,
-        image: '/default-images/default-event.jpg'
+        image: eventData.image
       });
 
       await event.save();
