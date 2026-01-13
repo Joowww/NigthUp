@@ -48,7 +48,7 @@ export class PostService {
                 ]
             });
 
-            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post, userId));
             return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
@@ -78,7 +78,7 @@ export class PostService {
                 event: { $exists: false }
             });
 
-            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post, userId));
             return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
@@ -116,7 +116,7 @@ export class PostService {
                 ]
             });
 
-            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post, userId));
             return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
@@ -171,7 +171,7 @@ export class PostService {
                 .limit(limit);
 
             const total = await Post.countDocuments({ event: eventId });
-            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post)); // Event posts typical public
             return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
@@ -194,14 +194,14 @@ export class PostService {
                 user: userId,
                 event: { $exists: false }
             });
-            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post)); // Optional currentUserId here too
             return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
         }
     }
 
-    async getPostById(postId: string): Promise<any | null> {
+    async getPostById(postId: string, currentUserId?: string): Promise<any | null> {
         try {
             const post = await Post.findById(postId)
                 .populate('user', 'username avatar coverPhoto bio isOnline lastSeen')
@@ -210,7 +210,7 @@ export class PostService {
                 .populate('likes', 'username avatar')
                 .populate('comments.user', 'username avatar');
 
-            return post ? this.mapToFeedFormat(post) : null;
+            return post ? this.mapToFeedFormat(post, currentUserId) : null;
         } catch (error) {
             throw new Error((error as Error).message);
         }
@@ -223,7 +223,7 @@ export class PostService {
                 { $addToSet: { likes: userId } },
                 { new: true }
             );
-            return post ? this.mapToFeedFormat(post) : null;
+            return post ? this.mapToFeedFormat(post, userId) : null;
         } catch (error) {
             throw new Error((error as Error).message);
         }
@@ -236,7 +236,7 @@ export class PostService {
                 { $pull: { likes: userId } },
                 { new: true }
             );
-            return post ? this.mapToFeedFormat(post) : null;
+            return post ? this.mapToFeedFormat(post, userId) : null;
         } catch (error) {
             throw new Error((error as Error).message);
         }
@@ -254,7 +254,7 @@ export class PostService {
                 { $push: { comments: comment } },
                 { new: true }
             ).populate('comments.user', 'username avatar');
-            return post ? this.mapToFeedFormat(post) : null;
+            return post ? this.mapToFeedFormat(post, userId) : null;
         } catch (error) {
             throw new Error((error as Error).message);
         }
@@ -344,17 +344,23 @@ export class PostService {
         }
     }
 
-    private mapToFeedFormat(post: any) {
+    private mapToFeedFormat(post: any, currentUserId?: string) {
         const postObj = post.toObject ? post.toObject() : post;
 
         const firstMedia = postObj.media && postObj.media.length > 0 ? postObj.media[0] : null;
         const isVideo = firstMedia ? firstMedia.type === 'video' : false;
         const mediaUrl = firstMedia ? firstMedia.url : '';
 
+        // Check if current user has liked this post
+        const isLiked = currentUserId && postObj.likes
+            ? postObj.likes.some((id: any) => id.toString() === currentUserId.toString())
+            : false;
+
         return {
             ...postObj,
             mediaUrl: mediaUrl,
             isVideo: isVideo,
+            isLiked: isLiked, // ✅ AÑADIDO
             likesCount: postObj.likes ? postObj.likes.length : 0,
             commentCount: postObj.comments ? postObj.comments.length : 0,
             music: postObj.music ? {

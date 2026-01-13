@@ -24,9 +24,9 @@ export const uploadImageHandler = async (req: Request, res: Response): Promise<v
         res.status(201).json({
             status: 'success',
             file_url: fileUrl,
-            image_url: fileUrl,  // Mantener para compatibilidad
-            url: fileUrl,        // Alias para compatibilidad
-            secure_url: fileUrl  // Alias para compatibilidad
+            image_url: fileUrl,
+            url: fileUrl,
+            secure_url: fileUrl
         });
     } catch (error) {
         console.error('Error in uploadImageHandler:', error);

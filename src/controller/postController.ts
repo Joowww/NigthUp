@@ -85,28 +85,46 @@ export async function getForYouFeed(req: Request, res: Response): Promise<Respon
 export async function createPost(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
-        const { caption, location, isVideo, musicTitle, musicArtist, musicCover } = req.body;
+        const { caption, location, isVideo, mediaUrl, music } = req.body;
 
-        if (!req.file) {
-            return res.status(400).json({ error: 'No file uploaded' });
+        let finalMediaUrl = mediaUrl;
+        let isVideoBool = isVideo === 'true' || isVideo === true;
+
+        // Si viene un archivo (Multipart), usamos el archivo local
+        if (req.file) {
+            finalMediaUrl = `/uploads/posts/${req.file.filename}`;
         }
 
-        const isVideoBool = isVideo === 'true' || isVideo === true;
-        const mediaUrl = `/uploads/posts/${req.file.filename}`;
+        if (!finalMediaUrl) {
+            return res.status(400).json({ error: 'No media URL or file provided' });
+        }
+
+        // Manejo flexible del objeto music (puede venir como objeto o como campos planos)
+        let musicData = undefined;
+        if (music) {
+            const m = typeof music === 'string' ? JSON.parse(music) : music;
+            musicData = {
+                title: m.title || '',
+                artist: m.artist || '',
+                coverUrl: m.cover || m.coverUrl || ''
+            };
+        } else if (req.body.musicTitle) {
+            musicData = {
+                title: req.body.musicTitle,
+                artist: req.body.musicArtist || 'Unknown Artist',
+                coverUrl: req.body.musicCover || ''
+            };
+        }
 
         const postData: any = {
             user: userId,
             caption: caption || '',
             location: location || '',
             media: [{
-                url: mediaUrl,
+                url: finalMediaUrl,
                 type: isVideoBool ? 'video' : 'image'
             }],
-            music: musicTitle ? {
-                title: musicTitle,
-                artist: musicArtist || 'Unknown Artist',
-                coverUrl: musicCover || ''
-            } : undefined,
+            music: musicData,
             isPublic: true
         };
 
@@ -229,7 +247,8 @@ export async function getUserPosts(req: Request, res: Response): Promise<Respons
 export async function getPostById(req: Request, res: Response): Promise<Response> {
     try {
         const { postId } = req.params;
-        const post = await postService.getPostById(postId);
+        const userId = (req as any).user?.id;
+        const post = await postService.getPostById(postId, userId);
 
         if (!post) {
             return res.status(404).json({ error: 'Post not found' });
