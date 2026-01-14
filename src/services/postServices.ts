@@ -360,7 +360,7 @@ export class PostService {
             music: postObj.music ? {
                 title: postObj.music.title,
                 artist: postObj.music.artist,
-                cover: postObj.music.coverUrl
+                cover: postObj.music.cover
             } : null
         };
     }

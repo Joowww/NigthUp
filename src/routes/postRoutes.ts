@@ -71,7 +71,7 @@ const router = Router();
  *               type: string
  *             artist:
  *               type: string
- *             coverUrl:
+ *             cover:
  *               type: string
  *         createdAt:
  *           type: string
@@ -108,11 +108,35 @@ const router = Router();
  *               file:
  *                 type: string
  *                 format: binary
+ *               mediaUrl:
+ *                 type: string
+ *                 description: Direct URL of the media (e.g. from Cloudinary)
  *               caption:
  *                 type: string
+ *               isVideo:
+ *                 type: boolean
  *               music:
  *                 type: string
- *                 description: JSON string of music object
+ *                 description: JSON string of music object {title, artist, cover}
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               mediaUrl:
+ *                 type: string
+ *               caption:
+ *                 type: string
+ *               isVideo:
+ *                 type: boolean
+ *               music:
+ *                 type: object
+ *                 properties:
+ *                   title:
+ *                     type: string
+ *                   artist:
+ *                     type: string
+ *                   cover:
+ *                     type: string
  *     responses:
  *       201:
  *         description: Post created successfully

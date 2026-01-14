@@ -24,7 +24,7 @@ export interface IPost {
   music?: {
     title: string;
     artist: string;
-    coverUrl: string;
+    cover: string;
   };
   createdAt?: Date;
   updatedAt?: Date;
@@ -102,7 +102,7 @@ const postSchema = new Schema<IPost>(
     music: {
       title: { type: String },
       artist: { type: String },
-      coverUrl: { type: String }
+      cover: { type: String }
     }
   },
   {
