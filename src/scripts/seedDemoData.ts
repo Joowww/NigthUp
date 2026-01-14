@@ -668,9 +668,9 @@ export async function seedDemoData() {
             ];
 
             const songs = [
-                { title: 'Blinding Lights', artist: 'The Weeknd', coverUrl: 'https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/4a/59/2c/4a592c3a-231a-6379-373a-4467c69992c3/19UMGIM83808.rgb.jpg/100x100bb.jpg' },
-                { title: 'Dance Monkey', artist: 'Tones and I', coverUrl: 'https://is4-ssl.mzstatic.com/image/thumb/Music123/v4/64/0e/01/640e0149-a2e6-7788-2949-07920155660b/075679822604.jpg/100x100bb.jpg' },
-                { title: 'Techno Vibe', artist: 'Underground DJ', coverUrl: 'https://via.placeholder.com/100' }
+                { title: 'Blinding Lights', artist: 'The Weeknd', cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/4a/59/2c/4a592c3a-231a-6379-373a-4467c69992c3/19UMGIM83808.rgb.jpg/100x100bb.jpg' },
+                { title: 'Dance Monkey', artist: 'Tones and I', cover: 'https://is4-ssl.mzstatic.com/image/thumb/Music123/v4/64/0e/01/640e0149-a2e6-7788-2949-07920155660b/075679822604.jpg/100x100bb.jpg' },
+                { title: 'Techno Vibe', artist: 'Underground DJ', cover: 'https://via.placeholder.com/100' }
             ];
 
             for (const friend of joelFriends.slice(0, 10)) {
@@ -693,7 +693,7 @@ export async function seedDemoData() {
                     music: {
                         title: song.title,
                         artist: song.artist,
-                        coverUrl: song.coverUrl
+                        cover: song.cover
                     },
                     likes: users.slice(0, Math.floor(Math.random() * 20)).map(u => u._id),
                     comments: [

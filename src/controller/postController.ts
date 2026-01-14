@@ -85,34 +85,34 @@ export async function getForYouFeed(req: Request, res: Response): Promise<Respon
 export async function createPost(req: Request, res: Response): Promise<Response> {
     try {
         const userId = (req as any).user.id;
-        const { caption, location, isVideo, mediaUrl, music } = req.body;
+        const { caption, location, isVideo, musicTitle, musicArtist, musicCover, mediaUrl, music } = req.body;
 
         let finalMediaUrl = mediaUrl;
         let isVideoBool = isVideo === 'true' || isVideo === true;
 
-        // Si viene un archivo (Multipart), usamos el archivo local
         if (req.file) {
             finalMediaUrl = `/uploads/posts/${req.file.filename}`;
         }
 
         if (!finalMediaUrl) {
-            return res.status(400).json({ error: 'No media URL or file provided' });
+            return res.status(400).json({ error: 'No file uploaded or mediaUrl provided' });
         }
 
-        // Manejo flexible del objeto music (puede venir como objeto o como campos planos)
+        // Handle nested music object or separate fields
         let musicData = undefined;
         if (music) {
-            const m = typeof music === 'string' ? JSON.parse(music) : music;
+            // Handle if music comes as a JSON string (from multipart/form-data) or as an object (from JSON)
+            const musicObj = typeof music === 'string' ? JSON.parse(music) : music;
             musicData = {
-                title: m.title || '',
-                artist: m.artist || '',
-                coverUrl: m.cover || m.coverUrl || ''
+                title: musicObj.title,
+                artist: musicObj.artist || 'Unknown Artist',
+                cover: musicObj.cover || ''
             };
-        } else if (req.body.musicTitle) {
+        } else if (musicTitle) {
             musicData = {
-                title: req.body.musicTitle,
-                artist: req.body.musicArtist || 'Unknown Artist',
-                coverUrl: req.body.musicCover || ''
+                title: musicTitle,
+                artist: musicArtist || 'Unknown Artist',
+                cover: musicCover || ''
             };
         }
 
