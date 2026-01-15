@@ -554,6 +554,18 @@ export async function updateMyProfile(req: Request, res: Response): Promise<Resp
             filteredData.email = userData.email;
         }
 
+        if (userData.phoneNumber !== undefined && typeof userData.phoneNumber === 'string') {
+            filteredData.phoneNumber = userData.phoneNumber;
+        }
+        
+        if (userData.comunidad !== undefined && typeof userData.comunidad === 'string') {
+            filteredData.comunidad = userData.comunidad;
+        }
+
+        if (userData.intereses !== undefined && Array.isArray(userData.intereses)) {
+            filteredData.intereses = userData.intereses;
+        }
+
         if (userData.birthday !== undefined) {
             const birthday = new Date(userData.birthday);
             if (!isNaN(birthday.getTime())) {
