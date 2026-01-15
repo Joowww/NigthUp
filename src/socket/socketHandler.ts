@@ -18,19 +18,29 @@ export function initializeSocket(io: Server) {
 
   io.on('connection', (socket: Socket) => {
     const { userId } = socket.handshake.auth as SocketAuth;
-
+  
     if (!userId) {
       console.log('❌ Conexión rechazada: sin userId');
       socket.disconnect();
       return;
     }
-
+  
     console.log(`✅ Usuario conectado: ${userId} (socket: ${socket.id})`);
-
     onlineUsers.set(userId, socket.id);
+  
     socket.join(userId);
-
-    io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+  
+    // ✅ EMITIR INMEDIATAMENTE
+    const onlineUserIds = Array.from(onlineUsers.keys());
+    io.emit('onlineUsers', onlineUserIds);
+    console.log('📢 [BACKEND] Emitiendo onlineUsers (inmediato):', onlineUserIds);
+  
+    // ✅ EMITIR OTRA VEZ DESPUÉS DE 500ms (para asegurar que el frontend esté listo)
+    setTimeout(() => {
+      const updatedOnlineUserIds = Array.from(onlineUsers.keys());
+      io.emit('onlineUsers', updatedOnlineUserIds);
+      console.log('📢 [BACKEND] Emitiendo onlineUsers (retry):', updatedOnlineUserIds);
+    }, 1000);
 
     // ==================== UNIRSE/SALIR DE SALAS ====================
 
@@ -238,6 +248,14 @@ export function initializeSocket(io: Server) {
         username: username || userId,
         conversationId
       });
+    });
+
+    // ==================== SOLICITAR USUARIOS ONLINE ====================
+    // ✅ NUEVO MANEJADOR AÑADIDO
+    socket.on('getOnlineUsers', () => {
+      const onlineUserIds = Array.from(onlineUsers.keys());
+      socket.emit('onlineUsers', onlineUserIds);
+      console.log('📤 [BACKEND] Lista de usuarios online solicitada y enviada:', onlineUserIds);
     });
 
     // ==================== CREAR GRUPO ====================
@@ -491,9 +509,12 @@ export function initializeSocket(io: Server) {
       console.log(`❌ Usuario desconectado: ${userId}`);
 
       onlineUsers.delete(userId);
-
-      io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+      
+      const updatedOnlineUserIds = Array.from(onlineUsers.keys());
+      
       io.emit('userDisconnected', { userId });
+      io.emit('onlineUsers', updatedOnlineUserIds);
+      console.log('📢 [BACKEND] Usuario desconectado, nueva lista:', updatedOnlineUserIds);
     });
   });
 }
