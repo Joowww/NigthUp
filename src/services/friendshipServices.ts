@@ -137,4 +137,127 @@ export class FriendshipService {
 
     return await Friendship.findByIdAndDelete(friendshipId);
   }
+
+  async searchUsers(
+    currentUserId: string,
+    query: string,
+    limit: number = 20,
+    skip: number = 0,
+    city?: string,
+    interest?: string,
+    gender?: string,
+    onlineOnly?: boolean
+  ): Promise<any[]> {
+  
+    const myUserId = new mongoose.Types.ObjectId(currentUserId);
+  
+    console.log('🔍 [FriendshipService.searchUsers] Aplicando filtros:', {
+      query,
+      city,
+      interest,
+      gender,
+      onlineOnly
+    });
+  
+    // 1️⃣ Construir filtro de búsqueda
+    const searchFilter: any = {
+      _id: { $ne: myUserId },
+      active: true
+    };
+  
+    // Filtro por username (búsqueda)
+    if (query && query.trim()) {
+      searchFilter.username = { $regex: query.trim(), $options: 'i' };
+    }
+  
+    // Filtro por ciudad/comunidad (SOLO si city tiene valor)
+    if (city && city.trim()) {
+      searchFilter.$or = [
+        { city: city.trim() },
+        { comunidad: city.trim() }
+      ];
+    }
+  
+    // Filtro por interés (SOLO si interest tiene valor)
+    if (interest && interest.trim()) {
+      searchFilter.intereses = interest.trim();
+    }
+  
+    // Filtro por género (SOLO si gender tiene valor)
+    if (gender && gender.trim()) {
+      searchFilter.gender = gender.trim();
+    }
+  
+    // Filtro solo usuarios online
+    if (onlineOnly === true) {
+      searchFilter.isOnline = true;
+    }
+  
+    console.log('📋 [FriendshipService.searchUsers] Filtro MongoDB:', JSON.stringify(searchFilter, null, 2));
+  
+    // 2️⃣ Buscar usuarios
+    const users = await User.find(searchFilter)
+      .select('_id username avatar city comunidad intereses gender isOnline')
+      .skip(skip)
+      .limit(limit)
+      .lean();
+  
+    console.log(`✅ [FriendshipService.searchUsers] Encontrados ${users.length} usuarios`);
+  
+    if (users.length === 0) return [];
+  
+    // 3️⃣ Obtener relaciones existentes
+    const friendships = await Friendship.find({
+      $or: [
+        { requester: myUserId },
+        { recipient: myUserId }
+      ]
+    }).lean();
+  
+    // 4️⃣ Mapear estado social
+    return users.map(user => {
+      const relation = friendships.find(f =>
+        (f.requester.equals(myUserId) && f.recipient.equals(user._id)) ||
+        (f.recipient.equals(myUserId) && f.requester.equals(user._id))
+      );
+  
+      let status:
+        | 'none'
+        | 'friends'
+        | 'pending_sent'
+        | 'pending_received'
+        | 'blocked' = 'none';
+  
+      let friendshipId = null;
+  
+      if (relation) {
+        friendshipId = relation._id;
+  
+        if (relation.status === 'blocked') {
+          status = 'blocked';
+        } else if (relation.status === 'accepted') {
+          status = 'friends';
+        } else if (relation.status === 'pending') {
+          status =
+            relation.requester.equals(myUserId)
+              ? 'pending_sent'
+              : 'pending_received';
+        }
+      }
+  
+      return {
+        _id: user._id,
+        username: user.username,
+        avatar: user.avatar,
+        city: user.city,
+        comunidad: user.comunidad,
+        intereses: user.intereses,
+        gender: user.gender,
+        isOnline: user.isOnline,
+        status,
+        friendshipId
+      };
+    });
+  }
 }
+

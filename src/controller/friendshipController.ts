@@ -1,5 +1,6 @@
 import { Request, Response } from 'express';
 import { FriendshipService } from '../services/friendshipServices';
+import User from '../models/user';
 
 const friendshipService = new FriendshipService();
 
@@ -101,6 +102,93 @@ export async function removeFriend(req: Request, res: Response): Promise<Respons
     const friendship = await friendshipService.removeFriend(friendshipId, userId);
     return res.status(200).json({ message: 'Friend removed successfully', friendship });
   } catch (error) {
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+export async function searchUsersForFriendship(
+  req: Request,
+  res: Response
+): Promise<Response> {
+  try {
+    const userId = (req as any).user.id;
+    const q = (req.query.search as string) || '';
+    const limit = parseInt(req.query.limit as string) || 20;
+    const skip = parseInt(req.query.skip as string) || 0;
+    const city = (req.query.city as string) || '';
+    const interest = (req.query.interest as string) || '';
+    const gender = (req.query.gender as string) || '';
+    const onlineOnly = req.query.onlineOnly === 'true';
+
+    console.log('🔍 [searchUsersForFriendship] Filtros recibidos:', {
+      q,
+      limit,
+      skip,
+      city,
+      interest,
+      gender,
+      onlineOnly
+    });
+
+    const users = await friendshipService.searchUsers(
+      userId, 
+      q, 
+      limit, 
+      skip, 
+      city, 
+      interest,
+      gender,
+      onlineOnly
+    );
+    
+    console.log(`✅ [searchUsersForFriendship] Devolviendo ${users.length} usuarios`);
+    
+    return res.status(200).json(users);
+  } catch (error) {
+    console.error('❌ [searchUsersForFriendship] Error:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+export async function getFilterOptions(req: Request, res: Response): Promise<Response> {
+  try {
+    // Obtener ciudades únicas
+    const cities = await User.aggregate([
+      { $match: { active: true } },
+      { 
+        $group: { 
+          _id: null, 
+          cities: { $addToSet: '$city' },
+          comunidades: { $addToSet: '$comunidad' }
+        } 
+      }
+    ]);
+
+    // Obtener intereses únicos
+    const interests = await User.aggregate([
+      { $match: { active: true } },
+      { $unwind: '$intereses' },
+      { $group: { _id: '$intereses' } },
+      { $sort: { _id: 1 } }
+    ]);
+
+    // Combinar ciudades y comunidades, filtrar vacíos y ordenar
+    const allLocations = [
+      ...(cities[0]?.cities || []),
+      ...(cities[0]?.comunidades || [])
+    ]
+      .filter(Boolean)
+      .filter((item, index, self) => self.indexOf(item) === index) // Eliminar duplicados
+      .sort();
+
+    const allInterests = interests.map(i => i._id).filter(Boolean);
+
+    return res.status(200).json({
+      cities: allLocations,
+      interests: allInterests
+    });
+  } catch (error) {
+    console.error('Error getting filter options:', error);
     return res.status(500).json({ error: (error as Error).message });
   }
 }

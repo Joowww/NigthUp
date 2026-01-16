@@ -7,7 +7,9 @@ import {
   getFriends,
   getPendingRequests,
   getFriendStatus,
-  removeFriend
+  removeFriend,
+  searchUsersForFriendship,
+  getFilterOptions
 } from '../controller/friendshipController';
 import { authenticateToken } from '../auth/middleware';
 
@@ -285,5 +287,102 @@ router.get('/status/:userId2', authenticateToken, getFriendStatus);
  *         description: Friendship not found
  */
 router.delete('/friend/:friendshipId', authenticateToken, removeFriend);
+
+/**
+ * @swagger
+ * /api/friendship/search:
+ *   get:
+ *     summary: Search users to add as friends
+ *     description: |
+ *       Search users by username and return their friendship status
+ *       relative to the authenticated user.
+ *
+ *       Possible statuses:
+ *       - none: No relationship
+ *       - friends: Already friends
+ *       - pending_sent: Friend request sent by the user
+ *       - pending_received: Friend request received from the user
+ *       - blocked: User is blocked
+ *     tags: [Friendship]
+ *     security:
+ *       - bearerAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: q
+ *         required: false
+ *         schema:
+ *           type: string
+ *         description: Username or partial username to search
+ *     responses:
+ *       200:
+ *         description: Users found successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: array
+ *               items:
+ *                 type: object
+ *                 properties:
+ *                   _id:
+ *                     type: string
+ *                     example: "65fa12a9c3e12a0012345678"
+ *                   username:
+ *                     type: string
+ *                     example: "juanito"
+ *                   avatar:
+ *                     type: string
+ *                     example: "/default-images/default-avatar.png"
+ *                   status:
+ *                     type: string
+ *                     enum:
+ *                       - none
+ *                       - friends
+ *                       - pending_sent
+ *                       - pending_received
+ *                       - blocked
+ *                     example: "pending_sent"
+ *                   friendshipId:
+ *                     type: string
+ *                     nullable: true
+ *                     example: "661a34b9e21c4f0011223344"
+ *       401:
+ *         description: Unauthorized - Token required
+ *       500:
+ *         description: Server error
+ */
+router.get('/search', authenticateToken, searchUsersForFriendship);
+
+/**
+ * @swagger
+ * /api/friendship/filter-options:
+ *   get:
+ *     summary: Get available filter options (cities and interests)
+ *     tags: [Friendship]
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Filter options retrieved successfully
+ *         content:
+ *           application/json:
+ *             schema:
+ *               type: object
+ *               properties:
+ *                 cities:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["Barcelona", "Madrid", "Valencia"]
+ *                 interests:
+ *                   type: array
+ *                   items:
+ *                     type: string
+ *                   example: ["Trap", "House", "Reaggeton", "Techno"]
+ *       401:
+ *         description: Unauthorized - Token required
+ *       500:
+ *         description: Server error
+ */
+router.get('/filter-options', authenticateToken, getFilterOptions);
 
 export default router;
