@@ -1,6 +1,7 @@
 import { Friendship, IFriendship } from '../models/friendship';
 import { User } from '../models/user';
 import mongoose from 'mongoose';
+import { Notification } from '../models/notification';
 
 export class FriendshipService {
   async sendFriendRequest(requesterId: string, recipientId: string): Promise<IFriendship> {
@@ -23,6 +24,208 @@ export class FriendshipService {
 
     return await friendship.save();
   }
+
+  // src/services/friendshipServices.ts
+
+// ==================== NUEVAS FUNCIONES (NO TOCAR LAS ANTIGUAS) ====================
+
+/**
+ * Enviar solicitud de amistad con manejo inteligente de solicitudes cruzadas
+ */
+async sendFriendRequestV2(requesterId: string, recipientId: string): Promise<IFriendship> {
+  const requesterObjectId = new mongoose.Types.ObjectId(requesterId);
+  const recipientObjectId = new mongoose.Types.ObjectId(recipientId);
+
+  // ✅ 1. Verificar si YA existe una solicitud (en cualquier dirección)
+  const existing = await Friendship.findOne({
+    $or: [
+      { requester: requesterObjectId, recipient: recipientObjectId },
+      { requester: recipientObjectId, recipient: requesterObjectId }
+    ]
+  });
+
+  if (existing) {
+    // ✅ 2. Si el OTRO usuario te envió solicitud, ACEPTAR automáticamente
+    if (
+      existing.requester.equals(recipientObjectId) &&
+      existing.recipient.equals(requesterObjectId) &&
+      existing.status === 'pending'
+    ) {
+      console.log('✅ Solicitud cruzada detectada! Auto-aceptando...');
+      existing.status = 'accepted';
+      await existing.save();
+      
+      // Poblar datos para la respuesta
+      return await Friendship.findById(existing._id)
+        .populate('requester', 'username avatar firstName lastName')
+        .populate('recipient', 'username avatar firstName lastName')
+        .lean() as IFriendship;
+    }
+
+    // ✅ 3. Si YA enviaste solicitud, devolver error
+    if (existing.requester.equals(requesterObjectId)) {
+      throw new Error('Ya enviaste una solicitud a este usuario');
+    }
+
+    // ✅ 4. Si ya son amigos
+    if (existing.status === 'accepted') {
+      throw new Error('Ya son amigos');
+    }
+
+    // ✅ 5. Si está bloqueado
+    if (existing.status === 'blocked') {
+      throw new Error('No puedes enviar solicitudes a usuarios bloqueados');
+    }
+  }
+
+  // ✅ 6. Crear nueva solicitud
+  const newFriendship = new Friendship({
+    requester: requesterObjectId,
+    recipient: recipientObjectId,
+    status: 'pending'
+  });
+
+  await newFriendship.save();
+
+  // ✅ 7. Crear notificación en BD
+  const notification = new Notification({
+    recipient: recipientObjectId,
+    sender: requesterObjectId,
+    type: 'friend_request',
+    friendshipId: newFriendship._id,
+    read: false
+  });
+
+  await notification.save(); // ✅ ESTO FALTABA
+
+  console.log(`📬 [sendFriendRequestV2] Notificación creada: ${notification._id}`);
+  
+  return await Friendship.findById(newFriendship._id)
+    .populate('requester', 'username avatar firstName lastName')
+    .populate('recipient', 'username avatar firstName lastName')
+    .lean() as IFriendship;
+}
+
+/**
+ * Obtener amigos en común entre dos usuarios
+ */
+async getMutualFriends(user1Id: string, user2Id: string, limit: number = 10): Promise<any[]> {
+  const user1ObjectId = new mongoose.Types.ObjectId(user1Id);
+  const user2ObjectId = new mongoose.Types.ObjectId(user2Id);
+
+  // 1. Obtener amigos de user1
+  const user1Friendships = await Friendship.find({
+    $or: [
+      { requester: user1ObjectId, status: 'accepted' },
+      { recipient: user1ObjectId, status: 'accepted' }
+    ]
+  }).lean();
+
+  const user1FriendIds = user1Friendships.map(f =>
+    f.requester.equals(user1ObjectId) ? f.recipient : f.requester
+  );
+
+  // 2. Obtener amigos de user2
+  const user2Friendships = await Friendship.find({
+    $or: [
+      { requester: user2ObjectId, status: 'accepted' },
+      { recipient: user2ObjectId, status: 'accepted' }
+    ]
+  }).lean();
+
+  const user2FriendIds = user2Friendships.map(f =>
+    f.requester.equals(user2ObjectId) ? f.recipient : f.requester
+  );
+
+  // 3. Encontrar IDs en común
+  const mutualFriendIds = user1FriendIds.filter(id =>
+    user2FriendIds.some(id2 => id.equals(id2))
+  );
+
+  if (mutualFriendIds.length === 0) {
+    return [];
+  }
+
+  // 4. Obtener información de usuarios
+  const mutualFriends = await User.find({
+    _id: { $in: mutualFriendIds }
+  })
+  .select('username avatar firstName lastName')
+  .limit(limit)
+  .lean();
+
+  return mutualFriends;
+}
+
+/**
+ * Cancelar solicitud de amistad (enviada o recibida)
+ */
+async cancelFriendRequestV2(friendshipId: string, userId: string): Promise<void> {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  
+  const friendship = await Friendship.findById(friendshipId);
+  
+  if (!friendship) {
+    throw new Error('Solicitud no encontrada');
+  }
+
+  if (!friendship.requester.equals(userObjectId) && !friendship.recipient.equals(userObjectId)) {
+    throw new Error('No tienes permiso para cancelar esta solicitud');
+  }
+
+  // ✅ Eliminar notificación asociada
+  const deletedNotifications = await Notification.deleteMany({ friendshipId: friendshipId });
+  console.log(`🗑️ [cancelFriendRequestV2] ${deletedNotifications.deletedCount} notificaciones eliminadas`);
+
+  await Friendship.findByIdAndDelete(friendshipId);
+}
+
+/**
+ * Aceptar solicitud de amistad V2
+ */
+async acceptFriendRequestV2(friendshipId: string, userId: string): Promise<IFriendship> {
+  const userObjectId = new mongoose.Types.ObjectId(userId);
+  
+  const friendship = await Friendship.findById(friendshipId);
+  
+  if (!friendship) {
+    throw new Error('Solicitud no encontrada');
+  }
+
+  if (!friendship.recipient.equals(userObjectId)) {
+    throw new Error('Solo el destinatario puede aceptar la solicitud');
+  }
+
+  if (friendship.status !== 'pending') {
+    throw new Error('La solicitud ya fue procesada');
+  }
+
+  // ✅ Marcar notificación original como leída
+  await Notification.updateOne(
+    { friendshipId: friendshipId, type: 'friend_request' },
+    { $set: { read: true } }
+  );
+
+  // ✅ Crear notificación de aceptación para el remitente
+  const acceptNotification = new Notification({
+    recipient: friendship.requester,
+    sender: userObjectId,
+    type: 'friend_accepted',
+    friendshipId: friendship._id,
+    read: false
+  });
+
+  await acceptNotification.save();
+  console.log(`📬 [acceptFriendRequestV2] Notificación de aceptación creada: ${acceptNotification._id}`);
+
+  friendship.status = 'accepted';
+  await friendship.save();
+
+  return await Friendship.findById(friendship._id)
+    .populate('requester', 'username avatar firstName lastName')
+    .populate('recipient', 'username avatar firstName lastName')
+    .lean() as IFriendship;
+}
 
   async acceptFriendRequest(friendshipId: string): Promise<IFriendship | null> {
     return await Friendship.findByIdAndUpdate(
@@ -146,7 +349,7 @@ export class FriendshipService {
     city?: string,
     interest?: string,
     gender?: string,
-    onlineOnly?: boolean
+    onlineOnly?: boolean // ✅ Añadir parámetro
   ): Promise<any[]> {
   
     const myUserId = new mongoose.Types.ObjectId(currentUserId);
@@ -156,7 +359,7 @@ export class FriendshipService {
       city,
       interest,
       gender,
-      onlineOnly
+      onlineOnly // ✅ LOG
     });
   
     // 1️⃣ Construir filtro de búsqueda
@@ -188,9 +391,10 @@ export class FriendshipService {
       searchFilter.gender = gender.trim();
     }
   
-    // Filtro solo usuarios online
+    // ✅ Filtro solo usuarios online (NUEVO)
     if (onlineOnly === true) {
       searchFilter.isOnline = true;
+      console.log('🟢 Filtrando SOLO usuarios con isOnline: true');
     }
   
     console.log('📋 [FriendshipService.searchUsers] Filtro MongoDB:', JSON.stringify(searchFilter, null, 2));
@@ -253,11 +457,44 @@ export class FriendshipService {
         comunidad: user.comunidad,
         intereses: user.intereses,
         gender: user.gender,
-        isOnline: user.isOnline,
+        isOnline: user.isOnline, 
         status,
         friendshipId
       };
     });
+  }
+
+  async getFriendsV2(userId: string): Promise<any[]> {
+    const userObjectId = new mongoose.Types.ObjectId(userId);
+  
+    const friendships = await Friendship.find({
+      $or: [
+        { requester: userObjectId, status: 'accepted' },
+        { recipient: userObjectId, status: 'accepted' }
+      ]
+    })
+    .populate('requester', 'username avatar firstName lastName city comunidad bio email')
+    .populate('recipient', 'username avatar firstName lastName city comunidad bio email')
+    .lean();
+  
+    console.log(`📋 [getFriendsV2] Encontradas ${friendships.length} amistades para userId: ${userId}`);
+  
+    const friends = friendships.map(friendship => {
+      const friend = friendship.requester._id.toString() === userId 
+        ? friendship.recipient 
+        : friendship.requester;
+  
+      console.log(`👤 [getFriendsV2] Amigo mapeado:`, friend);
+  
+      return {
+        ...friend,
+        friendshipId: friendship._id.toString()
+      };
+    });
+  
+    console.log(`✅ [getFriendsV2] Devolviendo ${friends.length} amigos con datos completos`);
+  
+    return friends;
   }
 }
 

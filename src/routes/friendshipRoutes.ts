@@ -9,7 +9,12 @@ import {
   getFriendStatus,
   removeFriend,
   searchUsersForFriendship,
-  getFilterOptions
+  getFilterOptions,
+  sendFriendRequestV2,
+  getMutualFriends,
+  cancelFriendRequestV2,
+  acceptFriendRequestV2,
+  getFriendsV2
 } from '../controller/friendshipController';
 import { authenticateToken } from '../auth/middleware';
 
@@ -384,5 +389,52 @@ router.get('/search', authenticateToken, searchUsersForFriendship);
  *         description: Server error
  */
 router.get('/filter-options', authenticateToken, getFilterOptions);
+/**
+ * @swagger
+ * /api/friendship/v2/request:
+ *   post:
+ *     summary: Enviar solicitud de amistad V2 (con auto-aceptación)
+ *     tags: [Friendship V2]
+ */
+router.post('/v2/request', authenticateToken, sendFriendRequestV2);
+
+/**
+ * @swagger
+ * /api/friendship/v2/request/{friendshipId}/accept:
+ *   patch:
+ *     summary: Aceptar solicitud de amistad V2
+ *     tags: [Friendship V2]
+ */
+router.patch('/v2/request/:friendshipId/accept', authenticateToken, acceptFriendRequestV2);
+
+/**
+ * @swagger
+ * /api/friendship/v2/request/{friendshipId}/cancel:
+ *   delete:
+ *     summary: Cancelar/Rechazar solicitud de amistad V2
+ *     tags: [Friendship V2]
+ */
+router.delete('/v2/request/:friendshipId/cancel', authenticateToken, cancelFriendRequestV2);
+
+/**
+ * @swagger
+ * /api/friendship/mutual/{userId}:
+ *   get:
+ *     summary: Obtener amigos en común con otro usuario
+ *     tags: [Friendship V2]
+ */
+router.get('/mutual/:userId', authenticateToken, getMutualFriends);
+
+/**
+ * @swagger
+ * /api/friendship/friends/v2:
+ *   get:
+ *     summary: Obtener lista de amigos V2 (con todos los campos)
+ *     tags: [Friendship V2]
+ *     security:
+ *       - bearerAuth: []
+ */
+router.get('/friends/v2', authenticateToken, getFriendsV2);
+
 
 export default router;

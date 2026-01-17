@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from '../services/chatServices';
 import { GroupService } from '../services/groupServices';
 import mongoose from 'mongoose';
+import { User } from '../models/user';
 
 interface SocketAuth {
   userId: string;
@@ -502,6 +503,108 @@ export function initializeSocket(io: Server) {
         });
       }
     });
+/**
+ * Notificar solicitud de amistad en tiempo real
+ */
+socket.on('friendRequestSent', async (data: { 
+  recipientId: string; 
+  senderId: string;
+  friendshipId: string;
+}) => {
+  try {
+    console.log('📤 [Socket] Solicitud de amistad enviada:', data);
+
+    const recipientSocketId = onlineUsers.get(data.recipientId);
+    
+    if (recipientSocketId) {
+      // ✅ USAR User en vez de mongoose.model('User')
+      const sender = await User.findById(data.senderId)
+        .select('username firstName lastName avatar')
+        .lean();
+
+      io.to(recipientSocketId).emit('friendRequestReceived', {
+        friendshipId: data.friendshipId,
+        sender: {
+          _id: data.senderId,
+          username: sender?.username || '',
+          firstName: sender?.firstName || '',
+          lastName: sender?.lastName || '',
+          avatar: sender?.avatar || ''
+        },
+        timestamp: new Date()
+      });
+
+      console.log(`✅ [Socket] Notificación enviada a ${data.recipientId}`);
+    } else {
+      console.log(`⚠️ [Socket] Usuario ${data.recipientId} no está online`);
+    }
+  } catch (error) {
+    console.error('❌ [Socket] Error en friendRequestSent:', error);
+  }
+});
+
+/**
+ * Notificar cuando se acepta una solicitud
+ */
+socket.on('friendRequestAccepted', async (data: { 
+  requesterId: string;
+  accepterId: string;
+  friendshipId: string;
+}) => {
+  try {
+    console.log('✅ [Socket] Solicitud aceptada:', data);
+
+    const requesterSocketId = onlineUsers.get(data.requesterId);
+    
+    if (requesterSocketId) {
+      // ✅ USAR User en vez de mongoose.model('User')
+      const accepter = await User.findById(data.accepterId)
+        .select('username firstName lastName avatar')
+        .lean();
+
+      io.to(requesterSocketId).emit('friendRequestAcceptedNotification', {
+        friendshipId: data.friendshipId,
+        accepter: {
+          _id: data.accepterId,
+          username: accepter?.username || '',
+          firstName: accepter?.firstName || '',
+          lastName: accepter?.lastName || '',
+          avatar: accepter?.avatar || ''
+        },
+        timestamp: new Date()
+      });
+
+      console.log(`✅ [Socket] Notificación de aceptación enviada a ${data.requesterId}`);
+    }
+  } catch (error) {
+    console.error('❌ [Socket] Error en friendRequestAccepted:', error);
+  }
+});
+
+/**
+ * Notificar cuando se cancela/rechaza una solicitud
+ */
+socket.on('friendRequestCancelled', async (data: { 
+  recipientId: string;
+  friendshipId: string;
+}) => {
+  try {
+    console.log('❌ [Socket] Solicitud cancelada:', data);
+
+    const recipientSocketId = onlineUsers.get(data.recipientId);
+    
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('friendRequestCancelledNotification', {
+        friendshipId: data.friendshipId,
+        timestamp: new Date()
+      });
+
+      console.log(`✅ [Socket] Notificación de cancelación enviada a ${data.recipientId}`);
+    }
+  } catch (error) {
+    console.error('❌ [Socket] Error en friendRequestCancelled:', error);
+  }
+});
 
     // ==================== DESCONEXIÓN ====================
 

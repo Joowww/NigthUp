@@ -118,7 +118,7 @@ export async function searchUsersForFriendship(
     const city = (req.query.city as string) || '';
     const interest = (req.query.interest as string) || '';
     const gender = (req.query.gender as string) || '';
-    const onlineOnly = req.query.onlineOnly === 'true';
+    const onlineOnly = req.query.onlineOnly === 'true'; // ✅ Parsear correctamente
 
     console.log('🔍 [searchUsersForFriendship] Filtros recibidos:', {
       q,
@@ -127,7 +127,7 @@ export async function searchUsersForFriendship(
       city,
       interest,
       gender,
-      onlineOnly
+      onlineOnly // ✅ LOG
     });
 
     const users = await friendshipService.searchUsers(
@@ -138,7 +138,7 @@ export async function searchUsersForFriendship(
       city, 
       interest,
       gender,
-      onlineOnly
+      onlineOnly 
     );
     
     console.log(`✅ [searchUsersForFriendship] Devolviendo ${users.length} usuarios`);
@@ -189,6 +189,131 @@ export async function getFilterOptions(req: Request, res: Response): Promise<Res
     });
   } catch (error) {
     console.error('Error getting filter options:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+export async function sendFriendRequestV2(req: Request, res: Response): Promise<Response> {
+  try {
+    const requesterId = (req as any).user.id;
+    const { recipientId } = req.body;
+
+    if (!recipientId) {
+      return res.status(400).json({ error: 'recipientId is required' });
+    }
+
+    if (requesterId === recipientId) {
+      return res.status(400).json({ error: 'No puedes enviarte una solicitud a ti mismo' });
+    }
+
+    const friendship = await friendshipService.sendFriendRequestV2(requesterId, recipientId);
+    
+    return res.status(201).json({
+      friendship,
+      message: friendship.status === 'accepted' 
+        ? 'Solicitudes cruzadas detectadas. Ahora son amigos!'
+        : 'Solicitud enviada correctamente'
+    });
+  } catch (error: any) {
+    console.error('Error sending friend request V2:', error);
+    
+    if (error.message.includes('Ya enviaste') || error.message.includes('Ya son amigos')) {
+      return res.status(400).json({ error: error.message });
+    }
+    
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+/**
+ * Obtener amigos en común
+ */
+export async function getMutualFriends(req: Request, res: Response): Promise<Response> {
+  try {
+    const currentUserId = (req as any).user.id;
+    const { userId } = req.params;
+    const limit = parseInt(req.query.limit as string) || 10;
+
+    if (currentUserId === userId) {
+      return res.status(400).json({ error: 'No puedes ver tus propios amigos en común' });
+    }
+
+    const mutualFriends = await friendshipService.getMutualFriends(currentUserId, userId, limit);
+    
+    return res.status(200).json(mutualFriends);
+  } catch (error) {
+    console.error('Error getting mutual friends:', error);
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+/**
+ * Cancelar solicitud de amistad V2
+ */
+export async function cancelFriendRequestV2(req: Request, res: Response): Promise<Response> {
+  try {
+    const userId = (req as any).user.id;
+    const { friendshipId } = req.params;
+
+    await friendshipService.cancelFriendRequestV2(friendshipId, userId);
+    
+    return res.status(200).json({ message: 'Solicitud cancelada correctamente' });
+  } catch (error: any) {
+    console.error('Error canceling friend request V2:', error);
+    
+    if (error.message.includes('No tienes permiso')) {
+      return res.status(403).json({ error: error.message });
+    }
+    
+    if (error.message.includes('no encontrada')) {
+      return res.status(404).json({ error: error.message });
+    }
+    
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+/**
+ * Aceptar solicitud de amistad V2
+ */
+export async function acceptFriendRequestV2(req: Request, res: Response): Promise<Response> {
+  try {
+    const userId = (req as any).user.id;
+    const { friendshipId } = req.params;
+
+    const friendship = await friendshipService.acceptFriendRequestV2(friendshipId, userId);
+    
+    return res.status(200).json({
+      friendship,
+      message: 'Solicitud aceptada. Ahora son amigos!'
+    });
+  } catch (error: any) {
+    console.error('Error accepting friend request V2:', error);
+    
+    if (error.message.includes('Solo el destinatario')) {
+      return res.status(403).json({ error: error.message });
+    }
+    
+    if (error.message.includes('no encontrada')) {
+      return res.status(404).json({ error: error.message });
+    }
+    
+    return res.status(500).json({ error: (error as Error).message });
+  }
+}
+
+export async function getFriendsV2(req: Request, res: Response): Promise<Response> {
+  try {
+    const userId = (req as any).user.id;
+    
+    console.log(`🔍 [getFriendsV2 Controller] Obteniendo amigos para userId: ${userId}`);
+    
+    const friends = await friendshipService.getFriendsV2(userId);
+    
+    console.log(`✅ [getFriendsV2 Controller] Devolviendo ${friends.length} amigos`);
+    
+    return res.status(200).json(friends);
+  } catch (error) {
+    console.error('❌ [getFriendsV2 Controller] Error:', error);
     return res.status(500).json({ error: (error as Error).message });
   }
 }
