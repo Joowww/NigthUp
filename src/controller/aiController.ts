@@ -14,9 +14,6 @@ export async function searchEventsWithAi(req: Request, res: Response): Promise<R
 
         const searchResult = await aiService.analyzeQuery(query);
         const relevantEventIds = searchResult.eventIds;
-
-        console.log(`[AI Controller] Weaviate returned ${relevantEventIds.length} candidates.`);
-
         const events = await Event.find({
             _id: { $in: relevantEventIds },
             active: true
@@ -39,7 +36,6 @@ export async function searchEventsWithAi(req: Request, res: Response): Promise<R
         });
 
     } catch (error) {
-        console.error('[AI Controller] Error:', error);
         return res.status(500).json({
             message: 'Error processing AI search',
             error: (error as Error).message

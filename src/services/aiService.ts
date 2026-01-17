@@ -29,23 +29,15 @@ export class AiService {
             const foundEvents = result.data.Get.Event;
 
             if (!foundEvents || foundEvents.length === 0) {
-                console.log('[AiService] No candidates found in Weaviate (before filtering).');
                 return { eventIds: [] };
             }
-
-            console.log(`[AiService] Found ${foundEvents.length} candidates before filtering. Scores:`);
-            foundEvents.forEach((e: any) => console.log(` - ${e.name} (${e.category}): ${e._additional.certainty}`));
 
             const relevantEvents = foundEvents
                 .filter((e: any) => e._additional.certainty > 0.55)
                 .map((e: any) => e.eventId);
-
-            console.log(`[AiService] Semantic search found ${relevantEvents.length} events for query: "${userQuery}"`);
-
             return { eventIds: relevantEvents };
 
         } catch (error) {
-            console.error('[AiService] Error in semantic search:', error);
             return { eventIds: [] };
         }
     }
@@ -93,7 +85,6 @@ export class AiService {
             return data.choices[0]?.message?.content || "Aquí tienes algunos eventos:";
 
         } catch (error) {
-            console.error('[AiService] Error generating response:', error);
             return "He encontrado estos eventos para ti:";
         }
     }

@@ -85,7 +85,6 @@ const router = Router();
  *                 type: integer
  */
 
-// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/tag:
@@ -183,7 +182,6 @@ router.get('/stats', getTagStats);
  */
 router.get('/event/:eventId', getTagsByEvent);
 
-// En routes/tagRoutes.ts - Agregar esta ruta
 /**
  * @swagger
  * /api/tag/type/{type}:
@@ -239,7 +237,6 @@ router.get('/type/:type', getTagsByType);
  */
 router.get('/:id', getTagById);
 
-// --- POST (Requiere autenticación) ---
 /**
  * @swagger
  * /api/tag:
@@ -266,7 +263,6 @@ router.get('/:id', getTagById);
  */
 router.post('/', createTag);
 
-// --- PATCH (Requiere autenticación) ---
 /**
  * @swagger
  * /api/tag/{id}:
@@ -309,7 +305,6 @@ router.post('/', createTag);
  */
 router.patch('/:id', updateTag);
 
-// --- DELETE (Requiere autenticación) ---
 /**
  * @swagger
  * /api/tag/{id}:

@@ -5,7 +5,6 @@ import fs from 'fs';
 const createFolderIfNotExists = (folderPath: string) => {
   if (!fs.existsSync(folderPath)) {
     fs.mkdirSync(folderPath, { recursive: true });
-    console.log(` Carpeta creada: ${folderPath}`);
   }
 };
 

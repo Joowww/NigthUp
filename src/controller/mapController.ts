@@ -10,19 +10,15 @@ export async function updateLocation(req: Request, res: Response): Promise<Respo
     const userId = (req as any).user.id;
     let coordinates: [number, number] | undefined = undefined;
 
-    // Support root array [lng, lat]
     if (Array.isArray(req.body) && req.body.length === 2) {
       coordinates = [Number(req.body[0]), Number(req.body[1])];
     }
-    // Support { coordinates: [lng, lat] }
     else if (Array.isArray(req.body.coordinates) && req.body.coordinates.length === 2) {
       coordinates = [Number(req.body.coordinates[0]), Number(req.body.coordinates[1])];
     }
-    // Support { latitude: lat, longitude: lng }
     else if (req.body.latitude !== undefined && req.body.longitude !== undefined) {
       coordinates = [Number(req.body.longitude), Number(req.body.latitude)];
     }
-    // Support GeoJSON { location: { coordinates: [lng, lat] } }
     else if (req.body.location?.coordinates && Array.isArray(req.body.location.coordinates)) {
       coordinates = [Number(req.body.location.coordinates[0]), Number(req.body.location.coordinates[1])];
     }

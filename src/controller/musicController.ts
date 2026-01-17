@@ -15,7 +15,6 @@ export async function searchMusic(req: Request, res: Response): Promise<Response
 
         return res.status(200).json(data);
     } catch (error) {
-        console.error('Error in music proxy:', error);
         return res.status(500).json({
             error: 'Failed to fetch music from iTunes',
             details: (error as Error).message

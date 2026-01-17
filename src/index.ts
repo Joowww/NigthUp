@@ -23,7 +23,6 @@ import mapRoutes from './routes/mapRoutes';
 import panicButtonRoutes from './routes/panicButtonRoutes';
 import calendarEventRoutes from './routes/calendarEventRoutes';
 import pollRoutes from './routes/pollRoutes';
-import eventTinderRoutes from './routes/eventTinderRoutes';
 import postRoutes from './routes/postRoutes';
 import initialInterestRoutes from './routes/initialInterestRoutes';
 import groupRoutes from './routes/groupRoutes';
@@ -60,19 +59,10 @@ initializeSocket(io);
 
 mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     .then(async () => {
-        console.log('SUCCESSFUL CONNECTION TO MONGODB DATABASE');
+
 
 
         const initialAdmins = [
-            // {
-            //     username: 'JoelMoreno',
-            //     email: 'joel@nightup.com',
-            //     password: 'JoelMoreno',
-            //     birthday: new Date('2000-08-06'),
-            //     phoneNumber: '+34 612 345 678',
-            //     securityQuestion: 'security.question.pet_name',
-            //     securityAnswer: 'Fluffy'
-            // },
             {
                 username: 'DavidSanchez',
                 email: 'david@nightup.com',
@@ -109,16 +99,12 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
                     active: true
                 });
                 await adminUser.save();
-                console.log(`Admin user ${adminData.username} created successfully`);
-            } else {
-                console.log(`Admin user ${adminData.username} already exists`);
             }
         }
 
 
         app.use('/api/user', userRoutes);
         app.use('/api/event', eventRoutes);
-        console.log('[APP] /api/event routes mounted');
         app.use('/api/business', businessRoutes);
         app.use('/api/rating', ratingRoutes);
         app.use('/api/tag', tagRoutes);
@@ -129,24 +115,17 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
         app.use('/api/panic', panicButtonRoutes);
         app.use('/api/calendar', calendarEventRoutes);
         app.use('/api/poll', pollRoutes);
-        app.use('/api/event-tinder', eventTinderRoutes);
         app.use('/api/post', postRoutes);
         app.use('/api/initial-interest', initialInterestRoutes);
         app.use('/api/group', groupRoutes);
         app.use('/api/user-status', userStatusRoutes);
-        console.log('[APP] /api/group routes mounted');
         app.use('/api/chat', chatRoutes);
         app.use('/api/ai', aiRoutes);
         app.use('/api/music', musicRoutes);
         app.use('/api/files', fileRoutes);
         app.use('/api/notifications', notificationRoutes);
-        console.log('[APP] /api/post routes mounted');
-
-        console.log('All routes registered including new features');
-
 
         setupSwagger(app);
-        console.log('Swagger configured');
 
 
         app.get('/api/rating/test', (req, res) => {
@@ -158,12 +137,9 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
         });
 
         httpServer.listen(PORT, () => {
-            console.log(`SERVER URL http://localhost:${PORT}`);
-            console.log(`Static files served at http://localhost:${PORT}/uploads`);
-            console.log(`Swagger docs at http://localhost:${PORT}/api-docs`);
-            console.log('Server is running!');
+            throw new Error('Server is running!');
         });
     })
     .catch(err => {
-        console.error('DATABASE CONNECTION ERROR', err);
+        throw err;
     });

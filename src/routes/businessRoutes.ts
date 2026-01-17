@@ -105,7 +105,6 @@ const router = Router();
  */
 router.post('/assign-manager', assignManager);
 
-// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/business:
@@ -175,7 +174,6 @@ router.get('/', getAllBusinesses);
  */
 router.get('/:id', getBusinessById);
 
-// --- RUTAS ADMIN ONLY ---
 /**
  * @swagger
  * /api/business:
@@ -419,7 +417,6 @@ router.put('/:businessId/manager/:managerId', authenticateToken, requireAdmin, a
  */
 router.delete('/:businessId/manager/:managerId', authenticateToken, requireAdmin, removeManagerFromBusiness);
 
-// --- RUTAS ADMIN/MANAGER ---
 /**
  * @swagger
  * /api/business/{id}:

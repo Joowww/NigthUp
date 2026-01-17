@@ -17,10 +17,8 @@ export const requireRole = (roles: string[]) => {
 
 export const requireAdmin = (req: Request, res: Response, next: NextFunction) => {
     const user = (req as any).user;
-    console.log('[ROLE] User:', user);
 
     if (!user || user.role !== 'admin') {
-        console.log('[ROLE] User is not admin');
         return res.status(403).json({ error: 'Admin privileges required' });
     }
     next();
@@ -28,10 +26,8 @@ export const requireAdmin = (req: Request, res: Response, next: NextFunction) =>
 
 export const requireManager = (req: Request, res: Response, next: NextFunction) => {
     const user = (req as any).user;
-    console.log('[ROLE] User:', user);
 
     if (!user || (user.role !== 'manager' && user.role !== 'admin')) {
-        console.log('[ROLE] User is not manager or admin');
         return res.status(403).json({ error: 'Manager or Admin privileges required' });
     }
     next();
@@ -39,10 +35,8 @@ export const requireManager = (req: Request, res: Response, next: NextFunction) 
 
 export const requireAdminOrManager = (req: Request, res: Response, next: NextFunction) => {
     const user = (req as any).user;
-    console.log('[ROLE] User:', user);
 
     if (!user || (user.role !== 'admin' && user.role !== 'manager')) {
-        console.log('[ROLE] User is not admin or manager');
         return res.status(403).json({ error: 'Admin or Manager privileges required' });
     }
     next();

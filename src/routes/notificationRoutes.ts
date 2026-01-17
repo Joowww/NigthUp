@@ -1,5 +1,3 @@
-// src/routes/notificationRoutes.ts (NUEVO ARCHIVO)
-
 import { Router } from 'express';
 import {
   getMyNotifications,

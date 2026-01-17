@@ -17,13 +17,9 @@ export async function createEvent(req: Request, res: Response): Promise<Response
 
     try {
         const eventData: Partial<IEvent> = req.body;
-
-        // Force active: true if not specified (safeguard)
         if (eventData.active === undefined) {
             eventData.active = true;
         }
-
-        console.log('[DEBUG] Creating event with data:', JSON.stringify(eventData, null, 2));
 
         const event = await eventService.createEvent(eventData);
 
@@ -31,17 +27,13 @@ export async function createEvent(req: Request, res: Response): Promise<Response
             return res.status(500).json({ error: 'FAILED TO CREATE EVENT' });
         }
 
-        // Si se pasa un managerId en los params, asociamos el evento al negocio de ese manager
         const { managerId } = req.params;
         if (managerId) {
             await businessService.addEventToBusinessByManagerId(managerId, event._id.toString());
         }
-
-        // PUSH EVENT TO RELEVANT USERS (FYP)
-        // We do this asynchronously to not block the response
-        const { UserService } = require('../services/userServices'); // Dynamic import to avoid circular dependency issues if any
+        const { UserService } = require('../services/userServices');
         const userService = new UserService();
-        userService.addEventToRelevantFyps(event).catch((err: any) => console.error('Background FYP update failed:', err));
+        userService.addEventToRelevantFyps(event).catch((err: any) => { });
 
         return res.status(201).json(event);
     } catch (error) {
@@ -74,17 +66,10 @@ export async function getAllEvents(req: Request, res: Response): Promise<Respons
 }
 
 export async function getAllEventsWithInactive(req: Request, res: Response): Promise<Response> {
-    console.log('[DEBUG] getAllEventsWithInactive - INICIANDO');
-
     try {
         const skip = parseInt(req.query.skip as string) || 0;
         const limit = parseInt(req.query.limit as string) || 10;
-
-        console.log(`[DEBUG] Params - skip: ${skip}, limit: ${limit}`);
-
         const result = await eventService.getAllEventsWithInactive(skip, limit);
-
-        console.log(`[DEBUG] Encontrados ${result.events.length} eventos de ${result.total} totales`);
 
         return res.status(200).json({
             events: result.events,
@@ -96,7 +81,6 @@ export async function getAllEventsWithInactive(req: Request, res: Response): Pro
             }
         });
     } catch (error) {
-        console.error('[DEBUG] Error en getAllEventsWithInactive:', error);
         return res.status(404).json({ message: (error as Error).message });
     }
 }
@@ -121,10 +105,9 @@ export async function updateEventByIdentifier(req: Request, res: Response): Prom
         const updatedEvent = await eventService.updateEventByIdentifier(identifier, eventData);
         if (!updatedEvent) return res.status(404).json({ message: 'EVENT NOT FOUND' });
 
-        // PUSH UPDATED EVENT TO RELEVANT USERS (FYP)
         const { UserService } = require('../services/userServices');
         const userService = new UserService();
-        userService.addEventToRelevantFyps(updatedEvent).catch((err: any) => console.error('Background FYP update failed:', err));
+        userService.addEventToRelevantFyps(updatedEvent).catch((err: any) => { });
 
         return res.status(200).json({ message: 'Event updated successfully', event: updatedEvent });
     } catch (error) {

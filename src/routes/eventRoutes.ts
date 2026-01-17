@@ -135,7 +135,6 @@ const router = Router();
  *           description: Fecha de última actualización
  */
 
-// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/event:
@@ -226,7 +225,6 @@ router.get('/stats', getEventStats);
  */
 router.get('/:identifier', getEventByIdentifier);
 
-// --- RUTAS AUTENTICADAS (CUALQUIER USUARIO) ---
 /**
  * @swagger
  * /api/event/{identifier}/join:

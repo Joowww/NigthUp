@@ -83,7 +83,6 @@ const router = Router();
  *                 type: integer
  */
 
-// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/user-interest:
@@ -206,7 +205,7 @@ router.get('/user/:userId', getUserInterestsByUser);
  */
 router.get('/:id', getUserInterestById);
 
-// --- POST (Público como ratings) ---
+
 /**
  * @swagger
  * /api/user-interest:
@@ -233,7 +232,6 @@ router.get('/:id', getUserInterestById);
  */
 router.post('/', createUserInterest);
 
-// --- PATCH (Público como ratings) ---
 /**
  * @swagger
  * /api/user-interest/{id}:
@@ -276,7 +274,6 @@ router.post('/', createUserInterest);
  */
 router.patch('/:id', updateUserInterest);
 
-// --- DELETE (Público como ratings) ---
 /**
  * @swagger
  * /api/user-interest/{id}:

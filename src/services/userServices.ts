@@ -561,7 +561,6 @@ export class UserService {
 
         const cityRegex = new RegExp(`^${comunidad}$`, 'i');
 
-        // 1. Primary: Match City AND Interests
         const exactMatches = await EventModel.find({
             active: true,
             city: cityRegex,
@@ -570,7 +569,6 @@ export class UserService {
 
         fypIds = exactMatches.map(e => e._id);
 
-        // 2. Secondary: Match City only
         if (fypIds.length < MAX_EVENTS) {
             const cityMatches = await EventModel.find({
                 active: true,
@@ -581,7 +579,6 @@ export class UserService {
             fypIds = [...fypIds, ...cityMatches.map(e => e._id)];
         }
 
-        // 3. Tertiary: Match Interests (Any City)
         if (fypIds.length < MAX_EVENTS) {
             const interestMatches = await EventModel.find({
                 active: true,
@@ -592,7 +589,6 @@ export class UserService {
             fypIds = [...fypIds, ...interestMatches.map(e => e._id)];
         }
 
-        // 4. Fallback: Random Events
         if (fypIds.length < MAX_EVENTS) {
             const remainingCount = MAX_EVENTS - fypIds.length;
             const randomEvents = await EventModel.aggregate([
@@ -611,7 +607,7 @@ export class UserService {
                     comunidad: data.comunidad,
                     intereses: data.intereses,
                     onboardingCompleted: true,
-                    fyp: fypIds.slice(0, 6) // Ensure strict 6
+                    fyp: fypIds.slice(0, 6)
                 }
             },
             { new: true }
@@ -627,7 +623,6 @@ export class UserService {
 
         if (!user || !user.fyp) return [];
 
-        // Filter out any events that couldn't be populated (e.g. deleted or inactive) and return max 6
         return (user.fyp as any[])
             .filter(event => event !== null && typeof event === 'object')
             .slice(0, 6) as IEvent[];
@@ -635,17 +630,12 @@ export class UserService {
 
     async addEventToRelevantFyps(event: IEvent): Promise<void> {
         try {
-            // Filter users who are active, interested in the category, AND belong to the same community/city
-            // We use regex for case-insensitive matching if needed, or direct match if data is normalized.
-            // Assuming 'comunidad' in User corresponds to 'city' in Event.
-
             const filter: any = {
                 active: true,
                 intereses: event.category
             };
 
             if (event.city) {
-                // Using regex for flexibility (case insensitive user.comunidad == event.city)
                 filter.comunidad = { $regex: new RegExp(`^${event.city}$`, 'i') };
             }
 
@@ -656,13 +646,13 @@ export class UserService {
                         fyp: {
                             $each: [event._id],
                             $position: 0,
-                            $slice: 6 // Keep only the latest 6 events
+                            $slice: 6
                         }
                     }
                 }
             );
         } catch (error) {
-            console.error('Error updating FYPs with new event:', error);
+            throw error;
         }
     }
 }

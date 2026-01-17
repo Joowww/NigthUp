@@ -88,7 +88,6 @@ const router = Router();
  *           example: 10
  */
 
-// --- POST ---
 /**
  * @swagger
  * /api/rating:
@@ -123,7 +122,6 @@ const router = Router();
  */
 router.post('/', createRating);
 
-// --- GET ---
 /**
  * @swagger
  * /api/rating:
@@ -315,7 +313,6 @@ router.get('/user/:username/event/:eventId', getUserEventRating);
  */
 router.get('/:id', getRatingById);
 
-// --- PATCH ---
 /**
  * @swagger
  * /api/rating/{id}:
@@ -360,7 +357,6 @@ router.get('/:id', getRatingById);
  */
 router.patch('/:id', updateRating);
 
-// --- DELETE ---
 /**
  * @swagger
  * /api/rating/{id}:

@@ -98,10 +98,8 @@ export async function createPost(req: Request, res: Response): Promise<Response>
             return res.status(400).json({ error: 'No file uploaded or mediaUrl provided' });
         }
 
-        // Handle nested music object or separate fields
         let musicData = undefined;
         if (music) {
-            // Handle if music comes as a JSON string (from multipart/form-data) or as an object (from JSON)
             const musicObj = typeof music === 'string' ? JSON.parse(music) : music;
             musicData = {
                 title: musicObj.title,
@@ -131,7 +129,6 @@ export async function createPost(req: Request, res: Response): Promise<Response>
         const post = await postService.createPost(postData);
         return res.status(201).json(post);
     } catch (error) {
-        console.error('Error creating post:', error);
         return res.status(500).json({
             error: 'Failed to create post',
             details: (error as Error).message
@@ -162,7 +159,6 @@ export async function createUserPost(req: Request, res: Response): Promise<Respo
         const post = await postService.createPost(postData);
         return res.status(201).json(post);
     } catch (error) {
-        console.error('Error creating user post:', error);
         return res.status(500).json({ error: 'Failed to create post' });
     }
 }
@@ -189,7 +185,6 @@ export async function createEventPost(req: Request, res: Response): Promise<Resp
         const post = await postService.createEventPost(eventId, postData);
         return res.status(201).json(post);
     } catch (error) {
-        console.error('Error creating event post:', error);
         return res.status(500).json({ error: 'Failed to create event post' });
     }
 }

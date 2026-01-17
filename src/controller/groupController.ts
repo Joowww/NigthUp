@@ -1,4 +1,3 @@
-// groupController.ts
 import { Request, Response } from 'express';
 import { ChatService } from '../services/chatServices';
 import { Conversation } from '../models/conversation';

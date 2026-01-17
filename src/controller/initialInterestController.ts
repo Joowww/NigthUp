@@ -11,11 +11,8 @@ export async function createInitialInterests(req: Request, res: Response): Promi
     const userId = (req as any).user.id;
     const { musicType, musician, eventType, childhoodIdol } = req.body;
 
-    console.log('Creating initial interests for user:', userId);
-    console.log('Selections:', { musicType, musician, eventType, childhoodIdol });
-
     if (!musicType || !musician || !eventType || !childhoodIdol) {
-      return res.status(400).json({ 
+      return res.status(400).json({
         error: 'All selections are required',
         required: ['musicType', 'musician', 'eventType', 'childhoodIdol']
       });
@@ -23,12 +20,10 @@ export async function createInitialInterests(req: Request, res: Response): Promi
 
     const allTags = await tagService.getAllTags(0, 1000);
     const tagMap = new Map();
-    
+
     allTags.tags.forEach(tag => {
       tagMap.set(tag.name, tag._id.toString());
     });
-
-    console.log('🔍 Tag mapping:', Array.from(tagMap.entries()));
 
     const selections = [
       { name: musicType, type: 'MusicType' },
@@ -51,8 +46,6 @@ export async function createInitialInterests(req: Request, res: Response): Promi
       score: 5.0
     }));
 
-    console.log('Saving interests:', interests);
-
     for (const interest of interests) {
       await userInterestService.createUserInterest({
         userId: interest.userId,
@@ -61,22 +54,21 @@ export async function createInitialInterests(req: Request, res: Response): Promi
       });
     }
 
-    return res.status(201).json({ 
+    return res.status(201).json({
       message: 'Initial interests saved successfully',
       interestsCount: interests.length,
       selections: {
         musicType,
-        musician, 
+        musician,
         eventType,
         childhoodIdol
       }
     });
 
   } catch (error) {
-    console.error('Error creating initial interests:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to save initial interests',
-      details: (error as Error).message 
+      details: (error as Error).message
     });
   }
 }

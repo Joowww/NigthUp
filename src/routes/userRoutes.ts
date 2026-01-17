@@ -192,7 +192,6 @@ const router = Router();
  *           example: "newSecurePass123"
  */
 
-// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/user:
@@ -478,7 +477,6 @@ router.post('/reset-password', resetPasswordWithToken);
  */
 router.post('/auth/refresh', authenticateRefreshToken, refreshAccessToken);
 
-// ===== RUTAS AUTENTICADAS =====
 
 /**
  * @swagger
@@ -666,7 +664,6 @@ router.post('/security-question', authenticateToken, setSecurityQuestion);
  */
 router.post('/connect/google', authenticateToken, connectGoogleAccount);
 
-// ===== RUTAS ADMIN =====
 
 /**
  * @swagger

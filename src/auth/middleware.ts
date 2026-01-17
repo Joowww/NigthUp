@@ -2,27 +2,20 @@ import { Request, Response, NextFunction } from 'express';
 import { verifyToken, verifyRefreshToken } from './token';
 
 export const authenticateToken = (req: Request, res: Response, next: NextFunction) => {
-    const authHeader = req.headers['authorization'];
-    const token = authHeader && authHeader.split(' ')[1];
+  const authHeader = req.headers['authorization'];
+  const token = authHeader && authHeader.split(' ')[1];
 
-    console.log('[AUTH] Header:', authHeader);
-    console.log('[AUTH] Token:', token);
+  if (!token) {
+    return res.status(401).json({ error: 'Token requerido' });
+  }
 
-    if (!token) {
-        console.log('[AUTH] No token provided');
-        return res.status(401).json({ error: 'Token requerido' });
-    }
+  const decoded = verifyToken(token);
+  if (!decoded) {
+    return res.status(401).json({ error: 'Token inválido o expirado' });
+  }
 
-    const decoded = verifyToken(token);
-    console.log('[AUTH] Decoded:', decoded);
-
-    if (!decoded) {
-        console.log('[AUTH] Invalid or expired token');
-        return res.status(401).json({ error: 'Token inválido o expirado' });
-    }
-
-    (req as any).user = decoded;
-    next();
+  (req as any).user = decoded;
+  next();
 };
 
 export const authenticateRefreshToken = (req: Request, res: Response, next: NextFunction) => {

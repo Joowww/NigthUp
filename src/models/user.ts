@@ -205,14 +205,12 @@ userSchema.pre<IUser>('save', async function (next) {
     if (!this.isModified('password') && !this.isModified('securityAnswer')) return next();
 
     if (this.isModified('password')) {
-        console.log('Hasheando contraseña...');
         const salt = await bcrypt.genSalt();
         const hash = await bcrypt.hash(this.password, salt);
         this.password = hash;
     }
 
     if (this.isModified('securityAnswer') && this.securityAnswer) {
-        console.log('Hasheando respuesta de seguridad...');
         const salt = await bcrypt.genSalt();
         const hash = await bcrypt.hash(this.securityAnswer.toLowerCase().trim(), salt);
         this.securityAnswer = hash;

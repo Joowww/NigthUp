@@ -1,4 +1,3 @@
-// conversation.ts
 import mongoose, { Schema, model, Types, Document } from 'mongoose';
 
 export interface IGroupPollOption {

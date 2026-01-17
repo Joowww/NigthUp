@@ -9,7 +9,6 @@ interface AuthenticatedRequest extends Request {
   user?: { id: string; role?: string };
 }
 
-// ==================== GET CONVERSACIONES ====================
 
 export async function httpGetConversations(req: AuthenticatedRequest, res: Response) {
   try {
@@ -20,13 +19,9 @@ export async function httpGetConversations(req: AuthenticatedRequest, res: Respo
     const conversations = await chatService.getConversationsForUser(req.user.id);
     return res.status(200).json(conversations);
   } catch (e: any) {
-    console.error('Error in httpGetConversations:', e);
     return res.status(500).json({ error: 'Failed to get conversations', details: e.message });
   }
 }
-
-// ==================== GET MENSAJES ====================
-
 export async function httpGetMessages(req: AuthenticatedRequest, res: Response) {
   try {
     const { conversationId } = req.params;
@@ -47,12 +42,9 @@ export async function httpGetMessages(req: AuthenticatedRequest, res: Response) 
     const messages = await chatService.getMessagesForConversation(conversationId, req.user.id);
     return res.status(200).json(messages);
   } catch (e: any) {
-    console.error('Error in httpGetMessages:', e);
     return res.status(500).json({ error: 'Failed to get messages', details: e.message });
   }
 }
-
-// ==================== CREAR CONVERSACIÓN PRIVADA ====================
 
 export async function httpCreateConversation(req: AuthenticatedRequest, res: Response) {
   try {
@@ -73,12 +65,9 @@ export async function httpCreateConversation(req: AuthenticatedRequest, res: Res
       message: 'Conversation ready'
     });
   } catch (e: any) {
-    console.error('Error in httpCreateConversation:', e);
     return res.status(500).json({ error: 'Failed to create conversation', details: e.message });
   }
 }
-
-// ==================== CREAR GRUPO ====================
 
 export async function httpCreateGroup(req: AuthenticatedRequest, res: Response) {
   try {
@@ -105,7 +94,6 @@ export async function httpCreateGroup(req: AuthenticatedRequest, res: Response) 
       createdAt: group.createdAt
     });
   } catch (error: any) {
-    console.error('Error in httpCreateGroup:', error);
     return res.status(500).json({ error: 'Failed to create group', details: error.message });
   }
 }

@@ -88,7 +88,7 @@ const router = Router();
  *           format: date-time
  */
 
-// ============ CREAR POSTS ============
+
 
 /**
  * @swagger
@@ -201,7 +201,7 @@ router.post('/user', authenticateToken, uploadPostMedia, createUserPost);
  */
 router.post('/event', authenticateToken, requireAdminOrManager, uploadPostMedia, createEventPost);
 
-// ============ FEEDS ============
+
 
 /**
  * @swagger
@@ -263,7 +263,6 @@ router.get('/feed/friends', authenticateToken, getFriendsFeed);
  */
 router.get('/feed/for-you', authenticateToken, getForYouFeed);
 
-// ============ OBTENER POSTS ============
 
 /**
  * @swagger
@@ -359,7 +358,7 @@ router.get('/:postId/comments', getPostComments);
  */
 router.get('/search', searchPosts);
 
-// ============ INTERACCIONES ============
+
 
 /**
  * @swagger
@@ -455,7 +454,7 @@ router.post('/:postId/comment', authenticateToken, addComment);
  */
 router.delete('/:postId/comment/:commentIndex', authenticateToken, deleteComment);
 
-// ============ ELIMINAR POST ============
+
 
 /**
  * @swagger

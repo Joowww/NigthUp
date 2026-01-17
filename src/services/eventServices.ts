@@ -42,7 +42,7 @@ export class EventService {
     }
 
     async getAllEventsWithInactive(skip: number = 0, limit: number = 10): Promise<{ events: IEvent[], total: number }> {
-        console.log('[DEBUG SERVICE] getAllEventsWithInactive - Buscando eventos...');
+
 
         try {
             const events = await Event.find()
@@ -54,11 +54,11 @@ export class EventService {
 
             const total = await Event.countDocuments();
 
-            console.log(`[DEBUG SERVICE] Encontrados ${events.length} eventos de ${total} totales`);
+
 
             return { events, total };
         } catch (error) {
-            console.error('[DEBUG SERVICE] Error en getAllEventsWithInactive:', error);
+
             throw error;
         }
     }
@@ -359,7 +359,6 @@ export class EventService {
             active: true
         });
 
-        // Collect all event IDs from all businesses managed by the user
         const eventIds = businesses.reduce((acc, business) => {
             if (business.events && Array.isArray(business.events)) {
                 acc.push(...business.events);
@@ -367,7 +366,6 @@ export class EventService {
             return acc;
         }, [] as mongoose.Types.ObjectId[]);
 
-        // Explicitly find all events with these IDs, including inactive ones
         const allEvents = await Event.find({ _id: { $in: eventIds } })
             .populate('participants', 'username email')
             .populate('likedBy', 'username email')

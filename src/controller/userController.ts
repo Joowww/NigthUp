@@ -238,7 +238,7 @@ export async function createUser(req: Request, res: Response): Promise<Response>
             phoneNumber,
             role: role || 'user',
             securityQuestion: securityQuestionKey || undefined,
-            securityAnswer: securityAnswer|| undefined
+            securityAnswer: securityAnswer || undefined
         };
 
         const user = await userService.createUser(newUser);
@@ -549,7 +549,7 @@ export async function updateMyProfile(req: Request, res: Response): Promise<Resp
         if (userData.phoneNumber !== undefined && typeof userData.phoneNumber === 'string') {
             filteredData.phoneNumber = userData.phoneNumber;
         }
-        
+
         if (userData.comunidad !== undefined && typeof userData.comunidad === 'string') {
             filteredData.comunidad = userData.comunidad;
         }
@@ -625,7 +625,6 @@ export const changePassword = async (req: Request, res: Response): Promise<Respo
 
         return res.status(200).json({ message: 'Password changed successfully' });
     } catch (error) {
-        console.error('Error changing password:', error);
         return res.status(500).json({ error: 'Failed to change password' });
     }
 };
@@ -669,7 +668,6 @@ export const changeEmail = async (req: Request, res: Response): Promise<Response
             user: safeUser
         });
     } catch (error) {
-        console.error('Error changing email:', error);
         return res.status(500).json({ error: 'Failed to change email' });
     }
 };
@@ -820,7 +818,6 @@ export const resetPasswordWithToken = async (req: Request, res: Response): Promi
 export const completeOnboardingHandler = async (req: Request, res: Response): Promise<Response> => {
     try {
         const userId = (req as any).user?.id || (req as any).user?._id; 7
-        console.log('User ID from token:', userId);
 
         if (!userId) {
             return res.status(401).json({ error: 'Usuario no identificado' });
@@ -844,7 +841,6 @@ export const completeOnboardingHandler = async (req: Request, res: Response): Pr
         });
 
     } catch (error) {
-        console.error('Error en onboarding:', error);
         return res.status(500).json({ error: 'Error del servidor' });
     }
 };
@@ -855,7 +851,6 @@ export async function getFyp(req: Request, res: Response): Promise<Response> {
         const events = await userService.getFyp(identifier);
         return res.status(200).json({ events });
     } catch (error) {
-        console.error('Error getting FYP:', error);
         return res.status(500).json({ error: 'Error retrieving FYP' });
     }
 }

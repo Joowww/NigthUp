@@ -1,10 +1,9 @@
-// src/models/notification.ts
 import { Schema, model, Types } from 'mongoose';
 
 export interface INotification {
   _id: Types.ObjectId;
-  recipient: Types.ObjectId;  // Usuario que recibe la notificación
-  sender: Types.ObjectId;     // Usuario que envía la solicitud
+  recipient: Types.ObjectId;
+  sender: Types.ObjectId;
   type: 'friend_request' | 'friend_accepted' | 'friend_rejected';
   friendshipId: Types.ObjectId;
   read: boolean;
@@ -16,10 +15,10 @@ const notificationSchema = new Schema<INotification>(
   {
     recipient: { type: Schema.Types.ObjectId, ref: 'User', required: true },
     sender: { type: Schema.Types.ObjectId, ref: 'User', required: true },
-    type: { 
-      type: String, 
+    type: {
+      type: String,
       enum: ['friend_request', 'friend_accepted', 'friend_rejected'],
-      required: true 
+      required: true
     },
     friendshipId: { type: Schema.Types.ObjectId, ref: 'Friendship', required: true },
     read: { type: Boolean, default: false }

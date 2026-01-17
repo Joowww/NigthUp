@@ -171,7 +171,7 @@ export class PostService {
                 .limit(limit);
 
             const total = await Post.countDocuments({ event: eventId });
-            const mappedPosts = posts.map(post => this.mapToFeedFormat(post)); // Event posts typical public
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
             return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
@@ -194,7 +194,7 @@ export class PostService {
                 user: userId,
                 event: { $exists: false }
             });
-            const mappedPosts = posts.map(post => this.mapToFeedFormat(post)); // Optional currentUserId here too
+            const mappedPosts = posts.map(post => this.mapToFeedFormat(post));
             return { posts: mappedPosts, total };
         } catch (error) {
             throw new Error((error as Error).message);
@@ -351,7 +351,6 @@ export class PostService {
         const isVideo = firstMedia ? firstMedia.type === 'video' : false;
         const mediaUrl = firstMedia ? firstMedia.url : '';
 
-        // Check if current user has liked this post
         const isLiked = currentUserId && postObj.likes
             ? postObj.likes.some((id: any) => id.toString() === currentUserId.toString())
             : false;
@@ -360,7 +359,7 @@ export class PostService {
             ...postObj,
             mediaUrl: mediaUrl,
             isVideo: isVideo,
-            isLiked: isLiked, // ✅ AÑADIDO
+            isLiked: isLiked,
             likesCount: postObj.likes ? postObj.likes.length : 0,
             commentCount: postObj.comments ? postObj.comments.length : 0,
             music: postObj.music ? {

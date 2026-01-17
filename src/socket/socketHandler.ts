@@ -11,55 +11,40 @@ interface SocketAuth {
 const chatService = new ChatService();
 const groupService = new GroupService();
 
-// Mapa de usuarios conectados: userId -> socketId
 const onlineUsers = new Map<string, string>();
 
 export function initializeSocket(io: Server) {
-  console.log('🔌 Socket.IO inicializado');
 
   io.on('connection', (socket: Socket) => {
     const { userId } = socket.handshake.auth as SocketAuth;
-  
+
     if (!userId) {
-      console.log('❌ Conexión rechazada: sin userId');
       socket.disconnect();
       return;
     }
-  
-    console.log(`✅ Usuario conectado: ${userId} (socket: ${socket.id})`);
+
     onlineUsers.set(userId, socket.id);
-  
+
     socket.join(userId);
-  
-    // ✅ EMITIR INMEDIATAMENTE
+
     const onlineUserIds = Array.from(onlineUsers.keys());
     io.emit('onlineUsers', onlineUserIds);
-    console.log('📢 [BACKEND] Emitiendo onlineUsers (inmediato):', onlineUserIds);
-  
-    // ✅ EMITIR OTRA VEZ DESPUÉS DE 500ms (para asegurar que el frontend esté listo)
+
     setTimeout(() => {
       const updatedOnlineUserIds = Array.from(onlineUsers.keys());
       io.emit('onlineUsers', updatedOnlineUserIds);
-      console.log('📢 [BACKEND] Emitiendo onlineUsers (retry):', updatedOnlineUserIds);
     }, 1000);
-
-    // ==================== UNIRSE/SALIR DE SALAS ====================
 
     socket.on('joinRoom', (conversationId: string) => {
       socket.join(conversationId);
-      console.log(`📥 ${userId} se unió a sala: ${conversationId}`);
       socket.to(conversationId).emit('userJoined', { userId, conversationId });
     });
 
     socket.on('leaveRoom', (conversationId: string) => {
       socket.leave(conversationId);
-      console.log(`📤 ${userId} salió de sala: ${conversationId}`);
     });
 
-    // ==================== ENVIAR MENSAJE ====================
-
     socket.on('sendMessage', async (data) => {
-      console.log('📨 [SOCKET] Intento de envío de mensaje recibido:', JSON.stringify(data, null, 2));
       const { conversationId, text, imageUrl, audioUrl, messageType, replyTo } = data;
 
       if (!conversationId) {
@@ -67,14 +52,12 @@ export function initializeSocket(io: Server) {
         return;
       }
 
-      // Validar que haya texto, imagen o audio
       if (!text && !imageUrl && !audioUrl) {
         socket.emit('error', { message: 'El mensaje debe tener texto, imagen o audio' });
         return;
       }
 
       try {
-        // ✅ CORRECCIÓN: Pasar objeto en lugar de parámetros separados
         const newMessage = await chatService.sendMessage({
           conversationId,
           senderId: userId,
@@ -106,17 +89,13 @@ export function initializeSocket(io: Server) {
           updatedAt: newMessage.updatedAt
         });
 
-        console.log(`📨 Mensaje enviado en ${conversationId} por ${userId}`);
       } catch (error: any) {
-        console.error('❌ Error al enviar mensaje:', error);
         socket.emit('error', {
           message: 'Error al enviar mensaje',
           details: error.message
         });
       }
     });
-
-    // ==================== EDITAR MENSAJE ====================
 
     socket.on('editMessage', async (data) => {
       const { messageId, text } = data;
@@ -143,17 +122,13 @@ export function initializeSocket(io: Server) {
           updatedAt: editedMessage.updatedAt
         });
 
-        console.log(`✏️ Mensaje editado: ${messageId}`);
       } catch (error: any) {
-        console.error('❌ Error al editar mensaje:', error);
         socket.emit('error', {
           message: 'Error al editar mensaje',
           details: error.message
         });
       }
     });
-
-    // ==================== ELIMINAR MENSAJE ====================
 
     socket.on('deleteMessage', async (data) => {
       const { messageId } = data;
@@ -177,17 +152,13 @@ export function initializeSocket(io: Server) {
           conversationId
         });
 
-        console.log(`🗑️ Mensaje eliminado: ${messageId}`);
       } catch (error: any) {
-        console.error('❌ Error al eliminar mensaje:', error);
         socket.emit('error', {
           message: 'Error al eliminar mensaje',
           details: error.message
         });
       }
     });
-
-    // ==================== REACCIONAR A MENSAJE ====================
 
     socket.on('reactToMessage', async (data) => {
       const { messageId, emoji } = data;
@@ -213,17 +184,13 @@ export function initializeSocket(io: Server) {
           emoji
         });
 
-        console.log(`👍 Reacción añadida: ${emoji} al mensaje ${messageId}`);
       } catch (error: any) {
-        console.error('❌ Error al reaccionar:', error);
         socket.emit('error', {
           message: 'Error al reaccionar',
           details: error.message
         });
       }
     });
-
-    // ==================== INDICADOR DE ESCRITURA ====================
 
     socket.on('typing', (data) => {
       const { conversationId, username } = data;
@@ -236,7 +203,6 @@ export function initializeSocket(io: Server) {
         conversationId
       });
 
-      console.log(`✍️ ${username || userId} está escribiendo en ${conversationId}`);
     });
 
     socket.on('stopTyping', (data) => {
@@ -251,15 +217,10 @@ export function initializeSocket(io: Server) {
       });
     });
 
-    // ==================== SOLICITAR USUARIOS ONLINE ====================
-    // ✅ NUEVO MANEJADOR AÑADIDO
     socket.on('getOnlineUsers', () => {
       const onlineUserIds = Array.from(onlineUsers.keys());
       socket.emit('onlineUsers', onlineUserIds);
-      console.log('📤 [BACKEND] Lista de usuarios online solicitada y enviada:', onlineUserIds);
     });
-
-    // ==================== CREAR GRUPO ====================
 
     socket.on('createGroup', async (data) => {
       const { name, participants } = data;
@@ -276,7 +237,6 @@ export function initializeSocket(io: Server) {
           throw new Error('Failed to create group');
         }
 
-        // ✅ Emitir a todos los participantes (creador + invitados)
         const allParticipants = [userId, ...participants];
 
         allParticipants.forEach((participantId) => {
@@ -299,17 +259,13 @@ export function initializeSocket(io: Server) {
           }
         });
 
-        console.log(`👥 Grupo creado: ${name} por ${userId}`);
       } catch (error: any) {
-        console.error('❌ Error al crear grupo:', error);
         socket.emit('error', {
           message: 'Error al crear grupo',
           details: error.message
         });
       }
     });
-
-    // ==================== ENCUESTAS EN GRUPOS ====================
 
     socket.on('createGroupPoll', async (data) => {
       const { conversationId, question, options } = data;
@@ -342,9 +298,7 @@ export function initializeSocket(io: Server) {
           createdAt: poll.createdAt
         });
 
-        console.log(`📊 Encuesta creada en grupo ${conversationId}`);
       } catch (error: any) {
-        console.error('❌ Error al crear encuesta:', error);
         socket.emit('error', {
           message: 'Error al crear encuesta',
           details: error.message
@@ -376,17 +330,13 @@ export function initializeSocket(io: Server) {
           conversationId
         });
 
-        console.log(`🗳️ Voto registrado en encuesta ${pollId} por ${userId}`);
       } catch (error: any) {
-        console.error('❌ Error al votar:', error);
         socket.emit('error', {
           message: 'Error al votar',
           details: error.message
         });
       }
     });
-
-    // ==================== MARCAR COMO LEÍDO ====================
 
     socket.on('markAsRead', async (data) => {
       const { conversationId, messageIds } = data;
@@ -405,13 +355,9 @@ export function initializeSocket(io: Server) {
           userId
         });
 
-        console.log(`👁️ ${userId} leyó ${messageIds.length} mensajes en ${conversationId}`);
       } catch (error: any) {
-        console.error('❌ Error al marcar como leído:', error);
       }
     });
-
-    // ==================== VIDEOLLAMADAS ====================
 
     socket.on('callUser', (data) => {
       const { conversationId, recipientId, callType, callerName } = data;
@@ -427,9 +373,8 @@ export function initializeSocket(io: Server) {
           callerId: userId,
           callerName: callerName || 'Usuario',
           conversationId,
-          callType // 'video' | 'audio'
+          callType
         });
-        console.log(`📞 Llamada ${callType} de ${userId} a ${recipientId}`);
       } else {
         socket.emit('error', { message: 'El usuario no está conectado' });
       }
@@ -449,7 +394,6 @@ export function initializeSocket(io: Server) {
           recipientId: userId,
           accepted
         });
-        console.log(`📞 Llamada ${accepted ? 'aceptada' : 'rechazada'} por ${userId}`);
       }
     });
 
@@ -458,7 +402,6 @@ export function initializeSocket(io: Server) {
 
       if (conversationId) {
         socket.to(conversationId).emit('callEnded', { userId });
-        console.log(`📞 Llamada finalizada en ${conversationId}`);
       }
     });
 
@@ -503,144 +446,113 @@ export function initializeSocket(io: Server) {
         });
       }
     });
-/**
- * Notificar solicitud de amistad en tiempo real
- */
-socket.on('friendRequestSent', async (data: { 
-  recipientId: string;
-  senderId: string;
-  friendshipId: string;
-}) => {
-  try {
-    console.log('📤 [Socket] Solicitud enviada:', data);
 
-    // ✅ NO CREAR NOTIFICACIÓN AQUÍ - Ya se creó en el controlador
-    // Solo enviar evento al socket
+    socket.on('friendRequestSent', async (data: {
+      recipientId: string;
+      senderId: string;
+      friendshipId: string;
+    }) => {
+      try {
 
-    const recipientSocketId = onlineUsers.get(data.recipientId);
-    
-    if (recipientSocketId) {
-      const sender = await User.findById(data.senderId).select('username avatar firstName lastName').lean();
-      
-      io.to(recipientSocketId).emit('friendRequestReceived', {
-        sender,
-        friendshipId: data.friendshipId,
-        timestamp: new Date()
-      });
+        const recipientSocketId = onlineUsers.get(data.recipientId);
 
-      console.log(`✅ [Socket] Notificación enviada a ${data.recipientId}`);
-    }
-  } catch (error) {
-    console.error('❌ [Socket] Error en friendRequestSent:', error);
-  }
-});
+        if (recipientSocketId) {
+          const sender = await User.findById(data.senderId).select('username avatar firstName lastName').lean();
 
-/**
- * Notificar cuando se acepta una solicitud
- */
-socket.on('friendRequestAccepted', async (data: { 
-  requesterId: string;
-  accepterId: string;
-  friendshipId: string;
-}) => {
-  try {
-    console.log('✅ [Socket] Solicitud aceptada:', data);
+          io.to(recipientSocketId).emit('friendRequestReceived', {
+            sender,
+            friendshipId: data.friendshipId,
+            timestamp: new Date()
+          });
 
-    const requesterSocketId = onlineUsers.get(data.requesterId);
-    
-    if (requesterSocketId) {
-      const accepter = await User.findById(data.accepterId)
-        .select('username avatar firstName lastName')
-        .lean();
-      
-      io.to(requesterSocketId).emit('friendRequestAcceptedNotification', {
-        friendshipId: data.friendshipId,
-        accepter,
-        timestamp: new Date()
-      });
-
-      console.log(`✅ [Socket] Notificación de aceptación enviada a ${data.requesterId}`);
-    } else {
-      console.log(`⚠️ [Socket] Usuario ${data.requesterId} no está online`);
-    }
-  } catch (error) {
-    console.error('❌ [Socket] Error en friendRequestAccepted:', error);
-  }
-});
-
-/**
- * Notificar cuando se cancela/rechaza una solicitud
- */
-socket.on('friendRequestCancelled', async (data: { 
-  recipientId: string;
-  friendshipId: string;
-  senderId: string; // ✅ AÑADIR senderId
-}) => {
-  try {
-    console.log('❌ [Socket] Solicitud cancelada:', data);
-
-    const recipientSocketId = onlineUsers.get(data.recipientId);
-    
-    if (recipientSocketId) {
-      io.to(recipientSocketId).emit('friendRequestCancelledNotification', {
-        friendshipId: data.friendshipId,
-        senderId: data.senderId, // ✅ INCLUIR senderId
-        timestamp: new Date()
-      });
-
-      console.log(`✅ [Socket] Notificación de cancelación enviada a ${data.recipientId}`);
-    }
-  } catch (error) {
-    console.error('❌ [Socket] Error en friendRequestCancelled:', error);
-  }
-});
-
-/**
- * Notificar cuando se elimina un amigo
- */
-socket.on('friendRemoved', async (data: { 
-  friendId: string;
-  friendshipId: string;
-  removedBy: string;
-}) => {
-  try {
-    console.log('❌ [Socket] Amigo eliminado:', data);
-
-    const friendSocketId = onlineUsers.get(data.friendId);
-    
-    if (friendSocketId) {
-      const remover = await User.findById(data.removedBy)
-        .select('username avatar firstName lastName')
-        .lean();
-      
-      io.to(friendSocketId).emit('friendRemovedNotification', {
-        friendshipId: data.friendshipId,
-        removedBy: remover,
-        timestamp: new Date()
-      });
-
-      console.log(`✅ [Socket] Notificación de eliminación enviada a ${data.friendId}`);
-    }
-  } catch (error) {
-    console.error('❌ [Socket] Error en friendRemoved:', error);
-  }
-});
-
-    // ==================== DESCONEXIÓN ====================
-
-    socket.on('disconnect', () => {
-      console.log(`❌ Usuario desconectado: ${userId}`);
-
-      onlineUsers.delete(userId);
-      
-      const updatedOnlineUserIds = Array.from(onlineUsers.keys());
-      
-      io.emit('userDisconnected', { userId });
-      io.emit('onlineUsers', updatedOnlineUserIds);
-      console.log('📢 [BACKEND] Usuario desconectado, nueva lista:', updatedOnlineUserIds);
+        }
+      } catch (error) {
+      }
     });
 
-  }); // ✅ CIERRE DEL socket.on('connection')
+    socket.on('friendRequestAccepted', async (data: {
+      requesterId: string;
+      accepterId: string;
+      friendshipId: string;
+    }) => {
+      try {
+
+        const requesterSocketId = onlineUsers.get(data.requesterId);
+
+        if (requesterSocketId) {
+          const accepter = await User.findById(data.accepterId)
+            .select('username avatar firstName lastName')
+            .lean();
+
+          io.to(requesterSocketId).emit('friendRequestAcceptedNotification', {
+            friendshipId: data.friendshipId,
+            accepter,
+            timestamp: new Date()
+          });
+
+        } else {
+        }
+      } catch (error) {
+      }
+    });
+
+    socket.on('friendRequestCancelled', async (data: {
+      recipientId: string;
+      friendshipId: string;
+      senderId: string;
+    }) => {
+      try {
+
+        const recipientSocketId = onlineUsers.get(data.recipientId);
+
+        if (recipientSocketId) {
+          io.to(recipientSocketId).emit('friendRequestCancelledNotification', {
+            friendshipId: data.friendshipId,
+            senderId: data.senderId,
+            timestamp: new Date()
+          });
+
+        }
+      } catch (error) {
+      }
+    });
+
+    socket.on('friendRemoved', async (data: {
+      friendId: string;
+      friendshipId: string;
+      removedBy: string;
+    }) => {
+      try {
+
+        const friendSocketId = onlineUsers.get(data.friendId);
+
+        if (friendSocketId) {
+          const remover = await User.findById(data.removedBy)
+            .select('username avatar firstName lastName')
+            .lean();
+
+          io.to(friendSocketId).emit('friendRemovedNotification', {
+            friendshipId: data.friendshipId,
+            removedBy: remover,
+            timestamp: new Date()
+          });
+
+        }
+      } catch (error) {
+      }
+    });
+
+    socket.on('disconnect', () => {
+
+      onlineUsers.delete(userId);
+
+      const updatedOnlineUserIds = Array.from(onlineUsers.keys());
+
+      io.emit('userDisconnected', { userId });
+      io.emit('onlineUsers', updatedOnlineUserIds);
+    });
+
+  });
 }
 
 export default initializeSocket;

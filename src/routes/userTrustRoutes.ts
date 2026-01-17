@@ -109,7 +109,6 @@ const router = Router();
  *           enum: [high, medium, low]
  */
 
-// --- RUTAS PÚBLICAS ---
 /**
  * @swagger
  * /api/user-trust:
@@ -303,7 +302,6 @@ router.get('/average', getGlobalAverageTrust);
  */
 router.get('/:id', getTrustRatingById);
 
-// --- POST (Público como ratings) ---
 /**
  * @swagger
  * /api/user-trust:
@@ -330,7 +328,6 @@ router.get('/:id', getTrustRatingById);
  */
 router.post('/', authenticateToken, createTrustRating);
 
-// --- PATCH (Público como ratings) ---
 /**
  * @swagger
  * /api/user-trust/{id}:
@@ -373,7 +370,6 @@ router.post('/', authenticateToken, createTrustRating);
  */
 router.patch('/:id', updateTrustRating);
 
-// --- DELETE (Público como ratings) ---
 /**
  * @swagger
  * /api/user-trust/{id}:

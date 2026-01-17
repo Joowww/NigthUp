@@ -113,10 +113,6 @@ const options: swaggerJSDoc.Options = {
                 description: 'Poll creation and voting endpoints'
             },
             {
-                name: 'Event Tinder',
-                description: 'Event-based matching system endpoints'
-            },
-            {
                 name: 'Chat',
                 description: 'Chat and messaging endpoints'
             },
@@ -140,7 +136,6 @@ const options: swaggerJSDoc.Options = {
         './src/routes/panicButtonRoutes.ts',
         './src/routes/calendarEventRoutes.ts',
         './src/routes/pollRoutes.ts',
-        './src/routes/eventTinderRoutes.ts',
         './src/routes/chatRoutes.ts',
         './src/routes/postRoutes.ts',
         './src/routes/aiRoutes.ts'
@@ -152,7 +147,6 @@ const swaggerSpec = swaggerJSDoc(options);
 export default swaggerSpec;
 
 export function setupSwagger(app: Application): void {
-    console.log('Setting up Swagger');
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(swaggerSpec, {
         swaggerOptions: {
             persistAuthorization: true,

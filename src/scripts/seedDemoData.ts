@@ -12,29 +12,28 @@ import { Post } from '../models/post';
 
 
 declare global {
-    // eslint-disable-next-line no-var
     var __spainGrid: [number, number][] | undefined;
 }
 
 
 const SPAIN_REGIONS = [
-    { name: "Andalucía", coords: [-4.7794, 37.8882] },        // Sevilla
-    { name: "Aragón", coords: [-0.8877, 41.6488] },           // Zaragoza
-    { name: "Asturias", coords: [-5.8448, 43.3619] },         // Oviedo
-    { name: "Islas Baleares", coords: [2.6502, 39.5696] },    // Palma
-    { name: "Canarias", coords: [-15.4134, 28.0997] },        // Las Palmas
-    { name: "Cantabria", coords: [-3.8044, 43.4623] },        // Santander
-    { name: "Castilla y León", coords: [-4.7286, 41.6529] },  // Valladolid
-    { name: "Castilla-La Mancha", coords: [-3.0026, 39.8628] },// Toledo
-    { name: "Cataluña", coords: [2.1686, 41.3874] },          // Barcelona
-    { name: "Comunidad Valenciana", coords: [-0.3763, 39.4699] },// Valencia
-    { name: "Extremadura", coords: [-6.3703, 39.4752] },      // Mérida
-    { name: "Galicia", coords: [-8.5448, 42.8782] },          // Santiago
-    { name: "Madrid", coords: [-3.7038, 40.4168] },           // Madrid
-    { name: "Murcia", coords: [-1.1307, 37.9922] },           // Murcia
-    { name: "Navarra", coords: [-1.6461, 42.8185] },          // Pamplona
-    { name: "País Vasco", coords: [-2.935, 43.263] },         // Bilbao
-    { name: "La Rioja", coords: [-2.4456, 42.4650] }          // Logroño
+    { name: "Andalucía", coords: [-4.7794, 37.8882] },
+    { name: "Aragón", coords: [-0.8877, 41.6488] },
+    { name: "Asturias", coords: [-5.8448, 43.3619] },
+    { name: "Islas Baleares", coords: [2.6502, 39.5696] },
+    { name: "Canarias", coords: [-15.4134, 28.0997] },
+    { name: "Cantabria", coords: [-3.8044, 43.4623] },
+    { name: "Castilla y León", coords: [-4.7286, 41.6529] },
+    { name: "Castilla-La Mancha", coords: [-3.0026, 39.8628] },
+    { name: "Cataluña", coords: [2.1686, 41.3874] },
+    { name: "Comunidad Valenciana", coords: [-0.3763, 39.4699] },
+    { name: "Extremadura", coords: [-6.3703, 39.4752] },
+    { name: "Galicia", coords: [-8.5448, 42.8782] },
+    { name: "Madrid", coords: [-3.7038, 40.4168] },
+    { name: "Murcia", coords: [-1.1307, 37.9922] },
+    { name: "Navarra", coords: [-1.6461, 42.8185] },
+    { name: "País Vasco", coords: [-2.935, 43.263] },
+    { name: "La Rioja", coords: [-2.4456, 42.4650] }
 ];
 
 
@@ -137,9 +136,8 @@ function randomCoordsAcrossSpain(idx: number, total: number): [number, number] {
 
 
 function usersNearCoords(users: any[], coords: [number, number], maxDistanceKm: number, excludeIds: string[] = []) {
-    // Haversine formula
     function distance([lng1, lat1]: [number, number], [lng2, lat2]: [number, number]) {
-        const R = 6371; // km
+        const R = 6371;
         const dLat = (lat2 - lat1) * Math.PI / 180;
         const dLng = (lng2 - lng1) * Math.PI / 180;
         const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
@@ -183,12 +181,10 @@ export async function seedDemoData() {
         await UserTrust.deleteMany({});
         await Message.deleteMany({});
         await Conversation.deleteMany({});
-        console.log('Collections cleared');
 
         const weaviateClient = (await import('../config/weaviate')).default;
         try {
             await weaviateClient.schema.classDeleter().withClassName('Event').do();
-            console.log('Weaviate "Event" class deleted');
         } catch (e) {
         }
 
@@ -221,9 +217,7 @@ export async function seedDemoData() {
 
         try {
             await weaviateClient.schema.classCreator().withClass(classObj).do();
-            console.log('Weaviate "Event" class created');
         } catch (e) {
-            console.log('Weaviate class already exists or error:', e);
         }
 
         const interestTags = await createInterestTags();
@@ -438,7 +432,6 @@ export async function seedDemoData() {
                     })
                     .do();
             } catch (error) {
-                console.error(`Error indexing event ${event.name} in Weaviate:`, error);
             }
 
             events.push(event);
@@ -536,7 +529,6 @@ export async function seedDemoData() {
 
 
         if (joel) {
-            // Excluye amigos y solicitudes ya existentes
             const allFriendships = await Friendship.find({
                 $or: [
                     { requester: joel._id },
@@ -640,13 +632,6 @@ export async function seedDemoData() {
                 }
             }
 
-            console.log('JoelMoreno friends:');
-            console.log(joelFriends.map(u => u.username).join(', '));
-
-            console.log('DavidSanchez friends:');
-            console.log(davidFriends.map(u => u.username).join(', '));
-
-
             const raters = joelFriends.slice(0, 20);
             for (let i = 0; i < raters.length; i++) {
                 await createUserTrustSafe(
@@ -658,8 +643,6 @@ export async function seedDemoData() {
                 );
             }
 
-
-            console.log('Seeding posts for friends...');
             const postThemes = [
                 { caption: 'Amazing night! 🌟', isVideo: false },
                 { caption: 'Check this out! 🎬', isVideo: true },
@@ -702,18 +685,10 @@ export async function seedDemoData() {
                 }).save();
             }
         }
-
-        console.log('🎉 Demo data seeded successfully!');
-        console.log('👤 Main users: JoelMoreno, DavidSanchez');
-        console.log('👥 Users created: ' + users.length);
-        console.log('🎉 Events created: ' + events.length);
-        console.log('🏢 Businesses created: ' + businesses.length);
-        console.log('🏙️ All users, events, and businesses distributed across Spain');
         await mongoose.disconnect();
-        console.log('Disconnected from MongoDB');
     } catch (error) {
-        console.error('Error seeding demo data:', error);
+        throw error;
     }
 }
 
-seedDemoData().catch(console.error);
+seedDemoData().catch(error => { throw error; });
