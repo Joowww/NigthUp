@@ -507,36 +507,28 @@ export function initializeSocket(io: Server) {
  * Notificar solicitud de amistad en tiempo real
  */
 socket.on('friendRequestSent', async (data: { 
-  recipientId: string; 
+  recipientId: string;
   senderId: string;
   friendshipId: string;
 }) => {
   try {
-    console.log('📤 [Socket] Solicitud de amistad enviada:', data);
+    console.log('📤 [Socket] Solicitud enviada:', data);
+
+    // ✅ NO CREAR NOTIFICACIÓN AQUÍ - Ya se creó en el controlador
+    // Solo enviar evento al socket
 
     const recipientSocketId = onlineUsers.get(data.recipientId);
     
     if (recipientSocketId) {
-      // ✅ USAR User en vez de mongoose.model('User')
-      const sender = await User.findById(data.senderId)
-        .select('username firstName lastName avatar')
-        .lean();
-
+      const sender = await User.findById(data.senderId).select('username avatar firstName lastName').lean();
+      
       io.to(recipientSocketId).emit('friendRequestReceived', {
+        sender,
         friendshipId: data.friendshipId,
-        sender: {
-          _id: data.senderId,
-          username: sender?.username || '',
-          firstName: sender?.firstName || '',
-          lastName: sender?.lastName || '',
-          avatar: sender?.avatar || ''
-        },
         timestamp: new Date()
       });
 
       console.log(`✅ [Socket] Notificación enviada a ${data.recipientId}`);
-    } else {
-      console.log(`⚠️ [Socket] Usuario ${data.recipientId} no está online`);
     }
   } catch (error) {
     console.error('❌ [Socket] Error en friendRequestSent:', error);
@@ -557,24 +549,19 @@ socket.on('friendRequestAccepted', async (data: {
     const requesterSocketId = onlineUsers.get(data.requesterId);
     
     if (requesterSocketId) {
-      // ✅ USAR User en vez de mongoose.model('User')
       const accepter = await User.findById(data.accepterId)
-        .select('username firstName lastName avatar')
+        .select('username avatar firstName lastName')
         .lean();
-
+      
       io.to(requesterSocketId).emit('friendRequestAcceptedNotification', {
         friendshipId: data.friendshipId,
-        accepter: {
-          _id: data.accepterId,
-          username: accepter?.username || '',
-          firstName: accepter?.firstName || '',
-          lastName: accepter?.lastName || '',
-          avatar: accepter?.avatar || ''
-        },
+        accepter,
         timestamp: new Date()
       });
 
       console.log(`✅ [Socket] Notificación de aceptación enviada a ${data.requesterId}`);
+    } else {
+      console.log(`⚠️ [Socket] Usuario ${data.requesterId} no está online`);
     }
   } catch (error) {
     console.error('❌ [Socket] Error en friendRequestAccepted:', error);
@@ -587,6 +574,7 @@ socket.on('friendRequestAccepted', async (data: {
 socket.on('friendRequestCancelled', async (data: { 
   recipientId: string;
   friendshipId: string;
+  senderId: string; // ✅ AÑADIR senderId
 }) => {
   try {
     console.log('❌ [Socket] Solicitud cancelada:', data);
@@ -596,6 +584,7 @@ socket.on('friendRequestCancelled', async (data: {
     if (recipientSocketId) {
       io.to(recipientSocketId).emit('friendRequestCancelledNotification', {
         friendshipId: data.friendshipId,
+        senderId: data.senderId, // ✅ INCLUIR senderId
         timestamp: new Date()
       });
 
@@ -603,6 +592,37 @@ socket.on('friendRequestCancelled', async (data: {
     }
   } catch (error) {
     console.error('❌ [Socket] Error en friendRequestCancelled:', error);
+  }
+});
+
+/**
+ * Notificar cuando se elimina un amigo
+ */
+socket.on('friendRemoved', async (data: { 
+  friendId: string;
+  friendshipId: string;
+  removedBy: string;
+}) => {
+  try {
+    console.log('❌ [Socket] Amigo eliminado:', data);
+
+    const friendSocketId = onlineUsers.get(data.friendId);
+    
+    if (friendSocketId) {
+      const remover = await User.findById(data.removedBy)
+        .select('username avatar firstName lastName')
+        .lean();
+      
+      io.to(friendSocketId).emit('friendRemovedNotification', {
+        friendshipId: data.friendshipId,
+        removedBy: remover,
+        timestamp: new Date()
+      });
+
+      console.log(`✅ [Socket] Notificación de eliminación enviada a ${data.friendId}`);
+    }
+  } catch (error) {
+    console.error('❌ [Socket] Error en friendRemoved:', error);
   }
 });
 
@@ -619,7 +639,8 @@ socket.on('friendRequestCancelled', async (data: {
       io.emit('onlineUsers', updatedOnlineUserIds);
       console.log('📢 [BACKEND] Usuario desconectado, nueva lista:', updatedOnlineUserIds);
     });
-  });
+
+  }); // ✅ CIERRE DEL socket.on('connection')
 }
 
 export default initializeSocket;

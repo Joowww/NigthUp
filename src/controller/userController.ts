@@ -220,16 +220,8 @@ export async function createUser(req: Request, res: Response): Promise<Response>
             return res.status(400).json({ error: 'Phone number must have at least 9 digits' });
         }
 
-        if (!securityQuestionKey) {
-            return res.status(400).json({ error: 'Security question is required' });
-        }
-
         if (!securityAnswer) {
             return res.status(400).json({ error: 'Security answer is required' });
-        }
-
-        if (!SECURITY_QUESTION_KEYS.includes(securityQuestionKey)) {
-            return res.status(400).json({ error: 'Invalid security question key' });
         }
 
         if (securityAnswer.trim().length < 2) {
@@ -245,8 +237,8 @@ export async function createUser(req: Request, res: Response): Promise<Response>
             birthday,
             phoneNumber,
             role: role || 'user',
-            securityQuestion: securityQuestionKey,
-            securityAnswer: securityAnswer
+            securityQuestion: securityQuestionKey || undefined,
+            securityAnswer: securityAnswer|| undefined
         };
 
         const user = await userService.createUser(newUser);

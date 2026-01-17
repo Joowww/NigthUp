@@ -139,7 +139,7 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
         app.use('/api/ai', aiRoutes);
         app.use('/api/music', musicRoutes);
         app.use('/api/files', fileRoutes);
-        app.use('/api/notification', notificationRoutes);
+        app.use('/api/notifications', notificationRoutes);
         console.log('[APP] /api/post routes mounted');
 
         console.log('All routes registered including new features');

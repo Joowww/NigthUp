@@ -2,8 +2,17 @@ import { Friendship, IFriendship } from '../models/friendship';
 import { User } from '../models/user';
 import mongoose from 'mongoose';
 import { Notification } from '../models/notification';
+import { NotificationService } from './notificationServices'; 
+
 
 export class FriendshipService {
+
+  private notificationService: NotificationService;
+
+  constructor() {
+    this.notificationService = new NotificationService(); 
+  }
+
   async sendFriendRequest(requesterId: string, recipientId: string): Promise<IFriendship> {
     const existing = await Friendship.findOne({
       $or: [
@@ -87,18 +96,15 @@ async sendFriendRequestV2(requesterId: string, recipientId: string): Promise<IFr
 
   await newFriendship.save();
 
-  // ✅ 7. Crear notificación en BD
-  const notification = new Notification({
-    recipient: recipientObjectId,
-    sender: requesterObjectId,
+  // ✅ 7. Crear notificación usando el servicio
+  await this.notificationService.createNotification({
+    recipient: recipientId,
+    sender: requesterId,
     type: 'friend_request',
-    friendshipId: newFriendship._id,
-    read: false
+    friendshipId: newFriendship._id.toString()
   });
 
-  await notification.save(); // ✅ ESTO FALTABA
-
-  console.log(`📬 [sendFriendRequestV2] Notificación creada: ${notification._id}`);
+  console.log(`📬 [sendFriendRequestV2] Notificación creada correctamente`);
   
   return await Friendship.findById(newFriendship._id)
     .populate('requester', 'username avatar firstName lastName')
@@ -183,48 +189,42 @@ async cancelFriendRequestV2(friendshipId: string, userId: string): Promise<void>
 /**
  * Aceptar solicitud de amistad V2
  */
-async acceptFriendRequestV2(friendshipId: string, userId: string): Promise<IFriendship> {
+async acceptFriendRequestV2(friendshipId: string, userId: string): Promise<IFriendship | null> {
+  const friendshipObjectId = new mongoose.Types.ObjectId(friendshipId);
   const userObjectId = new mongoose.Types.ObjectId(userId);
-  
-  const friendship = await Friendship.findById(friendshipId);
-  
+
+  console.log(`✅ [acceptFriendRequestV2] Buscando friendship:`, friendshipId);
+
+  const friendship = await Friendship.findById(friendshipObjectId);
+
   if (!friendship) {
-    throw new Error('Solicitud no encontrada');
+    console.log('❌ Friendship no encontrada');
+    throw new Error('Friendship not found');
   }
 
-  if (!friendship.recipient.equals(userObjectId)) {
-    throw new Error('Solo el destinatario puede aceptar la solicitud');
+  console.log(`📋 Friendship encontrada:`, friendship);
+
+  // ✅ VALIDAR que el usuario sea el recipiente
+  const recipientId = friendship.recipient.toString();
+  
+  if (recipientId !== userId) {
+    console.log(`❌ Usuario ${userId} no es el recipiente. Recipiente: ${recipientId}`);
+    throw new Error('You are not authorized to accept this request');
   }
 
+  // ✅ VALIDAR que esté pendiente
   if (friendship.status !== 'pending') {
-    throw new Error('La solicitud ya fue procesada');
+    console.log(`❌ Estado actual: ${friendship.status}`);
+    throw new Error(`Cannot accept friendship with status: ${friendship.status}`);
   }
 
-  // ✅ Marcar notificación original como leída
-  await Notification.updateOne(
-    { friendshipId: friendshipId, type: 'friend_request' },
-    { $set: { read: true } }
-  );
-
-  // ✅ Crear notificación de aceptación para el remitente
-  const acceptNotification = new Notification({
-    recipient: friendship.requester,
-    sender: userObjectId,
-    type: 'friend_accepted',
-    friendshipId: friendship._id,
-    read: false
-  });
-
-  await acceptNotification.save();
-  console.log(`📬 [acceptFriendRequestV2] Notificación de aceptación creada: ${acceptNotification._id}`);
-
+  // ✅ ACTUALIZAR estado
   friendship.status = 'accepted';
   await friendship.save();
 
-  return await Friendship.findById(friendship._id)
-    .populate('requester', 'username avatar firstName lastName')
-    .populate('recipient', 'username avatar firstName lastName')
-    .lean() as IFriendship;
+  console.log('✅ Friendship aceptada correctamente');
+
+  return friendship;
 }
 
   async acceptFriendRequest(friendshipId: string): Promise<IFriendship | null> {

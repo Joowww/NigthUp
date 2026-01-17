@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { FriendshipService } from '../services/friendshipServices';
 import User from '../models/user';
+import mongoose from 'mongoose';
+import { Friendship } from '../models/friendship';
 
 const friendshipService = new FriendshipService();
 
@@ -277,27 +279,41 @@ export async function cancelFriendRequestV2(req: Request, res: Response): Promis
  */
 export async function acceptFriendRequestV2(req: Request, res: Response): Promise<Response> {
   try {
-    const userId = (req as any).user.id;
     const { friendshipId } = req.params;
+    const userId = (req as any).user.id;
+
+    console.log('✅ [acceptFriendRequestV2] Parámetros:', { friendshipId, userId });
+
+    // ✅ VALIDAR que friendshipId sea un ObjectId válido
+    if (!mongoose.Types.ObjectId.isValid(friendshipId)) {
+      return res.status(400).json({ error: 'Invalid friendship ID' });
+    }
 
     const friendship = await friendshipService.acceptFriendRequestV2(friendshipId, userId);
-    
-    return res.status(200).json({
-      friendship,
-      message: 'Solicitud aceptada. Ahora son amigos!'
+
+    if (!friendship) {
+      return res.status(404).json({ error: 'Friendship not found' });
+    }
+
+    // ✅ Ahora Friendship está importado correctamente
+    const populatedFriendship = await Friendship.findById(friendship._id)
+      .populate('requester', 'username avatar firstName lastName')
+      .populate('recipient', 'username avatar firstName lastName')
+      .lean();
+
+    console.log('✅ [acceptFriendRequestV2] Solicitud aceptada:', populatedFriendship);
+
+    return res.status(200).json({ 
+      friendship: populatedFriendship,
+      message: 'Friend request accepted successfully' 
     });
-  } catch (error: any) {
-    console.error('Error accepting friend request V2:', error);
-    
-    if (error.message.includes('Solo el destinatario')) {
-      return res.status(403).json({ error: error.message });
-    }
-    
-    if (error.message.includes('no encontrada')) {
-      return res.status(404).json({ error: error.message });
-    }
-    
-    return res.status(500).json({ error: (error as Error).message });
+
+  } catch (error) {
+    console.error('❌ [acceptFriendRequestV2] Error:', error);
+    return res.status(500).json({ 
+      error: 'Failed to accept friend request',
+      details: (error as Error).message 
+    });
   }
 }
 
