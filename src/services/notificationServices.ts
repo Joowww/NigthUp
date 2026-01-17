@@ -1,227 +1,113 @@
-// Backend: src/services/notificationServices.ts (NUEVO ARCHIVO)
-
+// src/services/notificationServices.ts
 import { Notification, INotification } from '../models/notification';
 import mongoose from 'mongoose';
 
 export class NotificationService {
 
   /**
-   * Crear una notificación (elimina duplicados automáticamente)
+   * Crear una notificación (segura contra duplicados)
    */
   async createNotification(data: {
     recipient: string;
     sender: string;
-    type: 'friend_request' | 'friend_accepted';
+    type: 'friend_request' | 'friend_accepted' | 'friend_rejected';
     friendshipId: string;
-  }): Promise<INotification> {
-    
-    const recipientObjectId = new mongoose.Types.ObjectId(data.recipient);
-    const senderObjectId = new mongoose.Types.ObjectId(data.sender);
+  }): Promise<INotification | null> {
 
-    // ✅ ELIMINAR NOTIFICACIONES DUPLICADAS ANTES DE CREAR
-    const existingNotifications = await Notification.find({
-      recipient: recipientObjectId,
-      sender: senderObjectId,
-      friendshipId: data.friendshipId,
-      type: data.type
-    });
-
-    if (existingNotifications.length > 0) {
-      console.log(`⚠️ [createNotification] Encontradas ${existingNotifications.length} notificaciones duplicadas, eliminando...`);
-      
-      // Eliminar todas las duplicadas
-      await Notification.deleteMany({
-        recipient: recipientObjectId,
-        sender: senderObjectId,
-        friendshipId: data.friendshipId,
-        type: data.type
+    try {
+      const notification = await Notification.create({
+        recipient: new mongoose.Types.ObjectId(data.recipient),
+        sender: new mongoose.Types.ObjectId(data.sender),
+        type: data.type,
+        friendshipId: new mongoose.Types.ObjectId(data.friendshipId),
+        read: false
       });
-      
-      console.log('✅ [createNotification] Duplicados eliminados');
+
+      console.log('✅ [createNotification] Notificación creada:', notification._id);
+      return notification;
+
+    } catch (error: any) {
+      // ✅ Duplicado detectado por índice único
+      if (error.code === 11000) {
+        console.log('⚠️ [createNotification] Notificación duplicada ignorada');
+        return null;
+      }
+      throw error;
     }
-
-    // ✅ CREAR NUEVA NOTIFICACIÓN
-    const notification = await Notification.create({
-      recipient: recipientObjectId,
-      sender: senderObjectId,
-      type: data.type,
-      friendshipId: data.friendshipId,
-      read: false
-    });
-
-    console.log('✅ [createNotification] Notificación creada:', notification._id);
-
-    return notification;
   }
 
   /**
-   * Obtener notificaciones de un usuario
+   * Obtener notificaciones del usuario
    */
   async getNotifications(userId: string): Promise<{ notifications: INotification[]; unreadCount: number }> {
     const userObjectId = new mongoose.Types.ObjectId(userId);
 
-    // ✅ OBTENER TODAS LAS NOTIFICACIONES
     const notifications = await Notification.find({ recipient: userObjectId })
       .populate('sender', 'username avatar firstName lastName')
       .sort({ createdAt: -1 })
       .lean();
 
-    console.log(`📬 [getNotifications] Total notificaciones para ${userId}:`, notifications.length);
+    const unreadCount = notifications.filter((n) => !n.read).length;
 
-    // ✅ AGRUPAR POR friendshipId + type para eliminar duplicados
-    const seen = new Map<string, any>();
-    const duplicatesToDelete: string[] = [];
-
-    const uniqueNotifications = notifications.reduce((acc, current) => {
-      const key = `${current.friendshipId}-${current.type}`;
-      
-      if (!seen.has(key)) {
-        // Primera vez que vemos esta combinación
-        seen.set(key, current);
-        acc.push(current);
-      } else {
-        // Es duplicada, marcar para eliminar
-        console.log(`⚠️ [getNotifications] Duplicado encontrado:`, current._id);
-        duplicatesToDelete.push(current._id.toString());
-      }
-      
-      return acc;
-    }, [] as any[]);
-
-    // ✅ ELIMINAR DUPLICADOS DEL BACKEND
-    if (duplicatesToDelete.length > 0) {
-      console.log(`🗑️ [getNotifications] Eliminando ${duplicatesToDelete.length} notificaciones duplicadas`);
-      
-      await Notification.deleteMany({
-        _id: { $in: duplicatesToDelete }
-      });
-      
-      console.log('✅ [getNotifications] Duplicados eliminados del backend');
-    }
-
-    const unreadCount = uniqueNotifications.filter((n: any) => !n.read).length;
-
-    console.log('📬 [getNotifications] Resumen:', {
+    console.log('📬 [getNotifications]', {
+      userId,
       total: notifications.length,
-      unique: uniqueNotifications.length,
-      duplicadosEliminados: duplicatesToDelete.length,
       unread: unreadCount
     });
 
     return {
-      notifications: uniqueNotifications as INotification[],
+      notifications: notifications as INotification[],
       unreadCount
     };
   }
 
   /**
-   * Marcar notificación como leída
+   * Marcar una notificación como leída
    */
   async markAsRead(notificationId: string, userId: string): Promise<void> {
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-    const notificationObjectId = new mongoose.Types.ObjectId(notificationId);
-
     const result = await Notification.updateOne(
-      { _id: notificationObjectId, recipient: userObjectId },
+      { _id: notificationId, recipient: userId },
       { $set: { read: true } }
     );
 
     if (result.matchedCount === 0) {
       throw new Error('Notificación no encontrada');
     }
-
-    console.log(`✅ [markAsRead] Notificación ${notificationId} marcada como leída`);
   }
 
   /**
-   * Marcar todas las notificaciones como leídas
+   * Marcar todas como leídas
    */
   async markAllAsRead(userId: string): Promise<number> {
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-
     const result = await Notification.updateMany(
-      { recipient: userObjectId, read: false },
+      { recipient: userId, read: false },
       { $set: { read: true } }
     );
-
-    console.log(`✅ [markAllAsRead] ${result.modifiedCount} notificaciones marcadas como leídas`);
 
     return result.modifiedCount;
   }
 
   /**
-   * Eliminar una notificación
+   * Eliminar notificación
    */
   async deleteNotification(notificationId: string, userId: string): Promise<void> {
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-    const notificationObjectId = new mongoose.Types.ObjectId(notificationId);
-
     const result = await Notification.deleteOne({
-      _id: notificationObjectId,
-      recipient: userObjectId
+      _id: notificationId,
+      recipient: userId
     });
 
     if (result.deletedCount === 0) {
       throw new Error('Notificación no encontrada');
     }
-
-    console.log(`🗑️ [deleteNotification] Notificación ${notificationId} eliminada`);
   }
 
   /**
-   * Obtener contador de notificaciones sin leer
+   * Contador de no leídas
    */
   async getUnreadCount(userId: string): Promise<number> {
-    const userObjectId = new mongoose.Types.ObjectId(userId);
-
-    const count = await Notification.countDocuments({ 
-      recipient: userObjectId, 
-      read: false 
+    return Notification.countDocuments({
+      recipient: userId,
+      read: false
     });
-
-    return count;
-  }
-
-  /**
-   * Limpiar notificaciones duplicadas (tarea de mantenimiento)
-   */
-  async cleanDuplicateNotifications(): Promise<number> {
-    try {
-      console.log('🧹 [cleanDuplicateNotifications] Iniciando limpieza...');
-
-      const allNotifications = await Notification.find({})
-        .sort({ createdAt: -1 })
-        .lean();
-
-      const seen = new Map<string, string>();
-      const duplicateIds: string[] = [];
-
-      allNotifications.forEach((notification) => {
-        const key = `${notification.recipient}-${notification.sender}-${notification.friendshipId}-${notification.type}`;
-        
-        if (seen.has(key)) {
-          // Ya existe una notificación con estos datos
-          duplicateIds.push(notification._id.toString());
-        } else {
-          // Primera vez que vemos esta combinación
-          seen.set(key, notification._id.toString());
-        }
-      });
-
-      if (duplicateIds.length > 0) {
-        await Notification.deleteMany({
-          _id: { $in: duplicateIds }
-        });
-
-        console.log(`✅ [cleanDuplicateNotifications] Eliminadas ${duplicateIds.length} notificaciones duplicadas`);
-      } else {
-        console.log('✅ [cleanDuplicateNotifications] No se encontraron duplicados');
-      }
-
-      return duplicateIds.length;
-    } catch (error) {
-      console.error('❌ [cleanDuplicateNotifications] Error:', error);
-      return 0;
-    }
   }
 }
