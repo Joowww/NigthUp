@@ -32,6 +32,7 @@ import chatRoutes from './routes/chatRoutes';
 import aiRoutes from './routes/aiRoutes';
 import musicRoutes from './routes/musicRoutes';
 import fileRoutes from './routes/fileRoutes';
+import notificationRoutes from './routes/notificationRoutes';
 
 import User from './models/user';
 
@@ -138,6 +139,7 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
         app.use('/api/ai', aiRoutes);
         app.use('/api/music', musicRoutes);
         app.use('/api/files', fileRoutes);
+        app.use('/api/notifications', notificationRoutes);
         console.log('[APP] /api/post routes mounted');
 
         console.log('All routes registered including new features');

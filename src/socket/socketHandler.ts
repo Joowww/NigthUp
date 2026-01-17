@@ -2,6 +2,7 @@ import { Server, Socket } from 'socket.io';
 import { ChatService } from '../services/chatServices';
 import { GroupService } from '../services/groupServices';
 import mongoose from 'mongoose';
+import { User } from '../models/user';
 
 interface SocketAuth {
   userId: string;
@@ -18,19 +19,29 @@ export function initializeSocket(io: Server) {
 
   io.on('connection', (socket: Socket) => {
     const { userId } = socket.handshake.auth as SocketAuth;
-
+  
     if (!userId) {
       console.log('❌ Conexión rechazada: sin userId');
       socket.disconnect();
       return;
     }
-
+  
     console.log(`✅ Usuario conectado: ${userId} (socket: ${socket.id})`);
-
     onlineUsers.set(userId, socket.id);
+  
     socket.join(userId);
-
-    io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+  
+    // ✅ EMITIR INMEDIATAMENTE
+    const onlineUserIds = Array.from(onlineUsers.keys());
+    io.emit('onlineUsers', onlineUserIds);
+    console.log('📢 [BACKEND] Emitiendo onlineUsers (inmediato):', onlineUserIds);
+  
+    // ✅ EMITIR OTRA VEZ DESPUÉS DE 500ms (para asegurar que el frontend esté listo)
+    setTimeout(() => {
+      const updatedOnlineUserIds = Array.from(onlineUsers.keys());
+      io.emit('onlineUsers', updatedOnlineUserIds);
+      console.log('📢 [BACKEND] Emitiendo onlineUsers (retry):', updatedOnlineUserIds);
+    }, 1000);
 
     // ==================== UNIRSE/SALIR DE SALAS ====================
 
@@ -238,6 +249,14 @@ export function initializeSocket(io: Server) {
         username: username || userId,
         conversationId
       });
+    });
+
+    // ==================== SOLICITAR USUARIOS ONLINE ====================
+    // ✅ NUEVO MANEJADOR AÑADIDO
+    socket.on('getOnlineUsers', () => {
+      const onlineUserIds = Array.from(onlineUsers.keys());
+      socket.emit('onlineUsers', onlineUserIds);
+      console.log('📤 [BACKEND] Lista de usuarios online solicitada y enviada:', onlineUserIds);
     });
 
     // ==================== CREAR GRUPO ====================
@@ -484,6 +503,128 @@ export function initializeSocket(io: Server) {
         });
       }
     });
+/**
+ * Notificar solicitud de amistad en tiempo real
+ */
+socket.on('friendRequestSent', async (data: { 
+  recipientId: string;
+  senderId: string;
+  friendshipId: string;
+}) => {
+  try {
+    console.log('📤 [Socket] Solicitud enviada:', data);
+
+    // ✅ NO CREAR NOTIFICACIÓN AQUÍ - Ya se creó en el controlador
+    // Solo enviar evento al socket
+
+    const recipientSocketId = onlineUsers.get(data.recipientId);
+    
+    if (recipientSocketId) {
+      const sender = await User.findById(data.senderId).select('username avatar firstName lastName').lean();
+      
+      io.to(recipientSocketId).emit('friendRequestReceived', {
+        sender,
+        friendshipId: data.friendshipId,
+        timestamp: new Date()
+      });
+
+      console.log(`✅ [Socket] Notificación enviada a ${data.recipientId}`);
+    }
+  } catch (error) {
+    console.error('❌ [Socket] Error en friendRequestSent:', error);
+  }
+});
+
+/**
+ * Notificar cuando se acepta una solicitud
+ */
+socket.on('friendRequestAccepted', async (data: { 
+  requesterId: string;
+  accepterId: string;
+  friendshipId: string;
+}) => {
+  try {
+    console.log('✅ [Socket] Solicitud aceptada:', data);
+
+    const requesterSocketId = onlineUsers.get(data.requesterId);
+    
+    if (requesterSocketId) {
+      const accepter = await User.findById(data.accepterId)
+        .select('username avatar firstName lastName')
+        .lean();
+      
+      io.to(requesterSocketId).emit('friendRequestAcceptedNotification', {
+        friendshipId: data.friendshipId,
+        accepter,
+        timestamp: new Date()
+      });
+
+      console.log(`✅ [Socket] Notificación de aceptación enviada a ${data.requesterId}`);
+    } else {
+      console.log(`⚠️ [Socket] Usuario ${data.requesterId} no está online`);
+    }
+  } catch (error) {
+    console.error('❌ [Socket] Error en friendRequestAccepted:', error);
+  }
+});
+
+/**
+ * Notificar cuando se cancela/rechaza una solicitud
+ */
+socket.on('friendRequestCancelled', async (data: { 
+  recipientId: string;
+  friendshipId: string;
+  senderId: string; // ✅ AÑADIR senderId
+}) => {
+  try {
+    console.log('❌ [Socket] Solicitud cancelada:', data);
+
+    const recipientSocketId = onlineUsers.get(data.recipientId);
+    
+    if (recipientSocketId) {
+      io.to(recipientSocketId).emit('friendRequestCancelledNotification', {
+        friendshipId: data.friendshipId,
+        senderId: data.senderId, // ✅ INCLUIR senderId
+        timestamp: new Date()
+      });
+
+      console.log(`✅ [Socket] Notificación de cancelación enviada a ${data.recipientId}`);
+    }
+  } catch (error) {
+    console.error('❌ [Socket] Error en friendRequestCancelled:', error);
+  }
+});
+
+/**
+ * Notificar cuando se elimina un amigo
+ */
+socket.on('friendRemoved', async (data: { 
+  friendId: string;
+  friendshipId: string;
+  removedBy: string;
+}) => {
+  try {
+    console.log('❌ [Socket] Amigo eliminado:', data);
+
+    const friendSocketId = onlineUsers.get(data.friendId);
+    
+    if (friendSocketId) {
+      const remover = await User.findById(data.removedBy)
+        .select('username avatar firstName lastName')
+        .lean();
+      
+      io.to(friendSocketId).emit('friendRemovedNotification', {
+        friendshipId: data.friendshipId,
+        removedBy: remover,
+        timestamp: new Date()
+      });
+
+      console.log(`✅ [Socket] Notificación de eliminación enviada a ${data.friendId}`);
+    }
+  } catch (error) {
+    console.error('❌ [Socket] Error en friendRemoved:', error);
+  }
+});
 
     // ==================== DESCONEXIÓN ====================
 
@@ -491,11 +632,15 @@ export function initializeSocket(io: Server) {
       console.log(`❌ Usuario desconectado: ${userId}`);
 
       onlineUsers.delete(userId);
-
-      io.emit('onlineUsers', Array.from(onlineUsers.keys()));
+      
+      const updatedOnlineUserIds = Array.from(onlineUsers.keys());
+      
       io.emit('userDisconnected', { userId });
+      io.emit('onlineUsers', updatedOnlineUserIds);
+      console.log('📢 [BACKEND] Usuario desconectado, nueva lista:', updatedOnlineUserIds);
     });
-  });
+
+  }); // ✅ CIERRE DEL socket.on('connection')
 }
 
 export default initializeSocket;
