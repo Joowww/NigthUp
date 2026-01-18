@@ -76,15 +76,23 @@ export class UserService {
         }
     }
 
-    async getAllUsers(skip: number = 0, limit: number = 10): Promise<{ users: IUser[], total: number }> {
-        const users = await User.find({ active: true })
+    async getAllUsers(skip: number = 0, limit: number = 10, search: string = ''): Promise<{ users: IUser[], total: number }> {
+        const query: any = { active: true };
+        if (search) {
+            query.$or = [
+                { username: { $regex: search, $options: 'i' } },
+                { email: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const users = await User.find(query)
             .skip(skip)
             .limit(limit)
             .populate('events', 'username email')
             .populate('interests', 'name color type')
             .populate('friends', 'username avatar');
 
-        const total = await User.countDocuments({ active: true });
+        const total = await User.countDocuments(query);
         return { users, total };
     }
 

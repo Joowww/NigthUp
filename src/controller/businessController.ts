@@ -24,7 +24,8 @@ export async function getAllBusinesses(req: Request, res: Response): Promise<Res
   try {
     const skip = parseInt(req.query.skip as string) || 0;
     const limit = parseInt(req.query.limit as string) || 10;
-    const result = await businessService.getAllBusinesses(skip, limit);
+    const search = (req.query.search as string) || '';
+    const result = await businessService.getAllBusinesses(skip, limit, search);
     return res.status(200).json({
       businesses: result.businesses,
       pagination: {

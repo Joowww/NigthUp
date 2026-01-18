@@ -1,6 +1,6 @@
 import mongoose from 'mongoose';
-import { User, DEFAULT_AVATAR, DEFAULT_COVER_PHOTO } from '../models/user';
-import { Event, DEFAULT_EVENT_IMAGE } from '../models/event';
+import { User } from '../models/user';
+import { Event } from '../models/event';
 import { Conversation } from '../models/conversation';
 import { Friendship } from '../models/friendship';
 import { Tag } from '../models/tag';
@@ -9,686 +9,325 @@ import { Business } from '../models/business';
 import { UserTrust } from '../models/userTrust';
 import Message from '../models/message';
 import { Post } from '../models/post';
+import dotenv from 'dotenv';
 
+dotenv.config();
 
-declare global {
-    var __spainGrid: [number, number][] | undefined;
-}
-
-
-const SPAIN_REGIONS = [
-    { name: "Andalucía", coords: [-4.7794, 37.8882] },
-    { name: "Aragón", coords: [-0.8877, 41.6488] },
-    { name: "Asturias", coords: [-5.8448, 43.3619] },
-    { name: "Islas Baleares", coords: [2.6502, 39.5696] },
-    { name: "Canarias", coords: [-15.4134, 28.0997] },
-    { name: "Cantabria", coords: [-3.8044, 43.4623] },
-    { name: "Castilla y León", coords: [-4.7286, 41.6529] },
-    { name: "Castilla-La Mancha", coords: [-3.0026, 39.8628] },
-    { name: "Cataluña", coords: [2.1686, 41.3874] },
-    { name: "Comunidad Valenciana", coords: [-0.3763, 39.4699] },
-    { name: "Extremadura", coords: [-6.3703, 39.4752] },
-    { name: "Galicia", coords: [-8.5448, 42.8782] },
-    { name: "Madrid", coords: [-3.7038, 40.4168] },
-    { name: "Murcia", coords: [-1.1307, 37.9922] },
-    { name: "Navarra", coords: [-1.6461, 42.8185] },
-    { name: "País Vasco", coords: [-2.935, 43.263] },
-    { name: "La Rioja", coords: [-2.4456, 42.4650] }
+const EVENT_CATEGORIES = [
+    'Trap', 'Reagge', 'Edgy', 'Tecno', 'Reggaeton',
+    'House', 'Loofy', 'Funk', 'Pop', 'Indie',
+    'Rock', 'Metal', 'Trendy', 'Pop con ñ', 'España 2000'
 ];
 
+const USER_AVATARS = [
+    'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=400',
+    'https://images.unsplash.com/photo-1599566150163-29194dcaad36?w=400',
+    'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400',
+    'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=400',
+    'https://images.unsplash.com/photo-1554151228-14d9def656ec?w=400',
+    'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=400',
+    'https://images.unsplash.com/photo-1542909168-82c3e7fdca5c?w=400',
+    'https://images.unsplash.com/photo-1504257404462-f73f17277ad3?w=400',
+    'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
+    'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=400',
+    'https://images.unsplash.com/photo-1527980965255-d3b416303d12?w=400',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=400',
+    'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=400',
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=400',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c3?w=400',
+    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
+    'https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?w=400',
+    'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400'
+];
 
-function generateGridPoints(baseCoords: [number, number], count: number): [number, number][] {
-    const points: [number, number][] = [];
-    const perRegion = Math.ceil(count / SPAIN_REGIONS.length);
-    const step = 0.0045;
-    let idx = 0;
-    for (const region of SPAIN_REGIONS) {
-        let n = 0;
-        let x = 0, y = 0;
-        while (n < perRegion && points.length < count) {
-            const angle = 2 * Math.PI * (idx % 8) / 8;
-            const radius = step * Math.floor(idx / 8 + 1);
-            const lng = +(region.coords[0] + Math.cos(angle) * radius).toFixed(6);
-            const lat = +(region.coords[1] + Math.sin(angle) * radius).toFixed(6);
-            points.push([lng, lat]);
-            n++; idx++;
-        }
-    }
-    return points.slice(0, count);
-}
+const BUSINESS_PHOTOS = [
+    'https://images.unsplash.com/photo-1566737236500-c8ac43014a67?w=800',
+    'https://images.unsplash.com/photo-1514362545857-3bc16549766b?w=800',
+    'https://images.unsplash.com/photo-1574391884720-3850b346e9bd?w=800',
+    'https://images.unsplash.com/photo-1514525253344-781f39994a1a?w=800',
+    'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
+    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
+    'https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?w=800',
+    'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800'
+];
+
+const PARTY_PHOTOS = [
+    'https://images.unsplash.com/photo-1524368535928-5b5e00ddc76b?w=800',
+    'https://images.unsplash.com/photo-1505236858219-8359eb29e329?w=800',
+    'https://images.unsplash.com/photo-1429962714451-bb934ecbb4ec?w=800',
+    'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
+    'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800',
+    'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800',
+    'https://images.unsplash.com/photo-1514525253344-781f39994a1a?w=800',
+    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800'
+];
+
+const CHILL_PHOTOS = [
+    'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=800',
+    'https://images.unsplash.com/photo-1539571696357-5a69c17a67c3?w=800',
+    'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=800',
+    'https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?w=800',
+    'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=800',
+    'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800',
+    'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=800'
+];
+
+const FIRST_NAMES = [
+    'Alex', 'Sofia', 'Lucas', 'Martina', 'Leo', 'Paula', 'Hugo', 'Valeria', 'Marc', 'Sara',
+    'Adrián', 'Clara', 'Daniel', 'Irene', 'Mateo', 'Emma', 'Álvaro', 'Claudia', 'Pablo', 'Marta',
+    'Diego', 'Lucia', 'Jorge', 'Elena', 'Ivan', 'Alba', 'Mario', 'Julia', 'Marcos', 'Ines'
+];
+
+const LAST_NAMES = [
+    'Gomez', 'Lopez', 'Diaz', 'Martinez', 'Perez', 'Garcia', 'Sanchez', 'Rodriguez', 'Fernandez', 'Moreno',
+    'Ruiz', 'Jimenez', 'Alvarez', 'Romero', 'Alonso', 'Gutierrez', 'Navarro', 'Torres', 'Dominguez', 'Vazquez',
+    'Serrano', 'Ramos', 'Blanco', 'Castro', 'Suarez', 'Ortega', 'Rubio', 'Molina', 'Morales', 'Delgado'
+];
+
+const PARTY_CAPTIONS = [
+    '¡Fiestón esta noche en la ciudad! 🔥🎉',
+    'Noche legendaria con los mejores 🍻🥂',
+    '¡A tope con el reggaeton! 💃🕺',
+    'La noche es joven y nosotros también ✨',
+    'Viviendo el momento en el club 🎧🔥',
+    '¡No hay mañana! Fiestón total 🥳',
+    'Luces, música y acción 🌟🔊'
+];
+
+const CHILL_CAPTIONS = [
+    'Descansando de la fiesta de anoche... 😴☕',
+    'Modo relax activado después de la locura de ayer 🧘‍♂️🛋️',
+    'Sobreviviendo a la resaca con mucho café ☕😅',
+    'Necesito 10 horas más de sueño por lo menos 💤',
+    'Peli y manta hoy, que anoche fue intenso 🎬🏠',
+    'Recuperando fuerzas para la próxima 🔋🔥',
+    'Paz y tranquilidad después de la tempestad 🌊✨'
+];
+
+const COMMENT_SAMPLES = [
+    '¡Qué envidia! Pásalo genial 🙌',
+    '¡Fiestón total! El próximo no me lo pierdo 🥳',
+    'Necesito café solo de verte ☕😂',
+    '¡Vaya careto! Se nota que anoche lo diste todo 😜',
+    'Brutal la noche de ayer 🔥🔥',
+    'Top! 🔝🔝🔝',
+    'Descansa que te lo mereces bro 🛋️🙌',
+    '¡A darle con todo! 🚀🚀',
+    '¿Volvemos esta noche? 🤔🎉',
+    'Increíble outfit! 😍✨'
+];
+
+const REAL_BUSINESSES = [
+    { name: 'Pacha Barcelona', address: 'Passeig Marítim de la Barceloneta, 38, Barcelona', city: 'Barcelona', coordinates: [2.1966, 41.3851] },
+    { name: 'Razzmatazz', address: 'Carrer dels Almogàvers, 122, Barcelona', city: 'Barcelona', coordinates: [2.1911, 41.3977] },
+    { name: 'Opium Barcelona', address: 'Passeig Marítim de la Barceloneta, 34, Barcelona', city: 'Barcelona', coordinates: [2.1945, 41.3857] },
+    { name: 'Teatro Kapital', address: 'Calle de Atocha, 125, Madrid', city: 'Madrid', coordinates: [-3.6934, 40.4093] },
+    { name: 'Fabrik', address: 'Av. de la Industria, 82, Humanes de Madrid', city: 'Madrid', coordinates: [-3.8344, 40.2691] }
+];
 
 function randomFromArray<T>(arr: T[]): T {
     return arr[Math.floor(Math.random() * arr.length)];
 }
 
-function randomPhone() {
-    return '+34 6' + Math.floor(10000000 + Math.random() * 89999999);
-}
-
-function randomDate(start: Date, end: Date) {
-    return new Date(start.getTime() + Math.random() * (end.getTime() - start.getTime()));
+function getVariedImage(pool: string[], index: number): string {
+    return pool[index % pool.length];
 }
 
 async function createInterestTags() {
-    const tagsData = [
-        { name: 'Techno', type: 'MusicType', color: '#3b82f6', description: 'Techno music' },
-        { name: 'House', type: 'MusicType', color: '#ef4444', description: 'House music' },
-        { name: 'Electronic', type: 'MusicType', color: '#8b5cf6', description: 'Electronic music' },
-        { name: 'DJ', type: 'Musician', color: '#06b6d4', description: 'DJ performances' },
-        { name: 'Production', type: 'Musician', color: '#10b981', description: 'Music production' },
-        { name: 'Social', type: 'EventType', color: '#f59e0b', description: 'Social events' },
-        { name: 'Dance', type: 'EventType', color: '#ec4899', description: 'Dance events' },
-        { name: 'Clubbing', type: 'EventType', color: '#6366f1', description: 'Club events' },
-        { name: 'Festivals', type: 'EventType', color: '#84cc16', description: 'Music festivals' },
-        { name: 'Underground', type: 'EventType', color: '#78716c', description: 'Underground events' },
-        { name: 'Photography', type: 'ChildhoodIdol', color: '#f97316', description: 'Photography interest' },
-        { name: 'Cocktails', type: 'ChildhoodIdol', color: '#d946ef', description: 'Cocktail making' },
-        { name: 'Bars', type: 'EventType', color: '#14b8a6', description: 'Bar events' },
-        { name: 'Networking', type: 'EventType', color: '#64748b', description: 'Networking events' },
-        { name: 'Marketing', type: 'ChildhoodIdol', color: '#0ea5e9', description: 'Marketing interest' },
-        { name: 'Venues', type: 'EventType', color: '#a855f7', description: 'Venue exploration' },
-        { name: 'Coding', type: 'ChildhoodIdol', color: '#06d6a0', description: 'Coding interest' },
-        { name: 'Technology', type: 'ChildhoodIdol', color: '#118ab2', description: 'Technology interest' },
-        { name: 'Fashion', type: 'ChildhoodIdol', color: '#ffd166', description: 'Fashion interest' },
-        { name: 'Design', type: 'ChildhoodIdol', color: '#ef476f', description: 'Design interest' },
-        { name: 'Music', type: 'MusicType', color: '#118ab2', description: 'General music interest' },
-        { name: 'Events', type: 'EventType', color: '#073b4c', description: 'General events interest' }
-    ];
-    const tags: any = {};
-    for (const tagData of tagsData) {
-        let tag = await Tag.findOne({ name: tagData.name });
+    const tagsMap: any = {};
+    for (const cat of EVENT_CATEGORIES) {
+        let tag = await Tag.findOne({ name: cat });
         if (!tag) {
-            tag = new Tag(tagData);
+            tag = new Tag({
+                name: cat,
+                type: 'EventType',
+                color: '#' + Math.floor(Math.random() * 16777215).toString(16),
+                description: `Interest in ${cat}`
+            });
             await tag.save();
         }
-        tags[tagData.name.toLowerCase()] = tag;
+        tagsMap[cat.toLowerCase()] = tag;
     }
-    return tags;
-}
-
-async function createUserInterests(user: any, interestTags: any) {
-    const tagKeys = Object.keys(interestTags);
-    for (let i = 0; i < 5; i++) {
-        const tagKey = randomFromArray(tagKeys);
-        const tagId = interestTags[tagKey]._id;
-        const existingInterest = await UserInterest.findOne({
-            userId: user._id,
-            tagId: tagId
-        });
-        if (!existingInterest) {
-            const userInterest = new UserInterest({
-                userId: user._id,
-                tagId: tagId,
-                score: Math.floor(Math.random() * 5) + 1,
-                active: true
-            });
-            await userInterest.save();
-        }
-    }
-}
-
-function randomCoordsAcrossSpain(idx: number, total: number): [number, number] {
-    if (!globalThis.__spainGrid) {
-        globalThis.__spainGrid = generateGridPoints([-3.7038, 40.4168], total);
-    }
-    return globalThis.__spainGrid[idx];
-}
-
-
-function usersNearCoords(users: any[], coords: [number, number], maxDistanceKm: number, excludeIds: string[] = []) {
-    function distance([lng1, lat1]: [number, number], [lng2, lat2]: [number, number]) {
-        const R = 6371;
-        const dLat = (lat2 - lat1) * Math.PI / 180;
-        const dLng = (lng2 - lng1) * Math.PI / 180;
-        const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-            Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
-            Math.sin(dLng / 2) * Math.sin(dLng / 2);
-        return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-    }
-    return users.filter(u =>
-        !excludeIds.includes(u._id.toString()) &&
-        distance(u.location.coordinates, coords) <= maxDistanceKm
-    );
-}
-
-
-async function createUserTrustSafe(ratedId: any, raterId: any, score: number, comment: string, context: string = 'demo') {
-    const existing = await UserTrust.findOne({
-        rated: ratedId,
-        rater: raterId,
-        context: context
-    });
-
-    if (!existing) {
-        await UserTrust.create({
-            rated: ratedId,
-            rater: raterId,
-            score: score,
-            comment: comment,
-            context: context
-        });
-    }
+    return tagsMap;
 }
 
 export async function seedDemoData() {
     try {
+        console.log('🚀 Iniciando seeding MAESTRO de base de datos...');
+        if (mongoose.connection.readyState !== 0) await mongoose.disconnect();
         await mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD');
-        await Business.deleteMany({});
-        await Event.deleteMany({});
-        await Friendship.deleteMany({});
-        await User.deleteMany({});
-        await UserInterest.deleteMany({});
-        await UserTrust.deleteMany({});
-        await Message.deleteMany({});
-        await Conversation.deleteMany({});
+        console.log('🔗 Conectado a MongoDB');
 
-        const weaviateClient = (await import('../config/weaviate')).default;
-        try {
-            await weaviateClient.schema.classDeleter().withClassName('Event').do();
-        } catch (e) {
-        }
+        console.log('🗑️ Vaciando colecciones...');
+        const collections = Object.keys(mongoose.connection.collections);
+        for (const c of collections) await mongoose.connection.collections[c].deleteMany({});
 
+        await createInterestTags();
 
-        const classObj = {
-            class: 'Event',
-            vectorizer: 'text2vec-transformers',
-            moduleConfig: {
-                'text2vec-transformers': {},
-            },
-            properties: [
-                {
-                    name: 'name',
-                    dataType: ['text'],
-                },
-                {
-                    name: 'description',
-                    dataType: ['text'],
-                },
-                {
-                    name: 'category',
-                    dataType: ['text'],
-                },
-                {
-                    name: 'eventId',
-                    dataType: ['string'],
-                }
-            ],
-        };
-
-        try {
-            await weaviateClient.schema.classCreator().withClass(classObj).do();
-        } catch (e) {
-        }
-
-        const interestTags = await createInterestTags();
-
-
-        const specialUsersData = [
-            {
-                username: 'JoelMoreno',
-                email: 'joel@nightup.com',
-                password: 'JoelMoreno123',
-                birthday: new Date('1990-08-06'),
-                phoneNumber: '+34 612 345 678',
-                securityQuestion: 'security.question.pet_name',
-                securityAnswer: 'Fluffy',
-                avatar: DEFAULT_AVATAR,
-                coverPhoto: DEFAULT_COVER_PHOTO,
-                bio: 'Music lover and nightlife enthusiast. Always looking for the next great party! 🎵🎉',
-                firstName: 'Joel',
-                lastName: 'Moreno',
-                gender: 'male',
-                city: 'Madrid',
-                country: 'Spain',
-                website: 'https://joelmoreno.com',
-                socialMedia: {
-                    instagram: '@joelmoreno',
-                    twitter: '@joelmoreno'
-                },
-                location: {
-                    type: 'Point',
-                    coordinates: [-3.7038, 40.4168]
-                },
-                isVisibleOnMap: true,
-                lastLocationUpdate: new Date(),
-                interests: [interestTags.techno._id, interestTags.electronic._id, interestTags.dj._id],
-                friends: [],
-                active: true,
-                role: 'admin',
-                isOnline: true,
-                lastSeen: new Date(),
-                emergencyContacts: [],
-                authProvider: 'local',
-                onboardingCompleted: true
-            },
-            {
-                username: 'DavidSanchez',
-                email: 'david@nightup.com',
-                password: 'DavidSanchez123',
-                birthday: new Date('1992-05-12'),
-                phoneNumber: '+34 612 345 679',
-                securityQuestion: 'security.question.pet_name',
-                securityAnswer: 'Rocky',
-                avatar: DEFAULT_AVATAR,
-                coverPhoto: DEFAULT_COVER_PHOTO,
-                bio: 'Nightlife explorer and event organizer.',
-                firstName: 'David',
-                lastName: 'Sanchez',
-                gender: 'male',
-                city: 'Madrid',
-                country: 'Spain',
-                website: 'https://davidsanchez.com',
-                socialMedia: {
-                    instagram: '@davidsanchez',
-                    twitter: '@davidsanchez'
-                },
-                location: {
-                    type: 'Point',
-                    coordinates: randomCoordsAcrossSpain(1, 1000)
-                },
-                isVisibleOnMap: true,
-                lastLocationUpdate: new Date(),
-                interests: [interestTags.house._id, interestTags.electronic._id, interestTags.dj._id],
-                friends: [],
-                active: true,
-                role: 'admin',
-                isOnline: true,
-                lastSeen: new Date(),
-                emergencyContacts: [],
-                authProvider: 'local',
-                onboardingCompleted: true
-            }
+        // --- PROTAGONISTAS ---
+        console.log('👥 Creando Joel, David y Bryan...');
+        const protagonists = [];
+        const protoData = [
+            { username: 'JoelMoreno', email: 'joel@nightup.com', firstName: 'Joel', lastName: 'Moreno' },
+            { username: 'DavidSanchez', email: 'david@nightup.com', firstName: 'David', lastName: 'Sanchez' },
+            { username: 'BryanGarcia', email: 'bryan@nightup.com', firstName: 'Bryan', lastName: 'Garcia' }
         ];
 
-        const specialUsers = [];
-        for (const userData of specialUsersData) {
-            let user = new User(userData);
+        for (let i = 0; i < protoData.length; i++) {
+            const img = getVariedImage(USER_AVATARS, i);
+            const user = new User({
+                ...protoData[i],
+                password: protoData[i].username + '123',
+                avatar: img,
+                profilePicture: img,
+                coverPhoto: getVariedImage(BUSINESS_PHOTOS, i),
+                birthday: new Date('1995-01-01'),
+                phoneNumber: '+34 60000000' + i,
+                active: true,
+                onboardingCompleted: true,
+                role: 'admin',
+                location: { type: 'Point', coordinates: i === 2 ? [2.1686, 41.3874] : [-3.7038, 40.4168] },
+                securityQuestion: 'security.question.pet_name',
+                securityAnswer: 'Fluffy',
+                authProvider: 'local'
+            });
             await user.save();
-            specialUsers.push(user);
+            protagonists.push(user);
         }
 
+        const [joel, david, bryan] = protagonists;
 
-        const names = ['Alex', 'Sarah', 'Mike', 'Emma', 'Chris', 'Jessica', 'Kevin', 'Rachel', 'Laura', 'Daniel', 'Sofia', 'Luis', 'Marta', 'Carlos', 'Lucia', 'Pablo', 'Elena', 'Jorge', 'Ana', 'Victor'];
-        const surnames = ['Johnson', 'Miller', 'Davis', 'Wilson', 'Taylor', 'Brown', 'Lee', 'Green', 'Martinez', 'Garcia', 'Lopez', 'Sanchez', 'Perez', 'Gomez', 'Ruiz', 'Diaz', 'Morales', 'Torres', 'Ramos', 'Castro'];
-        const users = [...specialUsers];
-        const userCoords = generateGridPoints([-3.7038, 40.4168], 1000);
-        for (let i = 0; i < 1000; i++) {
-            const firstName = randomFromArray(names);
-            const lastName = randomFromArray(surnames);
-            const username = `${firstName}${lastName}${i}`;
-            const email = `${username.toLowerCase()}@nightup.com`;
-            const gender = randomFromArray(['male', 'female', 'other', 'prefer_not_to_say']);
-            const city = 'España';
-            const country = 'Spain';
-            const website = `https://${username.toLowerCase()}.com`;
-            const socialMedia = {
-                instagram: `@${username.toLowerCase()}`,
-                twitter: `@${username.toLowerCase()}`,
-                facebook: `@${username.toLowerCase()}`,
-                tiktok: `@${username.toLowerCase()}`
-            };
-            const location = {
-                type: 'Point',
-                coordinates: userCoords[i]
-            };
-            const interests = Object.values(interestTags)
-                .sort(() => 0.5 - Math.random())
-                .slice(0, Math.floor(Math.random() * 5) + 1)
-                .map((tag: any) => tag._id);
+        // --- USUARIOS ALEATORIOS ---
+        console.log('👥 Creando 100 usuarios con nombres REALES...');
+        const randomUsers = [];
+        for (let i = 0; i < 100; i++) {
+            const firstName = randomFromArray(FIRST_NAMES);
+            const lastName = randomFromArray(LAST_NAMES);
+            const username = `${firstName}${lastName}_${i}`;
+            const img = getVariedImage(USER_AVATARS, i + 5);
+
             const user = new User({
                 username,
-                email,
-                password: 'Password123',
-                birthday: randomDate(new Date(1980, 0, 1), new Date(2005, 0, 1)),
-                phoneNumber: randomPhone(),
-                securityQuestion: 'security.question.pet_name',
-                securityAnswer: 'Fluffy',
-                avatar: DEFAULT_AVATAR,
-                coverPhoto: DEFAULT_COVER_PHOTO,
-                bio: 'Generated user for demo data.',
+                email: `${firstName.toLocaleLowerCase()}.${i}@gmail.com`,
+                password: 'User123',
+                avatar: img,
+                profilePicture: img,
+                birthday: new Date('1992-01-01'),
                 firstName,
                 lastName,
-                gender,
-                city,
-                country,
-                website,
-                socialMedia,
-                location,
-                isVisibleOnMap: true,
-                lastLocationUpdate: new Date(),
-                interests,
-                friends: [],
                 active: true,
                 role: 'user',
-                isOnline: Math.random() > 0.5,
-                lastSeen: randomDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000), new Date()),
-                emergencyContacts: [],
-                authProvider: 'local',
-                onboardingCompleted: true
+                onboardingCompleted: true,
+                securityQuestion: 'security.question.pet_name',
+                securityAnswer: 'a'
             });
             await user.save();
-            users.push(user);
+            randomUsers.push(user);
         }
 
+        // --- AMISTADES ---
+        console.log('🤝 Estableciendo red de amistades...');
+        const createFriendship = async (u1: any, u2: any) => {
+            await Friendship.create({ requester: u1._id, recipient: u2._id, status: 'accepted' });
+        };
 
-        for (const user of users) {
-            await createUserInterests(user, interestTags);
+        await createFriendship(joel, david);
+        await createFriendship(david, bryan);
+        await createFriendship(bryan, joel);
+
+        const joelFriends = randomUsers.slice(0, 20);
+        const davidFriends = randomUsers.slice(20, 40);
+        const bryanFriends = randomUsers.slice(40, 60);
+
+        for (const f of joelFriends) await createFriendship(joel, f);
+        for (const f of davidFriends) await createFriendship(david, f);
+        for (const f of bryanFriends) await createFriendship(bryan, f);
+
+        const allSpecificFriends = [...joelFriends, ...davidFriends, ...bryanFriends];
+
+        // --- POSTS ---
+        console.log('📱 Creando posts realistas con comentarios y likes...');
+
+        for (let i = 0; i < allSpecificFriends.length; i++) {
+            const user = allSpecificFriends[i];
+            const isPartyPost = Math.random() > 0.5;
+
+            const caption = isPartyPost ? randomFromArray(PARTY_CAPTIONS) : randomFromArray(CHILL_CAPTIONS);
+            const photo = isPartyPost ? randomFromArray(PARTY_PHOTOS) : randomFromArray(CHILL_PHOTOS);
+
+            // Likes de usuarios random
+            const numLikes = Math.floor(Math.random() * 50) + 5;
+            const likers = [];
+            for (let j = 0; j < numLikes; j++) {
+                likers.push(randomFromArray(randomUsers)._id);
+            }
+
+            // Comentarios de usuarios random
+            const numComments = Math.floor(Math.random() * 5) + 1;
+            const comments = [];
+            for (let j = 0; j < numComments; j++) {
+                comments.push({
+                    user: randomFromArray(randomUsers)._id,
+                    text: randomFromArray(COMMENT_SAMPLES),
+                    createdAt: new Date()
+                });
+            }
+
+            await new Post({
+                user: user._id,
+                caption,
+                media: [{ type: 'image', url: photo }],
+                isPublic: true,
+                likes: likers,
+                comments: comments,
+                music: {
+                    title: isPartyPost ? 'Club Banger' : 'Lofi Beats',
+                    artist: 'NightUp Artist',
+                    cover: isPartyPost ? PARTY_PHOTOS[0] : CHILL_PHOTOS[0]
+                }
+            }).save();
         }
 
-
-        const eventCoords = generateGridPoints([-3.7038, 40.4168], 1000);
-        const eventNames = [
-            'Techno Night', 'Sunset House Party', 'Electronic Festival',
-            'House Vibes', 'Underground Session', 'Clubbing Madness', 'Photography Meetup', 'Cocktail Night',
-            'Networking Afterwork', 'Fashion Gala', 'Design Expo', 'Music Jam', 'Events Summit'
-        ];
-        const categories = Object.keys(interestTags);
-        const events = [];
-        for (let i = 0; i < 1000; i++) {
-            const name = eventNames[i % eventNames.length] + ' #' + (i + 1);
-            const participants = users.slice(i % users.length, (i % users.length) + 10);
-            const numRatings = Math.random() < 0.5 ? 1 : 2;
-            const ratingUsers: typeof users = [];
-            while (ratingUsers.length < numRatings) {
-                const candidate = randomFromArray(users);
-                if (!participants.some(u => u._id.toString() === candidate._id.toString()) && !ratingUsers.some(u => u._id.toString() === candidate._id.toString())) {
-                    ratingUsers.push(candidate);
-                }
-            }
-            const ratings = ratingUsers.map((u, idx) => ({
-                user: u._id,
-                score: Math.floor(Math.random() * 5) + 1,
-                comment: `Valoración extra demo #${idx + 1}`
-            }));
-            const event = new Event({
-                name,
-                schedule: randomDate(new Date(), new Date(Date.now() + 1000 * 60 * 60 * 24 * 180)),
-                location: {
-                    type: 'Point',
-                    coordinates: eventCoords[i]
-                },
-                description: `Evento de ${randomFromArray(categories)} en España.`,
-                category: randomFromArray(categories),
-                capacity: Math.floor(Math.random() * 2000) + 100,
-                price: Math.floor(Math.random() * 50) + 10,
-                participants: participants.map(u => u._id),
-                likes: Math.floor(Math.random() * 100),
-                likedBy: [],
-                active: true,
-                image: DEFAULT_EVENT_IMAGE,
-                ratings
-            });
-            await event.save();
-
-
-            try {
-                await weaviateClient.data.creator()
-                    .withClassName('Event')
-                    .withProperties({
-                        name: event.name,
-                        description: event.description,
-                        category: event.category,
-                        eventId: event._id.toString()
-                    })
-                    .do();
-            } catch (error) {
-            }
-
-            events.push(event);
-        }
-
-
-        for (const user of users) {
-
-            const userEvents: any[] = [];
-            const usedEventIndexes = new Set<number>();
-            while (userEvents.length < 5 && usedEventIndexes.size < events.length) {
-                const idx = Math.floor(Math.random() * events.length);
-                if (!usedEventIndexes.has(idx)) {
-                    usedEventIndexes.add(idx);
-                    userEvents.push(events[idx]);
-                }
-            }
-            for (const event of userEvents) {
-                if (!event.participants.map((id: any) => id.toString()).includes(user._id.toString())) {
-                    event.participants.push(user._id);
-                    await event.save();
-                }
-            }
-
-
-            const otherUsers = users.filter(u => u._id.toString() !== user._id.toString());
-
-
-            const selectedRaters: any[] = [];
-            while (selectedRaters.length < 3 && selectedRaters.length < otherUsers.length) {
-                const rater = randomFromArray(otherUsers);
-                if (!selectedRaters.some(r => r._id.toString() === rater._id.toString())) {
-                    selectedRaters.push(rater);
-                }
-            }
-            for (let i = 0; i < selectedRaters.length; i++) {
-                await createUserTrustSafe(
-                    user._id,
-                    selectedRaters[i]._id,
-                    Math.floor(Math.random() * 5) + 1,
-                    `Valoración recibida demo #${i + 1}`,
-                    'demo'
-                );
-            }
-
-
-            const selectedRated: any[] = [];
-            while (selectedRated.length < 3 && selectedRated.length < otherUsers.length) {
-                const rated = randomFromArray(otherUsers);
-                if (!selectedRated.some(r => r._id.toString() === rated._id.toString()) &&
-                    !selectedRaters.some(r => r._id.toString() === rated._id.toString())) {
-                    selectedRated.push(rated);
-                }
-            }
-            for (let i = 0; i < selectedRated.length; i++) {
-                await createUserTrustSafe(
-                    selectedRated[i]._id,
-                    user._id,
-                    Math.floor(Math.random() * 5) + 1,
-                    `Valoración dada demo #${i + 1}`,
-                    'demo'
-                );
-            }
-        }
-
-
-        const businessCoords = generateGridPoints([-3.7038, 40.4168], 1000);
-        const businessNames = [
-            'Razzmatazz', 'Opium', 'Pacha', 'Shoko', 'Bling Bling', 'Sutton', 'Macarena Club', 'Jamboree', 'Moog', 'Input', 'City Hall', 'La Terrrazza'
-        ];
+        // --- NEGOCIOS Y EVENTOS ---
+        console.log('🏢 Creando negocios y eventos...');
         const businesses = [];
-        for (let i = 0; i < 1000; i++) {
-            const name = businessNames[i % businessNames.length] + ' Business #' + (i + 1);
-            const business = new Business({
-                name,
-                address: `Calle Falsa ${i + 1}, España`,
-                phone: randomPhone(),
-                email: `contact${i + 1}@${name.replace(/\s/g, '').toLowerCase()}.com`,
-                location: {
-                    type: 'Point',
-                    coordinates: businessCoords[i]
-                },
-                events: [],
-                managers: [randomFromArray(users)._id],
+        for (let i = 0; i < REAL_BUSINESSES.length; i++) {
+            const biz = new Business({
+                ...REAL_BUSINESSES[i],
+                avatar: getVariedImage(BUSINESS_PHOTOS, i),
                 active: true,
-                avatar: ''
+                location: { type: 'Point', coordinates: REAL_BUSINESSES[i].coordinates },
+                managers: [bryan._id]
             });
-            await business.save();
-            businesses.push(business);
+            await biz.save();
+            businesses.push({ doc: biz, city: REAL_BUSINESSES[i].city });
         }
 
-
-        const joel = specialUsers.find(u => u.username === 'JoelMoreno');
-        const david = specialUsers.find(u => u.username === 'DavidSanchez');
-
-
-        if (joel) {
-            const allFriendships = await Friendship.find({
-                $or: [
-                    { requester: joel._id },
-                    { recipient: joel._id }
-                ]
-            });
-            const alreadyRelatedIds = new Set([
-                ...allFriendships.map(f => f.requester.toString()),
-                ...allFriendships.map(f => f.recipient.toString()),
-                joel._id.toString()
-            ]);
-            const possibleRequesters = users.filter(u => !alreadyRelatedIds.has(u._id.toString()));
-            const chosenRequesters: any[] = [];
-            while (chosenRequesters.length < 10 && possibleRequesters.length > 0) {
-                const idx = Math.floor(Math.random() * possibleRequesters.length);
-                const user = possibleRequesters.splice(idx, 1)[0];
-                chosenRequesters.push(user);
-            }
-            for (const requester of chosenRequesters) {
-                await Friendship.create({
-                    requester: requester._id,
-                    recipient: joel._id,
-                    status: 'pending'
-                });
-            }
+        for (let i = 0; i < 50; i++) {
+            const biz = randomFromArray(businesses);
+            await new Event({
+                name: `Noche de ${randomFromArray(EVENT_CATEGORIES)} @ ${biz.doc.name} #${i}`,
+                description: 'La mejor fiesta.',
+                schedule: new Date(Date.now() + 86400000 * (i % 7)),
+                location: biz.doc.location,
+                city: biz.city,
+                category: randomFromArray(EVENT_CATEGORIES),
+                capacity: 500,
+                price: 20,
+                image: getVariedImage(BUSINESS_PHOTOS, i + 10),
+                active: true,
+                participants: randomUsers.slice(0, 5).map(u => u._id)
+            }).save();
         }
 
-        if (joel && david) {
-            const possibleFriends = users.filter(u => ![joel._id.toString(), david._id.toString()].includes(u._id.toString()));
-
-
-            const madridCoords: [number, number] = [-3.7038, 40.4168];
-            const madridFriends = usersNearCoords(possibleFriends, madridCoords, 30).slice(0, 15);
-
-
-            const bcnCoords: [number, number] = [2.1686, 41.3874];
-            const bcnFriends = usersNearCoords(possibleFriends, bcnCoords, 15, madridFriends.map(u => u._id.toString())).slice(0, 10);
-
-
-            const catalunyaCoords: [number, number] = [2.1686, 41.3874];
-            const catalunyaFriends = usersNearCoords(possibleFriends, catalunyaCoords, 80, [
-                ...madridFriends.map(u => u._id.toString()),
-                ...bcnFriends.map(u => u._id.toString())
-            ]).slice(0, 10);
-
-
-            const alreadyPicked = [
-                ...madridFriends.map(u => u._id.toString()),
-                ...bcnFriends.map(u => u._id.toString()),
-                ...catalunyaFriends.map(u => u._id.toString())
-            ];
-            const restFriends = possibleFriends.filter(u => !alreadyPicked.includes(u._id.toString())).slice(0, 15);
-
-
-            const joelFriends = [
-                ...madridFriends,
-                ...bcnFriends,
-                ...catalunyaFriends,
-                ...restFriends
-            ].slice(0, 50);
-
-
-            const davidFriends = [
-                ...madridFriends,
-                ...bcnFriends,
-                ...catalunyaFriends,
-                ...possibleFriends.filter(u => !alreadyPicked.includes(u._id.toString())).slice(15, 65)
-            ].slice(0, 50);
-
-
-            for (const friend of joelFriends) {
-                const exists = await Friendship.findOne({
-                    $or: [
-                        { requester: joel._id, recipient: friend._id },
-                        { requester: friend._id, recipient: joel._id }
-                    ]
-                });
-                if (!exists) {
-                    await new Friendship({
-                        requester: joel._id,
-                        recipient: friend._id,
-                        status: 'accepted'
-                    }).save();
-                }
-            }
-
-
-            for (const friend of davidFriends) {
-                const exists = await Friendship.findOne({
-                    $or: [
-                        { requester: david._id, recipient: friend._id },
-                        { requester: friend._id, recipient: david._id }
-                    ]
-                });
-                if (!exists) {
-                    await new Friendship({
-                        requester: david._id,
-                        recipient: friend._id,
-                        status: 'accepted'
-                    }).save();
-                }
-            }
-
-            const raters = joelFriends.slice(0, 20);
-            for (let i = 0; i < raters.length; i++) {
-                await createUserTrustSafe(
-                    joel._id,
-                    raters[i]._id,
-                    Math.floor(Math.random() * 5) + 1,
-                    `Trust demo #${i + 1}`,
-                    'demo'
-                );
-            }
-
-            const postThemes = [
-                { caption: 'Amazing night! 🌟', isVideo: false },
-                { caption: 'Check this out! 🎬', isVideo: true },
-                { caption: 'Loving the vibes here.', isVideo: false },
-                { caption: 'Best party ever! 🔥', isVideo: true }
-            ];
-
-            const songs = [
-                { title: 'Blinding Lights', artist: 'The Weeknd', cover: 'https://is1-ssl.mzstatic.com/image/thumb/Music113/v4/4a/59/2c/4a592c3a-231a-6379-373a-4467c69992c3/19UMGIM83808.rgb.jpg/100x100bb.jpg' },
-                { title: 'Dance Monkey', artist: 'Tones and I', cover: 'https://is4-ssl.mzstatic.com/image/thumb/Music123/v4/64/0e/01/640e0149-a2e6-7788-2949-07920155660b/075679822604.jpg/100x100bb.jpg' },
-                { title: 'Techno Vibe', artist: 'Underground DJ', cover: 'https://via.placeholder.com/100' }
-            ];
-
-            for (const friend of joelFriends.slice(0, 10)) {
-                const theme = postThemes[Math.floor(Math.random() * postThemes.length)];
-                const song = songs[Math.floor(Math.random() * songs.length)];
-
-                const mediaUrl = theme.isVideo
-                    ? 'https://www.w3schools.com/html/mov_bbb.mp4'
-                    : 'https://images.unsplash.com/photo-1514525253344-781f39994a1a?w=500';
-
-                await new Post({
-                    user: friend._id,
-                    caption: theme.caption,
-                    media: [{
-                        url: mediaUrl,
-                        type: theme.isVideo ? 'video' : 'image'
-                    }],
-                    location: 'Barcelona, Spain',
-                    isPublic: true,
-                    music: {
-                        title: song.title,
-                        artist: song.artist,
-                        cover: song.cover
-                    },
-                    likes: users.slice(0, Math.floor(Math.random() * 20)).map(u => u._id),
-                    comments: [
-                        { user: users[0]._id, text: 'Que guapo!', createdAt: new Date() }
-                    ]
-                }).save();
-            }
-        }
         await mongoose.disconnect();
-    } catch (error) {
-        throw error;
+        console.log('✨ SEEDING COMPLETADO CON ÉXITO ✨');
+        process.exit(0);
+    } catch (err) {
+        console.error('❌ ERROR:', err);
+        process.exit(1);
     }
 }
 
-seedDemoData().catch(error => { throw error; });
+seedDemoData();

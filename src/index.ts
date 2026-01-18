@@ -137,7 +137,7 @@ mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
         });
 
         httpServer.listen(PORT, () => {
-            throw new Error('Server is running!');
+            console.log(`Server is running on port ${PORT}`);
         });
     })
     .catch(err => {

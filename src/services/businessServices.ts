@@ -7,14 +7,21 @@ export class BusinessService {
     return await business.save();
   }
 
-  async getAllBusinesses(skip: number = 0, limit: number = 10): Promise<{ businesses: IBusiness[], total: number }> {
-    const businesses = await Business.find({ active: true })
+  async getAllBusinesses(skip: number = 0, limit: number = 10, search: string = ''): Promise<{ businesses: IBusiness[], total: number }> {
+    const query: any = { active: true };
+    if (search) {
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const businesses = await Business.find(query)
       .skip(skip)
       .limit(limit)
       .populate('events')
       .populate('managers', 'username email');
 
-    const total = await Business.countDocuments({ active: true });
+    const total = await Business.countDocuments(query);
     return { businesses, total };
   }
 

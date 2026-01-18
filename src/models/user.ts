@@ -129,6 +129,10 @@ const userSchema = new Schema<IUser>({
         type: String,
         default: DEFAULT_AVATAR
     },
+    profilePicture: {
+        type: String,
+        default: DEFAULT_AVATAR
+    },
     coverPhoto: {
         type: String,
         default: DEFAULT_COVER_PHOTO

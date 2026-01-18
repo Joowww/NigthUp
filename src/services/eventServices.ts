@@ -29,15 +29,23 @@ export class EventService {
         }
     }
 
-    async getAllEvents(skip: number = 0, limit: number = 10): Promise<{ events: IEvent[], total: number }> {
-        const events = await Event.find({ active: true })
+    async getAllEvents(skip: number = 0, limit: number = 10, search: string = ''): Promise<{ events: IEvent[], total: number }> {
+        const query: any = { active: true };
+        if (search) {
+            query.$or = [
+                { name: { $regex: search, $options: 'i' } },
+                { category: { $regex: search, $options: 'i' } }
+            ];
+        }
+
+        const events = await Event.find(query)
             .skip(skip)
             .limit(limit)
             .populate('participants', 'username email')
             .populate('likedBy', 'username email')
             .sort({ createdAt: -1 });
 
-        const total = await Event.countDocuments({ active: true });
+        const total = await Event.countDocuments(query);
         return { events, total };
     }
 

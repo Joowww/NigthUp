@@ -259,8 +259,9 @@ export async function getAllUsers(req: Request, res: Response): Promise<Response
     try {
         const skip = parseInt(req.query.skip as string) || 0;
         const limit = parseInt(req.query.limit as string) || 5;
+        const search = (req.query.search as string) || '';
 
-        const result = await userService.getAllUsers(skip, limit);
+        const result = await userService.getAllUsers(skip, limit, search);
         return res.status(200).json({
             users: result.users,
             pagination: {

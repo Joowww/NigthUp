@@ -48,8 +48,9 @@ export async function getAllEvents(req: Request, res: Response): Promise<Respons
     try {
         const skip = parseInt(req.query.skip as string) || 0;
         const limit = parseInt(req.query.limit as string) || 10;
+        const search = (req.query.search as string) || '';
 
-        const result = await eventService.getAllEvents(skip, limit);
+        const result = await eventService.getAllEvents(skip, limit, search);
 
         return res.status(200).json({
             events: result.events,
