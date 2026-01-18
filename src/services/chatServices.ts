@@ -281,8 +281,12 @@ export class ChatService {
     senderId: string;
     text: string;
     imageUrl?: string;
-    audioUrl?: string; // ✅ AÑADIDO
-    messageType?: 'text' | 'image' | 'audio'; // ✅ ACTUALIZADO
+    audioUrl?: string;
+    videoUrl?: string;
+    locationData?: any;
+    eventData?: any;
+    businessData?: any;
+    messageType?: string;
     replyTo?: string;
   }) {
     const conversation = await Conversation.findById(data.conversationId);
@@ -302,7 +306,11 @@ export class ChatService {
       text: data.text || '',
       messageType: data.messageType || 'text',
       imageUrl: data.imageUrl,
-      audioUrl: data.audioUrl, // ✅ AÑADIDO
+      audioUrl: data.audioUrl,
+      videoUrl: data.videoUrl,
+      locationData: data.locationData,
+      eventData: data.eventData,
+      businessData: data.businessData,
       replyTo: data.replyTo,
       readBy: [data.senderId],
     });
@@ -311,6 +319,10 @@ export class ChatService {
     let previewText = message.text;
     if (message.messageType === 'image') previewText = '📸 Imagen';
     if (message.messageType === 'audio') previewText = '🎵 Audio';
+    if (message.messageType === 'video') previewText = '🎥 Video';
+    if (message.messageType === 'location') previewText = '📍 Ubicación';
+    if (message.messageType === 'event') previewText = '🎉 Evento';
+    if (message.messageType === 'business') previewText = '🎵 Discoteca';
 
     conversation.lastMessage = {
       message: previewText,

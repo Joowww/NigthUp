@@ -3,7 +3,8 @@ import { ChatService } from '../services/chatServices';
 import { GroupService } from '../services/groupServices';
 import mongoose from 'mongoose';
 import { User } from '../models/user';
-import { NotificationService } from '../services/notificationServices'; 
+import Message from '../models/message';
+import { NotificationService } from '../services/notificationServices';
 interface SocketAuth {
   userId: string;
 }
@@ -20,23 +21,23 @@ export function initializeSocket(io: Server) {
 
   io.on('connection', (socket: Socket) => {
     const { userId } = socket.handshake.auth as SocketAuth;
-  
+
     if (!userId) {
       console.log('❌ Conexión rechazada: sin userId');
       socket.disconnect();
       return;
     }
-  
+
     console.log(`✅ Usuario conectado: ${userId} (socket: ${socket.id})`);
     onlineUsers.set(userId, socket.id);
-  
+
     socket.join(userId);
-  
+
     // ✅ EMITIR INMEDIATAMENTE
     const onlineUserIds = Array.from(onlineUsers.keys());
     io.emit('onlineUsers', onlineUserIds);
     console.log('📢 [BACKEND] Emitiendo onlineUsers (inmediato):', onlineUserIds);
-  
+
     // ✅ EMITIR OTRA VEZ DESPUÉS DE 500ms (para asegurar que el frontend esté listo)
     setTimeout(() => {
       const updatedOnlineUserIds = Array.from(onlineUsers.keys());
@@ -59,7 +60,7 @@ export function initializeSocket(io: Server) {
 
     // ==================== ENVIAR MENSAJE ====================
 
-    socket.on('sendMessage', async (data) => {
+    socket.on('sendMessage', async (data: any) => {
       console.log('📨 [SOCKET] Intento de envío de mensaje recibido:', JSON.stringify(data, null, 2));
       const { conversationId, text, imageUrl, audioUrl, messageType, replyTo } = data;
 
@@ -80,10 +81,14 @@ export function initializeSocket(io: Server) {
           conversationId,
           senderId: userId,
           text: text?.trim() || '',
-          imageUrl,
-          audioUrl,
-          messageType: messageType || 'text',
-          replyTo
+          imageUrl: data.imageUrl,
+          audioUrl: data.audioUrl,
+          videoUrl: data.videoUrl,
+          locationData: data.locationData,
+          eventData: data.eventData,
+          businessData: data.businessData,
+          messageType: data.messageType || 'text',
+          replyTo: data.replyTo
         });
 
         if (!newMessage) {
@@ -98,6 +103,10 @@ export function initializeSocket(io: Server) {
           messageType: newMessage.messageType,
           imageUrl: newMessage.imageUrl,
           audioUrl: newMessage.audioUrl,
+          videoUrl: (newMessage as any).videoUrl,
+          locationData: (newMessage as any).locationData,
+          eventData: (newMessage as any).eventData,
+          businessData: (newMessage as any).businessData,
           replyTo: newMessage.replyTo,
           reactions: newMessage.reactions,
           isEdited: newMessage.isEdited,
@@ -119,7 +128,7 @@ export function initializeSocket(io: Server) {
 
     // ==================== EDITAR MENSAJE ====================
 
-    socket.on('editMessage', async (data) => {
+    socket.on('editMessage', async (data: any) => {
       const { messageId, text } = data;
 
       if (!messageId || !text) {
@@ -156,7 +165,7 @@ export function initializeSocket(io: Server) {
 
     // ==================== ELIMINAR MENSAJE ====================
 
-    socket.on('deleteMessage', async (data) => {
+    socket.on('deleteMessage', async (data: any) => {
       const { messageId } = data;
 
       if (!messageId) {
@@ -190,7 +199,7 @@ export function initializeSocket(io: Server) {
 
     // ==================== REACCIONAR A MENSAJE ====================
 
-    socket.on('reactToMessage', async (data) => {
+    socket.on('reactToMessage', async (data: any) => {
       const { messageId, emoji } = data;
 
       if (!messageId || !emoji) {
@@ -226,7 +235,7 @@ export function initializeSocket(io: Server) {
 
     // ==================== INDICADOR DE ESCRITURA ====================
 
-    socket.on('typing', (data) => {
+    socket.on('typing', (data: any) => {
       const { conversationId, username } = data;
 
       if (!conversationId) return;
@@ -240,7 +249,7 @@ export function initializeSocket(io: Server) {
       console.log(`✍️ ${username || userId} está escribiendo en ${conversationId}`);
     });
 
-    socket.on('stopTyping', (data) => {
+    socket.on('stopTyping', (data: any) => {
       const { conversationId, username } = data;
 
       if (!conversationId) return;
@@ -252,6 +261,8 @@ export function initializeSocket(io: Server) {
       });
     });
 
+
+
     // ==================== SOLICITAR USUARIOS ONLINE ====================
     // ✅ NUEVO MANEJADOR AÑADIDO
     socket.on('getOnlineUsers', () => {
@@ -262,7 +273,7 @@ export function initializeSocket(io: Server) {
 
     // ==================== CREAR GRUPO ====================
 
-    socket.on('createGroup', async (data) => {
+    socket.on('createGroup', async (data: any) => {
       const { name, participants } = data;
 
       if (!name || !participants || !Array.isArray(participants)) {
@@ -312,7 +323,7 @@ export function initializeSocket(io: Server) {
 
     // ==================== ENCUESTAS EN GRUPOS ====================
 
-    socket.on('createGroupPoll', async (data) => {
+    socket.on('createGroupPoll', async (data: any) => {
       const { conversationId, question, options } = data;
 
       if (!conversationId || !question || !options || !Array.isArray(options)) {
@@ -353,7 +364,7 @@ export function initializeSocket(io: Server) {
       }
     });
 
-    socket.on('voteInGroupPoll', async (data) => {
+    socket.on('voteInGroupPoll', async (data: any) => {
       const { conversationId, pollId, optionIndex } = data;
 
       if (!conversationId || !pollId || optionIndex === undefined) {
@@ -389,7 +400,7 @@ export function initializeSocket(io: Server) {
 
     // ==================== MARCAR COMO LEÍDO ====================
 
-    socket.on('markAsRead', async (data) => {
+    socket.on('markAsRead', async (data: any) => {
       const { conversationId, messageIds } = data;
 
       if (!conversationId || !messageIds || !Array.isArray(messageIds)) {
@@ -549,6 +560,7 @@ export function initializeSocket(io: Server) {
       try {
         const requesterSocketId = onlineUsers.get(data.requesterId);
 
+        // 1. Emitir socket si está online (Feedback instantáneo)
         if (requesterSocketId) {
           const accepter = await User.findById(data.accepterId)
             .select('username avatar firstName lastName')
@@ -559,14 +571,17 @@ export function initializeSocket(io: Server) {
             accepter,
             timestamp: new Date()
           });
-        } else {
-          await notificationService.createNotification({
-            recipient: data.requesterId,
-            sender: data.accepterId,
-            type: 'friend_accepted',
-            friendshipId: data.friendshipId
-          });
         }
+
+        // 2. SIEMPRE crear notificación en BD (Persistencia garantizada)
+        // Esto asegura que si falla el socket o el usuario recarga, la notificación existe.
+        await notificationService.createNotification({
+          recipient: data.requesterId,
+          sender: data.accepterId,
+          type: 'friend_accepted',
+          friendshipId: data.friendshipId
+        });
+
       } catch (error) {
         console.error('❌ [Socket] friendRequestAccepted:', error);
       }
@@ -630,9 +645,9 @@ export function initializeSocket(io: Server) {
       console.log(`❌ Usuario desconectado: ${userId}`);
 
       onlineUsers.delete(userId);
-      
+
       const updatedOnlineUserIds = Array.from(onlineUsers.keys());
-      
+
       io.emit('userDisconnected', { userId });
       io.emit('onlineUsers', updatedOnlineUserIds);
       console.log('📢 [BACKEND] Usuario desconectado, nueva lista:', updatedOnlineUserIds);

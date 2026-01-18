@@ -9,9 +9,13 @@ export interface IMessage extends Document {
   conversation: mongoose.Types.ObjectId;
   sender: mongoose.Types.ObjectId;
   text: string;
-  messageType: 'text' | 'image' | 'audio';
+  messageType: string;
   imageUrl?: string;
   audioUrl?: string;
+  videoUrl?: string;
+  locationData?: any;
+  eventData?: any;
+  businessData?: any;
   readBy: mongoose.Types.ObjectId[];
   isEdited: boolean;
   isDeleted: boolean;
@@ -44,6 +48,10 @@ const MessageSchema: Schema = new Schema(
       enum: ['text', 'image', 'audio'],
       default: 'text',
     },
+    videoUrl: { type: String },
+    locationData: { type: Object },
+    eventData: { type: Object },
+    businessData: { type: Object },
     imageUrl: {
       type: String,
     },
