@@ -89,8 +89,8 @@ export async function getFriendStatus(req: Request, res: Response): Promise<Resp
     const userId1 = (req as any).user.id;
     const { userId2 } = req.params;
 
-    const status = await friendshipService.getFriendStatus(userId1, userId2);
-    return res.status(200).json({ status });
+    const result = await friendshipService.getFriendStatus(userId1, userId2);
+    return res.status(200).json(result);
   } catch (error) {
     return res.status(500).json({ error: (error as Error).message });
   }
@@ -133,18 +133,18 @@ export async function searchUsersForFriendship(
     });
 
     const users = await friendshipService.searchUsers(
-      userId, 
-      q, 
-      limit, 
-      skip, 
-      city, 
+      userId,
+      q,
+      limit,
+      skip,
+      city,
       interest,
       gender,
-      onlineOnly 
+      onlineOnly
     );
-    
+
     console.log(`✅ [searchUsersForFriendship] Devolviendo ${users.length} usuarios`);
-    
+
     return res.status(200).json(users);
   } catch (error) {
     console.error('❌ [searchUsersForFriendship] Error:', error);
@@ -157,12 +157,12 @@ export async function getFilterOptions(req: Request, res: Response): Promise<Res
     // Obtener ciudades únicas
     const cities = await User.aggregate([
       { $match: { active: true } },
-      { 
-        $group: { 
-          _id: null, 
+      {
+        $group: {
+          _id: null,
           cities: { $addToSet: '$city' },
           comunidades: { $addToSet: '$comunidad' }
-        } 
+        }
       }
     ]);
 
@@ -208,20 +208,20 @@ export async function sendFriendRequestV2(req: Request, res: Response): Promise<
     }
 
     const friendship = await friendshipService.sendFriendRequestV2(requesterId, recipientId);
-    
+
     return res.status(201).json({
       friendship,
-      message: friendship.status === 'accepted' 
+      message: friendship.status === 'accepted'
         ? 'Solicitudes cruzadas detectadas. Ahora son amigos!'
         : 'Solicitud enviada correctamente'
     });
   } catch (error: any) {
     console.error('Error sending friend request V2:', error);
-    
+
     if (error.message.includes('Ya enviaste') || error.message.includes('Ya son amigos')) {
       return res.status(400).json({ error: error.message });
     }
-    
+
     return res.status(500).json({ error: (error as Error).message });
   }
 }
@@ -240,7 +240,7 @@ export async function getMutualFriends(req: Request, res: Response): Promise<Res
     }
 
     const mutualFriends = await friendshipService.getMutualFriends(currentUserId, userId, limit);
-    
+
     return res.status(200).json(mutualFriends);
   } catch (error) {
     console.error('Error getting mutual friends:', error);
@@ -257,19 +257,19 @@ export async function cancelFriendRequestV2(req: Request, res: Response): Promis
     const { friendshipId } = req.params;
 
     await friendshipService.cancelFriendRequestV2(friendshipId, userId);
-    
+
     return res.status(200).json({ message: 'Solicitud cancelada correctamente' });
   } catch (error: any) {
     console.error('Error canceling friend request V2:', error);
-    
+
     if (error.message.includes('No tienes permiso')) {
       return res.status(403).json({ error: error.message });
     }
-    
+
     if (error.message.includes('no encontrada')) {
       return res.status(404).json({ error: error.message });
     }
-    
+
     return res.status(500).json({ error: (error as Error).message });
   }
 }
@@ -303,16 +303,16 @@ export async function acceptFriendRequestV2(req: Request, res: Response): Promis
 
     console.log('✅ [acceptFriendRequestV2] Solicitud aceptada:', populatedFriendship);
 
-    return res.status(200).json({ 
+    return res.status(200).json({
       friendship: populatedFriendship,
-      message: 'Friend request accepted successfully' 
+      message: 'Friend request accepted successfully'
     });
 
   } catch (error) {
     console.error('❌ [acceptFriendRequestV2] Error:', error);
-    return res.status(500).json({ 
+    return res.status(500).json({
       error: 'Failed to accept friend request',
-      details: (error as Error).message 
+      details: (error as Error).message
     });
   }
 }
@@ -320,13 +320,13 @@ export async function acceptFriendRequestV2(req: Request, res: Response): Promis
 export async function getFriendsV2(req: Request, res: Response): Promise<Response> {
   try {
     const userId = (req as any).user.id;
-    
+
     console.log(`🔍 [getFriendsV2 Controller] Obteniendo amigos para userId: ${userId}`);
-    
+
     const friends = await friendshipService.getFriendsV2(userId);
-    
+
     console.log(`✅ [getFriendsV2 Controller] Devolviendo ${friends.length} amigos`);
-    
+
     return res.status(200).json(friends);
   } catch (error) {
     console.error('❌ [getFriendsV2 Controller] Error:', error);

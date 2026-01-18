@@ -29,11 +29,11 @@ export class ChatService {
 
     const formattedConversations = await Promise.all(conversations.map(async (convo) => {
       const isGroup = convo.isGroup;
-      let name, avatar;
+      let name, avatar, recipientUsername;
 
       if (isGroup) {
         name = convo.groupName || 'Grupo';
-        avatar = convo.groupAvatar || 'https://via.placeholder.com/150';
+        avatar = convo.groupAvatar;
       } else {
         const otherParticipant = convo.participants.find(
           (p: any) => p.participant && p.participant._id.toString() !== userId
@@ -43,11 +43,10 @@ export class ChatService {
           name = otherParticipant.participant.username ||
             otherParticipant.participant.name ||
             'Usuario';
-          avatar = otherParticipant.participant.avatar ||
-            'https://via.placeholder.com/150';
+          recipientUsername = otherParticipant.participant.username;
+          avatar = otherParticipant.participant.avatar;
         } else {
           name = 'Usuario';
-          avatar = 'https://via.placeholder.com/150';
         }
       }
 
@@ -78,9 +77,14 @@ export class ChatService {
         isGroup,
         name,
         avatar,
+        recipientUsername, // ✅ Añadido para facilitar apertura de perfil
         lastMessage: previewText,
         lastMessageTime,
-        participants: convo.participants.map((p: any) => p.participant._id.toString()),
+        participants: convo.participants.map((p: any) => ({
+          _id: p.participant._id,
+          username: p.participant.username,
+          avatar: p.participant.avatar
+        })),
         unreadCount
       };
     }));

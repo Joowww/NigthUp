@@ -1,659 +1,257 @@
 import { Server, Socket } from 'socket.io';
 import { ChatService } from '../services/chatServices';
 import { GroupService } from '../services/groupServices';
-import mongoose from 'mongoose';
 import { User } from '../models/user';
-import Message from '../models/message';
 import { NotificationService } from '../services/notificationServices';
+
 interface SocketAuth {
   userId: string;
 }
 
 const groupService = new GroupService();
-const notificationService = new NotificationService(); // Add this line
+const notificationService = new NotificationService();
 const chatService = new ChatService();
 
-// Mapa de usuarios conectados: userId -> socketId
-const onlineUsers = new Map<string, string>();
+/**
+ * 🌍 ESTADO GLOBAL DE PRESENCIA
+ * userId -> Set de socketIds activos
+ */
+const onlineUsers = new Map<string, Set<string>>();
 
 export function initializeSocket(io: Server) {
-  console.log('🔌 Socket.IO inicializado');
+  console.log('🔌 [Socket] Sistema de Socket.IO Inicializado');
 
-  io.on('connection', (socket: Socket) => {
-    const { userId } = socket.handshake.auth as SocketAuth;
+  io.on('connection', async (socket: Socket) => {
+    const rawUserId = (socket.handshake.auth as SocketAuth).userId;
+    const userId = rawUserId?.toString();
 
     if (!userId) {
-      console.log('❌ Conexión rechazada: sin userId');
+      console.log('❌ [Socket] Conexión rechazada: userId inválido o ausente');
       socket.disconnect();
       return;
     }
 
-    console.log(`✅ Usuario conectado: ${userId} (socket: ${socket.id})`);
-    onlineUsers.set(userId, socket.id);
+    console.log(`✅ [Socket] Nueva conexión: ${userId} (SocketID: ${socket.id})`);
 
+    // 1️⃣ GESTIÓN DE ENTRADA
+    let isFirstConnection = false;
+    if (!onlineUsers.has(userId)) {
+      onlineUsers.set(userId, new Set());
+      isFirstConnection = true;
+    }
+    onlineUsers.get(userId)?.add(socket.id);
+
+    // Unir al socket a su propia sala privada para eventos dirigidos
     socket.join(userId);
 
-    // ✅ EMITIR INMEDIATAMENTE
-    const onlineUserIds = Array.from(onlineUsers.keys());
-    io.emit('onlineUsers', onlineUserIds);
-    console.log('📢 [BACKEND] Emitiendo onlineUsers (inmediato):', onlineUserIds);
+    // 2️⃣ ACTUALIZACIÓN DE BASE DE DATOS Y BROADCAST (Solo si es la primera pestaña)
+    if (isFirstConnection) {
+      console.log(`📡 [Socket] Usuario ${userId} ahora está ONLINE globalmente`);
+      try {
+        await User.findByIdAndUpdate(userId, { isOnline: true, lastSeen: new Date() });
 
-    // ✅ EMITIR OTRA VEZ DESPUÉS DE 500ms (para asegurar que el frontend esté listo)
-    setTimeout(() => {
-      const updatedOnlineUserIds = Array.from(onlineUsers.keys());
-      io.emit('onlineUsers', updatedOnlineUserIds);
-      console.log('📢 [BACKEND] Emitiendo onlineUsers (retry):', updatedOnlineUserIds);
-    }, 1000);
+        // Notificar a TODOS que este usuario se ha conectado
+        io.emit('userStatusChanged', { userId, isOnline: true });
+      } catch (err) {
+        console.error('❌ [Socket] Error actualizando DB (online):', err);
+      }
+    }
 
-    // ==================== UNIRSE/SALIR DE SALAS ====================
+    // 3️⃣ SINCRONIZACIÓN INICIAL PARA EL NUEVO USUARIO
+    const currentOnlineIds = Array.from(onlineUsers.keys());
+    socket.emit('onlineUsers', currentOnlineIds);
+
+    if (isFirstConnection) {
+      io.emit('onlineUsers', currentOnlineIds);
+    }
+
+    // 4️⃣ UNIRSE A SALAS DE CHAT EXISTENTES
+    try {
+      const conversations = await chatService.getConversationsForUser(userId);
+      conversations.forEach(c => socket.join(c.id.toString()));
+      console.log(`💬 [Socket] Usuario ${userId} unido a ${conversations.length} salas de chat`);
+    } catch (err) {
+      console.error('❌ [Socket] Error al unir a salas:', err);
+    }
+
+    // ============================================
+    // MANEJADORES DE EVENTOS (MEJORADOS)
+    // ============================================
 
     socket.on('joinRoom', (conversationId: string) => {
       socket.join(conversationId);
-      console.log(`📥 ${userId} se unió a sala: ${conversationId}`);
       socket.to(conversationId).emit('userJoined', { userId, conversationId });
     });
 
     socket.on('leaveRoom', (conversationId: string) => {
       socket.leave(conversationId);
-      console.log(`📤 ${userId} salió de sala: ${conversationId}`);
     });
-
-    // ==================== ENVIAR MENSAJE ====================
 
     socket.on('sendMessage', async (data: any) => {
-      console.log('📨 [SOCKET] Intento de envío de mensaje recibido:', JSON.stringify(data, null, 2));
-      const { conversationId, text, imageUrl, audioUrl, messageType, replyTo } = data;
-
+      const { conversationId, text } = data;
       if (!conversationId) {
-        socket.emit('error', { message: 'conversationId es requerido' });
-        return;
-      }
-
-      // Validar que haya texto, imagen o audio
-      if (!text && !imageUrl && !audioUrl) {
-        socket.emit('error', { message: 'El mensaje debe tener texto, imagen o audio' });
+        console.error('❌ [Socket] Error: No conversationId provided');
         return;
       }
 
       try {
-        // ✅ CORRECCIÓN: Pasar objeto en lugar de parámetros separados
+        // Asegurarse de que el socket esté unido a la sala si aún no lo está
+        socket.join(conversationId);
+
         const newMessage = await chatService.sendMessage({
-          conversationId,
-          senderId: userId,
-          text: text?.trim() || '',
-          imageUrl: data.imageUrl,
-          audioUrl: data.audioUrl,
-          videoUrl: data.videoUrl,
-          locationData: data.locationData,
-          eventData: data.eventData,
-          businessData: data.businessData,
-          messageType: data.messageType || 'text',
-          replyTo: data.replyTo
+          ...data,
+          senderId: userId
         });
 
-        if (!newMessage) {
-          throw new Error('Failed to create message');
+        if (newMessage) {
+          // Asegurarse de que sea un objeto plano para evitar problemas con Mongoose
+          const formattedMessage = JSON.parse(JSON.stringify(newMessage));
+
+          // 1. Emitir a la sala de la conversación (para los que ya están dentro)
+          io.to(conversationId).emit('newMessage', formattedMessage);
+          console.log(`📤 [Socket] Mensaje enviado a sala ${conversationId}`);
+
+          // 2. 🔥 REFUERZO DE REACTIVIDAD: Emitir a las salas privadas de los participantes
+          // Esto soluciona el problema de "no veo el mensaje hasta que refresco" en nuevos chats
+          const participants = await chatService.getConversationParticipants(conversationId);
+          participants.forEach(pId => {
+            const participantId = pId.toString();
+            if (participantId !== userId) {
+              io.to(participantId).emit('newMessage', formattedMessage);
+              console.log(`📡 [Socket] Refuerzo enviado a sala privada de ${participantId}`);
+            }
+          });
         }
-
-        io.to(conversationId).emit('newMessage', {
-          _id: newMessage._id,
-          conversation: newMessage.conversation,
-          sender: newMessage.sender,
-          text: newMessage.text,
-          messageType: newMessage.messageType,
-          imageUrl: newMessage.imageUrl,
-          audioUrl: newMessage.audioUrl,
-          videoUrl: (newMessage as any).videoUrl,
-          locationData: (newMessage as any).locationData,
-          eventData: (newMessage as any).eventData,
-          businessData: (newMessage as any).businessData,
-          replyTo: newMessage.replyTo,
-          reactions: newMessage.reactions,
-          isEdited: newMessage.isEdited,
-          isDeleted: newMessage.isDeleted,
-          readBy: newMessage.readBy,
-          createdAt: newMessage.createdAt,
-          updatedAt: newMessage.updatedAt
-        });
-
-        console.log(`📨 Mensaje enviado en ${conversationId} por ${userId}`);
-      } catch (error: any) {
-        console.error('❌ Error al enviar mensaje:', error);
-        socket.emit('error', {
-          message: 'Error al enviar mensaje',
-          details: error.message
-        });
+      } catch (err) {
+        console.error('❌ [Socket] Error enviando mensaje:', err);
+        socket.emit('error', { message: 'Error al enviar mensaje', details: err instanceof Error ? err.message : String(err) });
       }
     });
 
-    // ==================== EDITAR MENSAJE ====================
-
-    socket.on('editMessage', async (data: any) => {
-      const { messageId, text } = data;
-
-      if (!messageId || !text) {
-        socket.emit('error', { message: 'messageId y text son requeridos' });
-        return;
-      }
-
-      try {
-        const editedMessage = await chatService.editMessage(messageId, userId, text.trim());
-
-        if (!editedMessage) {
-          throw new Error('Failed to edit message');
-        }
-
-        const conversationId = editedMessage.conversation.toString();
-
-        io.to(conversationId).emit('messageEdited', {
-          _id: editedMessage._id,
-          conversation: editedMessage.conversation,
-          text: editedMessage.text,
-          isEdited: editedMessage.isEdited,
-          updatedAt: editedMessage.updatedAt
-        });
-
-        console.log(`✏️ Mensaje editado: ${messageId}`);
-      } catch (error: any) {
-        console.error('❌ Error al editar mensaje:', error);
-        socket.emit('error', {
-          message: 'Error al editar mensaje',
-          details: error.message
-        });
-      }
+    socket.on('getOnlineUsers', () => {
+      socket.emit('onlineUsers', Array.from(onlineUsers.keys()));
     });
-
-    // ==================== ELIMINAR MENSAJE ====================
-
-    socket.on('deleteMessage', async (data: any) => {
-      const { messageId } = data;
-
-      if (!messageId) {
-        socket.emit('error', { message: 'messageId es requerido' });
-        return;
-      }
-
-      try {
-        const deletedMessage = await chatService.deleteMessage(messageId, userId);
-
-        if (!deletedMessage) {
-          throw new Error('Failed to delete message');
-        }
-
-        const conversationId = deletedMessage.conversation.toString();
-
-        io.to(conversationId).emit('messageDeleted', {
-          messageId: deletedMessage._id,
-          conversationId
-        });
-
-        console.log(`🗑️ Mensaje eliminado: ${messageId}`);
-      } catch (error: any) {
-        console.error('❌ Error al eliminar mensaje:', error);
-        socket.emit('error', {
-          message: 'Error al eliminar mensaje',
-          details: error.message
-        });
-      }
-    });
-
-    // ==================== REACCIONAR A MENSAJE ====================
-
-    socket.on('reactToMessage', async (data: any) => {
-      const { messageId, emoji } = data;
-
-      if (!messageId || !emoji) {
-        socket.emit('error', { message: 'messageId y emoji son requeridos' });
-        return;
-      }
-
-      try {
-        const message = await chatService.reactToMessage(messageId, userId, emoji);
-
-        if (!message) {
-          throw new Error('Failed to react to message');
-        }
-
-        const conversationId = message.conversation.toString();
-
-        io.to(conversationId).emit('messageReacted', {
-          messageId: message._id,
-          reactions: message.reactions,
-          userId,
-          emoji
-        });
-
-        console.log(`👍 Reacción añadida: ${emoji} al mensaje ${messageId}`);
-      } catch (error: any) {
-        console.error('❌ Error al reaccionar:', error);
-        socket.emit('error', {
-          message: 'Error al reaccionar',
-          details: error.message
-        });
-      }
-    });
-
-    // ==================== INDICADOR DE ESCRITURA ====================
 
     socket.on('typing', (data: any) => {
-      const { conversationId, username } = data;
-
-      if (!conversationId) return;
-
-      socket.to(conversationId).emit('userTyping', {
-        userId,
-        username: username || userId,
-        conversationId
-      });
-
-      console.log(`✍️ ${username || userId} está escribiendo en ${conversationId}`);
+      if (data.conversationId) socket.to(data.conversationId).emit('userTyping', { userId, ...data });
     });
 
     socket.on('stopTyping', (data: any) => {
-      const { conversationId, username } = data;
+      if (data.conversationId) socket.to(data.conversationId).emit('userStoppedTyping', { userId, ...data });
+    });
 
-      if (!conversationId) return;
+    // ============================================
+    // GESTIÓN DE AMISTAD (CONFIABLE)
+    // ============================================
 
-      socket.to(conversationId).emit('userStoppedTyping', {
-        userId,
-        username: username || userId,
-        conversationId
+    socket.on('friendRequestSent', async (data: any) => {
+      console.log(`📤 [Socket] Solicitud de ${userId} para ${data.recipientId}`);
+      const sender = await User.findById(userId).select('username avatar firstName lastName').lean();
+
+      // Notificar al destinatario
+      if (onlineUsers.has(data.recipientId)) {
+        io.to(data.recipientId).emit('friendRequestReceived', { sender, friendshipId: data.friendshipId, timestamp: new Date() });
+      } else {
+        await notificationService.createNotification({ recipient: data.recipientId, sender: userId, type: 'friend_request', friendshipId: data.friendshipId });
+      }
+
+      // Sync otras tabs del emisor
+      io.to(userId).emit('friendRequestSentConfirmation', {
+        recipientId: data.recipientId,
+        friendshipId: data.friendshipId,
+        timestamp: new Date()
       });
     });
 
+    socket.on('friendRequestAccepted', async (data: any) => {
+      console.log(`🤝 [Socket] ${userId} aceptó a ${data.requesterId}`);
+      const accepter = await User.findById(userId).select('username avatar firstName lastName').lean();
 
+      if (onlineUsers.has(data.requesterId)) {
+        io.to(data.requesterId).emit('friendRequestAcceptedNotification', { friendshipId: data.friendshipId, accepter, timestamp: new Date() });
+      }
+      await notificationService.createNotification({ recipient: data.requesterId, sender: userId, type: 'friend_accepted', friendshipId: data.friendshipId });
 
-    // ==================== SOLICITAR USUARIOS ONLINE ====================
-    // ✅ NUEVO MANEJADOR AÑADIDO
-    socket.on('getOnlineUsers', () => {
-      const onlineUserIds = Array.from(onlineUsers.keys());
-      socket.emit('onlineUsers', onlineUserIds);
-      console.log('📤 [BACKEND] Lista de usuarios online solicitada y enviada:', onlineUserIds);
+      // Sync otras tabs del emisor
+      io.to(userId).emit('friendRequestAcceptedConfirmation', {
+        requesterId: data.requesterId,
+        friendshipId: data.friendshipId,
+        timestamp: new Date()
+      });
     });
 
-    // ==================== CREAR GRUPO ====================
-
-    socket.on('createGroup', async (data: any) => {
-      const { name, participants } = data;
-
-      if (!name || !participants || !Array.isArray(participants)) {
-        socket.emit('error', { message: 'name y participants son requeridos' });
-        return;
+    socket.on('friendRequestCancelled', (data: any) => {
+      console.log(`❌ [Socket] ${userId} canceló/rechazó solicitud con ${data.recipientId}`);
+      if (onlineUsers.has(data.recipientId)) {
+        io.to(data.recipientId).emit('friendRequestCancelledNotification', {
+          friendshipId: data.friendshipId,
+          senderId: userId,
+          timestamp: new Date()
+        });
       }
+      // Sync otras tabs
+      io.to(userId).emit('friendRequestCancelledConfirmation', {
+        targetId: data.recipientId,
+        friendshipId: data.friendshipId
+      });
+    });
 
-      try {
-        const group = await chatService.createGroup(userId, name, participants);
+    socket.on('friendRemoved', async (data: any) => {
+      console.log(`🗑️ [Socket] ${userId} eliminó a ${data.friendId}`);
+      if (onlineUsers.has(data.friendId)) {
+        const remover = await User.findById(userId).select('username avatar firstName lastName').lean();
+        io.to(data.friendId).emit('friendRemovedNotification', {
+          friendshipId: data.friendshipId,
+          removedBy: remover,
+          timestamp: new Date()
+        });
+      }
+      // Sync otras tabs
+      io.to(userId).emit('friendRemovedConfirmation', {
+        friendId: data.friendId,
+        friendshipId: data.friendshipId
+      });
+    });
 
-        if (!group) {
-          throw new Error('Failed to create group');
-        }
+    // ============================================
+    // 🔴 DESCONEXIÓN (CRÍTICA)
+    // ============================================
 
-        // ✅ Emitir a todos los participantes (creador + invitados)
-        const allParticipants = [userId, ...participants];
+    socket.on('disconnect', async (reason) => {
+      console.log(`🔌 [Socket] Conexión cerrada: ${socket.id} de ${userId} (Razón: ${reason})`);
 
-        allParticipants.forEach((participantId) => {
-          const participantSocketId = onlineUsers.get(participantId);
-          if (participantSocketId) {
-            io.to(participantSocketId).emit('newGroup', {
-              _id: group._id,
-              id: group._id,
-              isGroup: true,
-              name: group.groupName || name,
-              groupName: group.groupName || name,
-              avatar: group.groupAvatar || '',
-              groupAvatar: group.groupAvatar || '',
-              participants: group.participants,
-              lastMessage: '',
-              lastMessageTime: group.createdAt,
-              unreadCount: 0,
-              createdAt: group.createdAt
-            });
+      const userSockets = onlineUsers.get(userId);
+      if (userSockets) {
+        userSockets.delete(socket.id);
+
+        if (userSockets.size === 0) {
+          // 🚫 ÚLTIMA CONEXIÓN CERRADA -> El usuario está OFFLINE
+          onlineUsers.delete(userId);
+          console.log(`🔴 [Socket] Usuario ${userId} ahora está OFFLINE globalmente`);
+
+          try {
+            // 1. Actualizar base de datos
+            await User.findByIdAndUpdate(userId, { isOnline: false, lastSeen: new Date() });
+
+            // 2. Emitir eventos de desconexión
+            io.emit('userDisconnected', { userId });
+            io.emit('userStatusChanged', { userId, isOnline: false });
+
+            // 3. Emitir lista actualizada para sincronización total
+            const updatedOnlineIds = Array.from(onlineUsers.keys());
+            io.emit('onlineUsers', updatedOnlineIds);
+
+            console.log(`📢 [Socket] Broadcast de desconexión enviado para ${userId}. Usuarios online: ${updatedOnlineIds.length}`);
+          } catch (err) {
+            console.error(`❌ [Socket] Error en proceso de desconexión para ${userId}:`, err);
           }
-        });
-
-        console.log(`👥 Grupo creado: ${name} por ${userId}`);
-      } catch (error: any) {
-        console.error('❌ Error al crear grupo:', error);
-        socket.emit('error', {
-          message: 'Error al crear grupo',
-          details: error.message
-        });
-      }
-    });
-
-    // ==================== ENCUESTAS EN GRUPOS ====================
-
-    socket.on('createGroupPoll', async (data: any) => {
-      const { conversationId, question, options } = data;
-
-      if (!conversationId || !question || !options || !Array.isArray(options)) {
-        socket.emit('error', {
-          message: 'conversationId, question y options son requeridos'
-        });
-        return;
-      }
-
-      try {
-        const poll = await groupService.createPoll(
-          conversationId,
-          userId,
-          question,
-          options
-        );
-
-        if (!poll) {
-          throw new Error('Failed to create poll');
+        } else {
+          console.log(`📢 [Socket] ${userId} sigue online (${userSockets.size} pestañas restantes)`);
         }
-
-        io.to(conversationId).emit('newGroupPoll', {
-          _id: poll._id,
-          question: poll.question,
-          options: poll.options,
-          creator: poll.creator,
-          conversationId,
-          createdAt: poll.createdAt
-        });
-
-        console.log(`📊 Encuesta creada en grupo ${conversationId}`);
-      } catch (error: any) {
-        console.error('❌ Error al crear encuesta:', error);
-        socket.emit('error', {
-          message: 'Error al crear encuesta',
-          details: error.message
-        });
       }
     });
 
-    socket.on('voteInGroupPoll', async (data: any) => {
-      const { conversationId, pollId, optionIndex } = data;
-
-      if (!conversationId || !pollId || optionIndex === undefined) {
-        socket.emit('error', {
-          message: 'conversationId, pollId y optionIndex son requeridos'
-        });
-        return;
-      }
-
-      try {
-        const poll = await groupService.voteInPoll(conversationId, pollId, userId, optionIndex);
-
-        if (!poll) {
-          throw new Error('Failed to vote in poll');
-        }
-
-        io.to(conversationId).emit('groupPollUpdated', {
-          _id: poll._id,
-          question: poll.question,
-          options: poll.options,
-          conversationId
-        });
-
-        console.log(`🗳️ Voto registrado en encuesta ${pollId} por ${userId}`);
-      } catch (error: any) {
-        console.error('❌ Error al votar:', error);
-        socket.emit('error', {
-          message: 'Error al votar',
-          details: error.message
-        });
-      }
-    });
-
-    // ==================== MARCAR COMO LEÍDO ====================
-
-    socket.on('markAsRead', async (data: any) => {
-      const { conversationId, messageIds } = data;
-
-      if (!conversationId || !messageIds || !Array.isArray(messageIds)) {
-        socket.emit('error', { message: 'conversationId y messageIds son requeridos' });
-        return;
-      }
-
-      try {
-        await chatService.markMessagesAsRead(conversationId, messageIds, userId);
-
-        socket.to(conversationId).emit('messagesRead', {
-          conversationId,
-          messageIds,
-          userId
-        });
-
-        console.log(`👁️ ${userId} leyó ${messageIds.length} mensajes en ${conversationId}`);
-      } catch (error: any) {
-        console.error('❌ Error al marcar como leído:', error);
-      }
-    });
-
-    // ==================== VIDEOLLAMADAS ====================
-
-    socket.on('callUser', (data) => {
-      const { conversationId, recipientId, callType, callerName } = data;
-
-      if (!recipientId || !callType) {
-        socket.emit('error', { message: 'recipientId y callType son requeridos' });
-        return;
-      }
-
-      const recipientSocketId = onlineUsers.get(recipientId);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit('incomingCall', {
-          callerId: userId,
-          callerName: callerName || 'Usuario',
-          conversationId,
-          callType // 'video' | 'audio'
-        });
-        console.log(`📞 Llamada ${callType} de ${userId} a ${recipientId}`);
-      } else {
-        socket.emit('error', { message: 'El usuario no está conectado' });
-      }
-    });
-
-    socket.on('answerCall', (data) => {
-      const { callerId, accepted } = data;
-
-      if (!callerId || accepted === undefined) {
-        socket.emit('error', { message: 'callerId y accepted son requeridos' });
-        return;
-      }
-
-      const callerSocketId = onlineUsers.get(callerId);
-      if (callerSocketId) {
-        io.to(callerSocketId).emit('callAnswered', {
-          recipientId: userId,
-          accepted
-        });
-        console.log(`📞 Llamada ${accepted ? 'aceptada' : 'rechazada'} por ${userId}`);
-      }
-    });
-
-    socket.on('endCall', (data) => {
-      const { conversationId } = data;
-
-      if (conversationId) {
-        socket.to(conversationId).emit('callEnded', { userId });
-        console.log(`📞 Llamada finalizada en ${conversationId}`);
-      }
-    });
-
-    socket.on('iceCandidate', (data) => {
-      const { recipientId, candidate } = data;
-
-      if (!recipientId) return;
-
-      const recipientSocketId = onlineUsers.get(recipientId);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit('iceCandidate', {
-          senderId: userId,
-          candidate
-        });
-      }
-    });
-
-    socket.on('offer', (data) => {
-      const { recipientId, offer } = data;
-
-      if (!recipientId) return;
-
-      const recipientSocketId = onlineUsers.get(recipientId);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit('offer', {
-          senderId: userId,
-          offer
-        });
-      }
-    });
-
-    socket.on('answer', (data) => {
-      const { recipientId, answer } = data;
-
-      if (!recipientId) return;
-
-      const recipientSocketId = onlineUsers.get(recipientId);
-      if (recipientSocketId) {
-        io.to(recipientSocketId).emit('answer', {
-          senderId: userId,
-          answer
-        });
-      }
-    });
-    socket.on('friendRequestSent', async (data: {
-      recipientId: string;
-      senderId: string;
-      friendshipId: string;
-    }) => {
-      try {
-        const recipientSocketId = onlineUsers.get(data.recipientId);
-
-        // 🟢 ONLINE → SOCKET
-        if (recipientSocketId) {
-          const sender = await User.findById(data.senderId)
-            .select('username avatar firstName lastName')
-            .lean();
-
-          io.to(recipientSocketId).emit('friendRequestReceived', {
-            sender,
-            friendshipId: data.friendshipId,
-            timestamp: new Date()
-          });
-        }
-        // 🔴 OFFLINE → NOTIFICACIÓN
-        else {
-          await notificationService.createNotification({
-            recipient: data.recipientId,
-            sender: data.senderId,
-            type: 'friend_request',
-            friendshipId: data.friendshipId
-          });
-        }
-      } catch (error) {
-        console.error('❌ [Socket] friendRequestSent:', error);
-      }
-    });
-
-    /**
-     * Solicitud aceptada
-     */
-    socket.on('friendRequestAccepted', async (data: {
-      requesterId: string;
-      accepterId: string;
-      friendshipId: string;
-    }) => {
-      try {
-        const requesterSocketId = onlineUsers.get(data.requesterId);
-
-        // 1. Emitir socket si está online (Feedback instantáneo)
-        if (requesterSocketId) {
-          const accepter = await User.findById(data.accepterId)
-            .select('username avatar firstName lastName')
-            .lean();
-
-          io.to(requesterSocketId).emit('friendRequestAcceptedNotification', {
-            friendshipId: data.friendshipId,
-            accepter,
-            timestamp: new Date()
-          });
-        }
-
-        // 2. SIEMPRE crear notificación en BD (Persistencia garantizada)
-        // Esto asegura que si falla el socket o el usuario recarga, la notificación existe.
-        await notificationService.createNotification({
-          recipient: data.requesterId,
-          sender: data.accepterId,
-          type: 'friend_accepted',
-          friendshipId: data.friendshipId
-        });
-
-      } catch (error) {
-        console.error('❌ [Socket] friendRequestAccepted:', error);
-      }
-    });
-
-    /**
-     * Solicitud cancelada / rechazada
-     */
-    socket.on('friendRequestCancelled', async (data: {
-      recipientId: string;
-      senderId: string;
-      friendshipId: string;
-    }) => {
-      try {
-        const recipientSocketId = onlineUsers.get(data.recipientId);
-
-        if (recipientSocketId) {
-          io.to(recipientSocketId).emit('friendRequestCancelledNotification', {
-            friendshipId: data.friendshipId,
-            senderId: data.senderId,
-            timestamp: new Date()
-          });
-        }
-        // ❌ No persistimos cancelaciones (correcto)
-      } catch (error) {
-        console.error('❌ [Socket] friendRequestCancelled:', error);
-      }
-    });
-
-    /**
-     * Amigo eliminado
-     */
-    socket.on('friendRemoved', async (data: {
-      friendId: string;
-      friendshipId: string;
-      removedBy: string;
-    }) => {
-      try {
-        const friendSocketId = onlineUsers.get(data.friendId);
-
-        if (friendSocketId) {
-          const remover = await User.findById(data.removedBy)
-            .select('username avatar firstName lastName')
-            .lean();
-
-          io.to(friendSocketId).emit('friendRemovedNotification', {
-            friendshipId: data.friendshipId,
-            removedBy: remover,
-            timestamp: new Date()
-          });
-        }
-        // ❌ No persistimos eliminación (decisión correcta)
-      } catch (error) {
-        console.error('❌ [Socket] friendRemoved:', error);
-      }
-    });
-
-    // ==================== DESCONEXIÓN ====================
-
-    socket.on('disconnect', () => {
-      console.log(`❌ Usuario desconectado: ${userId}`);
-
-      onlineUsers.delete(userId);
-
-      const updatedOnlineUserIds = Array.from(onlineUsers.keys());
-
-      io.emit('userDisconnected', { userId });
-      io.emit('onlineUsers', updatedOnlineUserIds);
-      console.log('📢 [BACKEND] Usuario desconectado, nueva lista:', updatedOnlineUserIds);
-    });
-
-  }); // ✅ CIERRE DEL socket.on('connection')
+  });
 }
 
 export default initializeSocket;

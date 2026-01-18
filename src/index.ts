@@ -51,7 +51,22 @@ app.use('/public', express.static('public'));
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:4200" || "http://localhost:5000" || "http://localhost:3000",
+        origin: (origin, callback) => {
+            // Permitir todos los orígenes en desarrollo o configurar una lista blanca
+            const allowedOrigins = [
+                process.env.FRONTEND_URL,
+                "http://localhost:4200",
+                "http://localhost:5173",
+                "http://localhost:3000",
+                "http://localhost:5000"
+            ].filter(Boolean);
+
+            if (!origin || allowedOrigins.includes(origin)) {
+                callback(null, true);
+            } else {
+                callback(null, true); // Permitir todo por ahora para evitar problemas de bloqueo
+            }
+        },
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     }
 });

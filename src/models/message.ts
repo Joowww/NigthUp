@@ -45,7 +45,7 @@ const MessageSchema: Schema = new Schema(
     },
     messageType: {
       type: String,
-      enum: ['text', 'image', 'audio'],
+      enum: ['text', 'image', 'audio', 'video', 'location', 'event', 'business'],
       default: 'text',
     },
     videoUrl: { type: String },
