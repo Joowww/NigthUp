@@ -6,7 +6,7 @@ export interface IGroupPollOption {
 }
 
 export interface IGroupPoll {
-  _id: Types.ObjectId;
+  _id?: Types.ObjectId;
   question: string;
   options: IGroupPollOption[];
   creator: Types.ObjectId;
@@ -69,8 +69,7 @@ const conversationSchema = new Schema<IConversation>(
     groupDescription: { type: String, default: '' },
     groupImage: { type: String, default: '' },
     groupPolls: [
-      {
-        _id: { type: Schema.Types.ObjectId, required: true },
+      new Schema({
         question: { type: String, required: true },
         options: [
           {
@@ -82,7 +81,10 @@ const conversationSchema = new Schema<IConversation>(
         isActive: { type: Boolean, default: true },
         expiresAt: { type: Date },
         createdAt: { type: Date, required: true }
-      }
+      }, {
+        _id: true,
+        timestamps: false
+      })
     ],
     participants: [
       {

@@ -45,12 +45,13 @@ app.use(express.json());
 
 
 app.use('/uploads', express.static('uploads'));
-app.use('/public', express.static('public'));
+app.use(express.static('public'));
+app.use('/public', express.static('public')); // Keep for backward compatibility
 
 const httpServer = http.createServer(app);
 const io = new Server(httpServer, {
     cors: {
-        origin: process.env.FRONTEND_URL || "http://localhost:4200" || "http://localhost:5000" || "http://localhost:3000",
+        origin: process.env.FRONTEND_URL || "http://localhost:4200" || "http://localhost:5000" || "http://localhost:3000" || "http://localhost:5173",
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
     }
 });
@@ -59,50 +60,6 @@ initializeSocket(io);
 
 mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
     .then(async () => {
-
-
-
-        const initialAdmins = [
-            {
-                username: 'DavidSanchez',
-                email: 'david@nightup.com',
-                password: 'DavidSanchez',
-                birthday: new Date('2000-08-06'),
-                phoneNumber: '+34 612 345 679',
-                securityQuestion: 'security.question.birth_city',
-                securityAnswer: 'Madrid'
-            },
-            {
-                username: 'BryanGarcia',
-                email: 'bryan@nightup.com',
-                password: 'BryanGarcia',
-                birthday: new Date('2000-08-06'),
-                phoneNumber: '+34 612 345 680',
-                securityQuestion: 'security.question.favorite_food',
-                securityAnswer: 'Pizza'
-            }
-        ];
-
-        for (const adminData of initialAdmins) {
-            const existingAdmin = await User.findOne({ username: adminData.username });
-
-            if (!existingAdmin) {
-                const adminUser = new User({
-                    username: adminData.username,
-                    email: adminData.email,
-                    password: adminData.password,
-                    birthday: adminData.birthday,
-                    phoneNumber: adminData.phoneNumber,
-                    securityQuestion: adminData.securityQuestion,
-                    securityAnswer: adminData.securityAnswer,
-                    role: 'admin',
-                    active: true
-                });
-                await adminUser.save();
-            }
-        }
-
-
         app.use('/api/user', userRoutes);
         app.use('/api/event', eventRoutes);
         app.use('/api/business', businessRoutes);

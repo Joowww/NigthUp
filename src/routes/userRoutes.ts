@@ -546,6 +546,33 @@ router.patch('/me', authenticateToken, updateMyProfile);
 
 /**
  * @swagger
+ * /api/user/privacy-settings:
+ *   put:
+ *     summary: Update current user privacy settings
+ *     tags: [Users - Authenticated]
+ *     security:
+ *       - bearerAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             properties:
+ *               privacySettings:
+ *                 type: object
+ *     responses:
+ *       200:
+ *         description: Privacy settings updated
+ *       400:
+ *         description: Invalid data
+ *       401:
+ *         description: Unauthorized
+ */
+router.put('/privacy-settings', authenticateToken, updateMyProfile);
+
+/**
+ * @swagger
  * /api/user/change-password:
  *   post:
  *     summary: Change user password

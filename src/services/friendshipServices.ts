@@ -218,8 +218,8 @@ export class FriendshipService {
         { recipient: userId, status: 'accepted' }
       ]
     })
-      .populate('requester', 'username email location isVisibleOnMap')
-      .populate('recipient', 'username email location isVisibleOnMap');
+      .populate('requester', 'username avatar profilePicture email location isVisibleOnMap')
+      .populate('recipient', 'username avatar profilePicture email location isVisibleOnMap');
   }
 
   async getFriendsWithStatus(userId: string): Promise<any[]> {
@@ -229,8 +229,8 @@ export class FriendshipService {
         { recipient: userId, status: 'accepted' }
       ]
     })
-      .populate('requester', 'username email isOnline lastSeen profilePicture location isVisibleOnMap')
-      .populate('recipient', 'username email isOnline lastSeen profilePicture location isVisibleOnMap');
+      .populate('requester', 'username avatar email isOnline lastSeen profilePicture location isVisibleOnMap')
+      .populate('recipient', 'username avatar email isOnline lastSeen profilePicture location isVisibleOnMap');
 
     return friendships.map(friendship => {
       const friend = friendship.requester._id.toString() === userId ?
@@ -250,7 +250,7 @@ export class FriendshipService {
       recipient: userId,
       status: 'pending'
     })
-      .populate('requester', 'username email');
+      .populate('requester', 'username avatar profilePicture email');
   }
 
   async getFriendStatus(userId1: string, userId2: string): Promise<{

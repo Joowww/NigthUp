@@ -77,7 +77,11 @@ export class UserService {
     }
 
     async getAllUsers(skip: number = 0, limit: number = 10, search: string = ''): Promise<{ users: IUser[], total: number }> {
-        const query: any = { active: true };
+        //const query: any = { active: true };
+        const query: any = {
+            active: true,
+            isVisibleOnMap: true
+        };
         if (search) {
             query.$or = [
                 { username: { $regex: search, $options: 'i' } },
@@ -123,7 +127,7 @@ export class UserService {
             .populate('events', 'name schedule location image')
             .populate('interests', 'name color type description')
             .populate('friends', 'username avatar coverPhoto bio isOnline lastSeen')
-            .select('-password -securityAnswer -securityQuestion -googleId -googleProfile -authProvider -emergencyContacts -location -isVisibleOnMap -lastLocationUpdate');
+            .select('-password -securityAnswer -securityQuestion -googleId -googleProfile -authProvider -emergencyContacts -location -lastLocationUpdate');
 
         if (!user) return null;
 
@@ -145,9 +149,10 @@ export class UserService {
             friends: user.friends,
             events: user.events,
             isOnline: user.isOnline,
+            isVisibleOnMap: user.isVisibleOnMap,
             lastSeen: user.lastSeen,
             createdAt: user.createdAt!
-        };
+        } as any;
     }
 
     async updateUserByIdentifier(identifier: string, userData: Partial<IUser>): Promise<IUser | null> {
@@ -551,6 +556,7 @@ export class UserService {
 
         return await User.find({
             _id: { $ne: userId },
+            isVisibleOnMap: true,
             $or: [
                 { interests: { $in: user.interests } },
                 { friends: { $in: user.friends } }

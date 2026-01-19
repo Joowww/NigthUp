@@ -44,7 +44,7 @@ export class MapService {
           $maxDistance: radiusInMeters
         }
       }
-    }).select('username email location profilePicture isOnline lastSeen');
+    }).select('username email location profilePicture isOnline lastSeen isVisibleOnMap');
   }
 
   async getNearbyBusinesses(coordinates: [number, number], radiusInMeters: number = 5000): Promise<any[]> {
@@ -95,7 +95,7 @@ export class MapService {
           $maxDistance: radiusInMeters
         }
       }
-    }).select('username email location profilePicture isOnline lastSeen');
+    }).select('username email location profilePicture isOnline lastSeen isVisibleOnMap');
   }
 
   private async getUserFriendIds(userId: string): Promise<string[]> {
@@ -106,10 +106,10 @@ export class MapService {
       ]
     });
 
-    return friendships.map(friendship => 
-      friendship.requester.toString() === userId ? 
-      friendship.recipient.toString() : 
-      friendship.requester.toString()
+    return friendships.map(friendship =>
+      friendship.requester.toString() === userId ?
+        friendship.recipient.toString() :
+        friendship.requester.toString()
     );
   }
 

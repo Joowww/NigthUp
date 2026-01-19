@@ -2,7 +2,7 @@ import { Conversation, IConversation, IGroupPoll } from '../models/conversation'
 import mongoose, { Types } from 'mongoose';
 
 export class GroupService {
-    
+
     async createGroup(creatorId: string, groupName: string, participantIds: string[], description?: string, groupImage?: string): Promise<IConversation> {
         const participants = [
             {
@@ -33,7 +33,7 @@ export class GroupService {
 
     async addParticipants(groupId: string, userIds: string[], adminId: string): Promise<IConversation | null> {
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             throw new Error('Group not found');
         }
@@ -53,14 +53,14 @@ export class GroupService {
         return await group.save();
     }
 
-    async createPoll(groupId: string, creatorId: string, question: string, options: string[], expiresAt?: Date): Promise<IConversation | null> {
+    async createPoll(groupId: string, creatorId: string, question: string, options: string[], expiresAt?: Date): Promise<IGroupPoll> {
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             throw new Error('Group not found');
         }
 
-        const isMember = group.participants.some(p => 
+        const isMember = group.participants.some(p =>
             p.participant.toString() === creatorId
         );
 
@@ -69,7 +69,6 @@ export class GroupService {
         }
 
         const poll: IGroupPoll = {
-            _id: new Types.ObjectId(),
             question,
             options: options.map(opt => ({ text: opt, voters: [] })),
             creator: new Types.ObjectId(creatorId),
@@ -79,22 +78,24 @@ export class GroupService {
         };
 
         (group.groupPolls ?? []).push(poll);
-        return await group.save();
+        await group.save();
+        const createdPoll = (group.groupPolls ?? [])[group.groupPolls!.length - 1];
+        return createdPoll;
     }
 
     async voteInPoll(groupId: string, pollId: string, userId: string, optionIndex: number): Promise<IConversation | null> {
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             throw new Error('Group not found');
         }
 
-        const poll = (group.groupPolls ?? []).find((p: IGroupPoll) => p._id.toString() === pollId);
+        const poll = (group.groupPolls ?? []).find((p: IGroupPoll) => p._id?.toString() === pollId);
         if (!poll || !poll.isActive) {
             throw new Error('Poll not found or inactive');
         }
 
-        const hasVoted: boolean = poll.options.some((option: { voters: Types.ObjectId[] }) => 
+        const hasVoted: boolean = poll.options.some((option: { voters: Types.ObjectId[] }) =>
             option.voters.some((voter: Types.ObjectId) => voter.toString() === userId)
         );
 
@@ -114,15 +115,15 @@ export class GroupService {
             'isGroup': true,
             'participants.participant': new Types.ObjectId(userId)
         })
-        .populate('participants.participant', 'username avatar')
-        .populate('lastMessage')
-        .populate('groupAdmins', 'username avatar')
-        .sort({ updatedAt: -1 });
+            .populate('participants.participant', 'username avatar')
+            .populate('lastMessage')
+            .populate('groupAdmins', 'username avatar')
+            .sort({ updatedAt: -1 });
     }
 
     async removeParticipant(groupId: string, userId: string, adminId: string): Promise<IConversation | null> {
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             throw new Error('Group not found');
         }
@@ -131,7 +132,7 @@ export class GroupService {
             throw new Error('Only admins can remove participants');
         }
 
-        group.participants = group.participants.filter(p => 
+        group.participants = group.participants.filter(p =>
             p.participant.toString() !== userId
         );
 
@@ -140,7 +141,7 @@ export class GroupService {
 
     async updateGroupInfo(groupId: string, adminId: string, updates: { groupName?: string; groupDescription?: string; groupImage?: string }): Promise<IConversation | null> {
         const group = await Conversation.findById(groupId);
-        
+
         if (!group || !group.isGroup) {
             throw new Error('Group not found');
         }

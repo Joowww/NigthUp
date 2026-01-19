@@ -1,18 +1,16 @@
 import mongoose from 'mongoose';
 import { User } from '../models/user';
 import { Event } from '../models/event';
-import { Conversation } from '../models/conversation';
 import { Friendship } from '../models/friendship';
 import { Tag } from '../models/tag';
-import { UserInterest } from '../models/userInterest';
 import { Business } from '../models/business';
-import { UserTrust } from '../models/userTrust';
-import Message from '../models/message';
 import { Post } from '../models/post';
 import dotenv from 'dotenv';
+import weaviate from 'weaviate-ts-client';
 
 dotenv.config();
 
+// --- ARRAYS DE DATOS ---
 const EVENT_CATEGORIES = [
     'Trap', 'Reagge', 'Edgy', 'Tecno', 'Reggaeton',
     'House', 'Loofy', 'Funk', 'Pop', 'Indie',
@@ -38,7 +36,16 @@ const USER_AVATARS = [
     'https://images.unsplash.com/photo-1539571696357-5a69c17a67c3?w=400',
     'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=400',
     'https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?w=400',
-    'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400'
+    'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=400',
+    'https://images.unsplash.com/photo-1501196354995-cbb51c65aaea?w=400',
+    'https://images.unsplash.com/photo-1544723083-3a1dec2ce3bf?w=400',
+    'https://images.unsplash.com/photo-1548142813-c348350df52b?w=400',
+    'https://images.unsplash.com/photo-1535223289827-42f1e9919769?w=400',
+    'https://images.unsplash.com/photo-1502823403499-6ccfcf4fb453?w=400',
+    'https://images.unsplash.com/photo-1534308143481-c55f00be8bd7?w=400',
+    'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=400',
+    'https://images.unsplash.com/photo-1488426862026-3ee34a7d66df?w=400',
+    'https://images.unsplash.com/photo-1552058544-f2b08422138a?w=400'
 ];
 
 const BUSINESS_PHOTOS = [
@@ -49,7 +56,18 @@ const BUSINESS_PHOTOS = [
     'https://images.unsplash.com/photo-1470225620780-dba8ba36b745?w=800',
     'https://images.unsplash.com/photo-1516450360452-9312f5e86fc7?w=800',
     'https://images.unsplash.com/photo-1533174072545-e8d4aa97edf9?w=800',
-    'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800'
+    'https://images.unsplash.com/photo-1540039155733-5bb30b53aa14?w=800',
+    'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?w=800',
+    'https://images.unsplash.com/photo-1599566217286-da346dc39359?w=800',
+    'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800',
+    'https://images.unsplash.com/photo-1551818255-e6e10975bc17?w=800',
+    'https://images.unsplash.com/photo-1563841930606-67e2b24c9675?w=800',
+    'https://images.unsplash.com/photo-1519671482538-518885384569?w=800',
+    'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800',
+    'https://images.unsplash.com/photo-1571266028243-3716f02d2d2e?w=800',
+    'https://images.unsplash.com/photo-1549497538-3012c5c95698?w=800',
+    'https://images.unsplash.com/photo-1531050171651-a30ae146b9ec?w=800',
+    'https://images.unsplash.com/photo-1522158633578-d19005a2c739?w=800'
 ];
 
 const PARTY_PHOTOS = [
@@ -60,7 +78,12 @@ const PARTY_PHOTOS = [
     'https://images.unsplash.com/photo-1527529482837-4698179dc6ce?w=800',
     'https://images.unsplash.com/photo-1492684223066-81342ee5ff30?w=800',
     'https://images.unsplash.com/photo-1514525253344-781f39994a1a?w=800',
-    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800'
+    'https://images.unsplash.com/photo-1501281668745-f7f57925c3b4?w=800',
+    'https://images.unsplash.com/photo-1496333039240-4888be5a6d59?w=800',
+    'https://images.unsplash.com/photo-1545128485-c400e7702796?w=800',
+    'https://images.unsplash.com/photo-1508700115892-45ecd05ae2ad?w=800',
+    'https://images.unsplash.com/photo-1490604001847-b712b0c2f967?w=800',
+    'https://images.unsplash.com/photo-1517457373958-b7bdd4587205?w=800'
 ];
 
 const CHILL_PHOTOS = [
@@ -70,7 +93,9 @@ const CHILL_PHOTOS = [
     'https://images.unsplash.com/photo-1520813792240-56fc4a3765a7?w=800',
     'https://images.unsplash.com/photo-1519345182560-3f2917c472ef?w=800',
     'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=800',
-    'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=800'
+    'https://images.unsplash.com/photo-1531427186611-ecfd6d936c79?w=800',
+    'https://images.unsplash.com/photo-1503023345310-bd7c1de61c7d?w=800',
+    'https://images.unsplash.com/photo-1544005313-94ddf0286df2?w=800'
 ];
 
 const FIRST_NAMES = [
@@ -105,17 +130,49 @@ const CHILL_CAPTIONS = [
     'Paz y tranquilidad después de la tempestad 🌊✨'
 ];
 
-const COMMENT_SAMPLES = [
-    '¡Qué envidia! Pásalo genial 🙌',
-    '¡Fiestón total! El próximo no me lo pierdo 🥳',
-    'Necesito café solo de verte ☕😂',
-    '¡Vaya careto! Se nota que anoche lo diste todo 😜',
-    'Brutal la noche de ayer 🔥🔥',
-    'Top! 🔝🔝🔝',
-    'Descansa que te lo mereces bro 🛋️🙌',
-    '¡A darle con todo! 🚀🚀',
-    '¿Volvemos esta noche? 🤔🎉',
-    'Increíble outfit! 😍✨'
+const PARTY_COMMENTS = [
+    '¡Qué envidia! 🔥',
+    '¡Vaya fotón! 📸',
+    'Invitaaa la próxima vez 😉',
+    '¡Lo dimos todo! 🎉',
+    'Guapos/as 😍',
+    '¡Qué noche! Hay que repetir',
+    '🔥🔥🔥',
+    'Vaya cara llevas jajajaja',
+    'El rey de la pista 🕺'
+];
+
+const CHILL_COMMENTS = [
+    'Planazo 👏',
+    'Descansa, te lo mereces',
+    'Qué paz transmite eso',
+    'Yo estoy igual... modo sofá',
+    'Ánimo con la resaca 😂',
+    'Café en vena y a seguir',
+    'Qué sitio más chulo'
+];
+
+const SPANISH_CITIES = [
+    { name: 'Madrid', coords: [-3.7038, 40.4168] },
+    { name: 'Barcelona', coords: [2.1734, 41.3851] },
+    { name: 'Valencia', coords: [-0.3763, 39.4699] },
+    { name: 'Sevilla', coords: [-5.9845, 37.3891] },
+    { name: 'Zaragoza', coords: [-0.8877, 41.6488] },
+    { name: 'Málaga', coords: [-4.4214, 36.7213] },
+    { name: 'Murcia', coords: [-1.1307, 37.9922] },
+    { name: 'Bilbao', coords: [-2.9340, 43.2630] },
+    { name: 'Alicante', coords: [-0.4815, 38.3452] },
+    { name: 'Valladolid', coords: [-4.7245, 41.6523] },
+    { name: 'Vigo', coords: [-8.7226, 42.2406] },
+    { name: 'Gijón', coords: [-5.6611, 43.5357] },
+    { name: 'Granada', coords: [-3.5986, 37.1773] },
+    { name: 'A Coruña', coords: [-8.4115, 43.3623] },
+    { name: 'Salamanca', coords: [-5.6635, 40.9701] },
+    { name: 'Santander', coords: [-3.8099, 43.4623] },
+    { name: 'Pamplona', coords: [-1.6432, 42.8125] },
+    { name: 'Almería', coords: [-2.4637, 36.8340] },
+    { name: 'Cáceres', coords: [-6.3722, 39.4739] },
+    { name: 'Badajoz', coords: [-6.9706, 38.8794] }
 ];
 
 const REAL_BUSINESSES = [
@@ -123,9 +180,20 @@ const REAL_BUSINESSES = [
     { name: 'Razzmatazz', address: 'Carrer dels Almogàvers, 122, Barcelona', city: 'Barcelona', coordinates: [2.1911, 41.3977] },
     { name: 'Opium Barcelona', address: 'Passeig Marítim de la Barceloneta, 34, Barcelona', city: 'Barcelona', coordinates: [2.1945, 41.3857] },
     { name: 'Teatro Kapital', address: 'Calle de Atocha, 125, Madrid', city: 'Madrid', coordinates: [-3.6934, 40.4093] },
-    { name: 'Fabrik', address: 'Av. de la Industria, 82, Humanes de Madrid', city: 'Madrid', coordinates: [-3.8344, 40.2691] }
+    { name: 'Fabrik', address: 'Av. de la Industria, 82, Humanes de Madrid', city: 'Madrid', coordinates: [-3.8344, 40.2691] },
+    { name: 'Shôko Barcelona', address: 'Passeig Marítim de la Barceloneta, 36, Barcelona', city: 'Barcelona', coordinates: [2.1955, 41.3854] },
+    { name: 'Sutton Barcelona', address: 'Carrer de Tuset, 13, Barcelona', city: 'Barcelona', coordinates: [2.1524, 41.3951] },
+    { name: 'Bling Bling', address: 'Carrer de Tuset, 8, Barcelona', city: 'Barcelona', coordinates: [2.1522, 41.3953] },
+    { name: 'Joy Eslava', address: 'Calle del Arenal, 11, Madrid', city: 'Madrid', coordinates: [-3.7061, 40.4172] },
+    { name: 'Teatro Barceló', address: 'Calle de Barceló, 11, Madrid', city: 'Madrid', coordinates: [-3.7001, 40.4265] },
+    { name: 'BlackHaus', address: 'Ctra. de la Coruña, Km 8.700, Madrid', city: 'Madrid', coordinates: [-3.7654, 40.4561] },
+    { name: 'La Terrrazza', address: 'Av. Francesc Ferrer i Guàrdia, s/n, Barcelona', city: 'Barcelona', coordinates: [2.1481, 41.3688] },
+    { name: 'Nox Club', address: 'Estación de Chamartín, Madrid', city: 'Madrid', coordinates: [-3.6821, 40.4719] },
+    { name: 'City Hall', address: 'Rambla de Catalunya, 2, Barcelona', city: 'Barcelona', coordinates: [2.1701, 41.3871] },
+    { name: 'Moondance Sol', address: 'Calle de la Aduana, 21, Madrid', city: 'Madrid', coordinates: [-3.7011, 40.4185] }
 ];
 
+// --- FUNCIONES AUXILIARES ---
 function randomFromArray<T>(arr: T[]): T {
     return arr[Math.floor(Math.random() * arr.length)];
 }
@@ -152,21 +220,63 @@ async function createInterestTags() {
     return tagsMap;
 }
 
+// ⭐ FUNCIÓN DE AMISTAD ⭐
+async function makeFriends(user1: any, user2: any) {
+    await Friendship.create({
+        requester: user1._id,
+        recipient: user2._id,
+        status: 'accepted'
+    });
+
+    user1.friends.push(user2._id);
+    await user1.save();
+
+    user2.friends.push(user1._id);
+    await user2.save();
+}
+
 export async function seedDemoData() {
     try {
-        console.log('🚀 Iniciando seeding MAESTRO de base de datos...');
+        const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/NIGHTUP_BBDD';
         if (mongoose.connection.readyState !== 0) await mongoose.disconnect();
-        await mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD');
-        console.log('🔗 Conectado a MongoDB');
+        await mongoose.connect(mongoUri);
 
-        console.log('🗑️ Vaciando colecciones...');
+        // Configuración Weaviate
+        const weaviateClient = weaviate.client({
+            scheme: process.env.WEAVIATE_SCHEME || 'http',
+            host: process.env.WEAVIATE_HOST || 'localhost:8080',
+        });
+
+        try {
+            await weaviateClient.schema.classDeleter().withClassName('Event').do();
+        } catch (e) { /* Ignorar si no existe */ }
+
+        const eventClassObj = {
+            class: 'Event',
+            description: 'Eventos de NightUp',
+            vectorizer: 'text2vec-transformers',
+            moduleConfig: {
+                'text2vec-transformers': {
+                    poolingStrategy: 'masked_mean',
+                    vectorizeClassName: false
+                }
+            },
+            properties: [
+                { name: 'eventId', dataType: ['string'], moduleConfig: { 'text2vec-transformers': { skip: true } } },
+                { name: 'name', dataType: ['text'], moduleConfig: { 'text2vec-transformers': { skip: false } } },
+                { name: 'description', dataType: ['text'], moduleConfig: { 'text2vec-transformers': { skip: false } } },
+                { name: 'category', dataType: ['string'], moduleConfig: { 'text2vec-transformers': { skip: false } } }
+            ]
+        };
+        await weaviateClient.schema.classCreator().withClass(eventClassObj).do();
+
+        // Limpieza
         const collections = Object.keys(mongoose.connection.collections);
         for (const c of collections) await mongoose.connection.collections[c].deleteMany({});
 
         await createInterestTags();
 
-        // --- PROTAGONISTAS ---
-        console.log('👥 Creando Joel, David y Bryan...');
+        // 1. PROTAGONISTAS
         const protagonists = [];
         const protoData = [
             { username: 'JoelMoreno', email: 'joel@nightup.com', firstName: 'Joel', lastName: 'Moreno' },
@@ -190,22 +300,22 @@ export async function seedDemoData() {
                 location: { type: 'Point', coordinates: i === 2 ? [2.1686, 41.3874] : [-3.7038, 40.4168] },
                 securityQuestion: 'security.question.pet_name',
                 securityAnswer: 'Fluffy',
-                authProvider: 'local'
+                authProvider: 'local',
+                friends: []
             });
             await user.save();
             protagonists.push(user);
         }
-
         const [joel, david, bryan] = protagonists;
 
-        // --- USUARIOS ALEATORIOS ---
-        console.log('👥 Creando 100 usuarios con nombres REALES...');
+        // 2. USUARIOS RANDOM
         const randomUsers = [];
         for (let i = 0; i < 100; i++) {
             const firstName = randomFromArray(FIRST_NAMES);
             const lastName = randomFromArray(LAST_NAMES);
             const username = `${firstName}${lastName}_${i}`;
-            const img = getVariedImage(USER_AVATARS, i + 5);
+            const img = getVariedImage(USER_AVATARS, i + 10);
+            const targetCity = randomFromArray(SPANISH_CITIES);
 
             const user = new User({
                 username,
@@ -216,81 +326,77 @@ export async function seedDemoData() {
                 birthday: new Date('1992-01-01'),
                 firstName,
                 lastName,
+                city: targetCity.name,
+                location: { type: 'Point', coordinates: targetCity.coords },
                 active: true,
                 role: 'user',
                 onboardingCompleted: true,
                 securityQuestion: 'security.question.pet_name',
-                securityAnswer: 'a'
+                securityAnswer: 'a',
+                friends: []
             });
             await user.save();
             randomUsers.push(user);
         }
 
-        // --- AMISTADES ---
-        console.log('🤝 Estableciendo red de amistades...');
-        const createFriendship = async (u1: any, u2: any) => {
-            await Friendship.create({ requester: u1._id, recipient: u2._id, status: 'accepted' });
-        };
+        // 3. AMISTADES
+        await makeFriends(joel, david);
+        await makeFriends(david, bryan);
+        await makeFriends(bryan, joel);
 
-        await createFriendship(joel, david);
-        await createFriendship(david, bryan);
-        await createFriendship(bryan, joel);
+        for (const friend of randomUsers.slice(0, 20)) await makeFriends(joel, friend);
+        for (const friend of randomUsers.slice(20, 40)) await makeFriends(david, friend);
+        for (const friend of randomUsers.slice(40, 60)) await makeFriends(bryan, friend);
 
-        const joelFriends = randomUsers.slice(0, 20);
-        const davidFriends = randomUsers.slice(20, 40);
-        const bryanFriends = randomUsers.slice(40, 60);
+        // 4. POSTS CON LIKES Y COMENTARIOS
+        const friendsOfProtagonists = randomUsers.slice(0, 60);
 
-        for (const f of joelFriends) await createFriendship(joel, f);
-        for (const f of davidFriends) await createFriendship(david, f);
-        for (const f of bryanFriends) await createFriendship(bryan, f);
+        for (let i = 0; i < friendsOfProtagonists.length; i++) {
+            const user = friendsOfProtagonists[i];
+            const numPosts = Math.floor(Math.random() * 3) + 1;
 
-        const allSpecificFriends = [...joelFriends, ...davidFriends, ...bryanFriends];
+            for (let p = 0; p < numPosts; p++) {
+                const isPartyPost = Math.random() > 0.5;
+                const caption = isPartyPost ? randomFromArray(PARTY_CAPTIONS) : randomFromArray(CHILL_CAPTIONS);
+                const photo = isPartyPost ? getVariedImage(PARTY_PHOTOS, i + p) : getVariedImage(CHILL_PHOTOS, i + p);
 
-        // --- POSTS ---
-        console.log('📱 Creando posts realistas con comentarios y likes...');
+                // LIKES
+                const numLikes = Math.floor(Math.random() * 20) + 2;
+                const likers = [];
+                for (let j = 0; j < numLikes; j++) likers.push(randomFromArray(randomUsers)._id);
 
-        for (let i = 0; i < allSpecificFriends.length; i++) {
-            const user = allSpecificFriends[i];
-            const isPartyPost = Math.random() > 0.5;
+                // COMENTARIOS (NUEVO)
+                const numComments = Math.floor(Math.random() * 6); // Entre 0 y 5 comentarios
+                const postComments = [];
+                for (let c = 0; c < numComments; c++) {
+                    const commenter = randomFromArray(randomUsers);
+                    const commentText = isPartyPost ? randomFromArray(PARTY_COMMENTS) : randomFromArray(CHILL_COMMENTS);
 
-            const caption = isPartyPost ? randomFromArray(PARTY_CAPTIONS) : randomFromArray(CHILL_CAPTIONS);
-            const photo = isPartyPost ? randomFromArray(PARTY_PHOTOS) : randomFromArray(CHILL_PHOTOS);
-
-            // Likes de usuarios random
-            const numLikes = Math.floor(Math.random() * 50) + 5;
-            const likers = [];
-            for (let j = 0; j < numLikes; j++) {
-                likers.push(randomFromArray(randomUsers)._id);
-            }
-
-            // Comentarios de usuarios random
-            const numComments = Math.floor(Math.random() * 5) + 1;
-            const comments = [];
-            for (let j = 0; j < numComments; j++) {
-                comments.push({
-                    user: randomFromArray(randomUsers)._id,
-                    text: randomFromArray(COMMENT_SAMPLES),
-                    createdAt: new Date()
-                });
-            }
-
-            await new Post({
-                user: user._id,
-                caption,
-                media: [{ type: 'image', url: photo }],
-                isPublic: true,
-                likes: likers,
-                comments: comments,
-                music: {
-                    title: isPartyPost ? 'Club Banger' : 'Lofi Beats',
-                    artist: 'NightUp Artist',
-                    cover: isPartyPost ? PARTY_PHOTOS[0] : CHILL_PHOTOS[0]
+                    postComments.push({
+                        user: commenter._id,
+                        text: commentText,
+                        createdAt: new Date(Date.now() - Math.floor(Math.random() * 86400000))
+                    });
                 }
-            }).save();
+
+                await new Post({
+                    user: user._id,
+                    caption,
+                    media: [{ type: 'image', url: photo }],
+                    isPublic: true,
+                    likes: likers,
+                    comments: postComments, // AÑADIDO
+                    createdAt: new Date(Date.now() - Math.floor(Math.random() * 1000000000)),
+                    music: {
+                        title: isPartyPost ? 'Club Banger' : 'Lofi Beats',
+                        artist: 'NightUp Artist',
+                        cover: isPartyPost ? PARTY_PHOTOS[0] : CHILL_PHOTOS[0]
+                    }
+                }).save();
+            }
         }
 
-        // --- NEGOCIOS Y EVENTOS ---
-        console.log('🏢 Creando negocios y eventos...');
+        // 5. NEGOCIOS
         const businesses = [];
         for (let i = 0; i < REAL_BUSINESSES.length; i++) {
             const biz = new Business({
@@ -304,28 +410,54 @@ export async function seedDemoData() {
             businesses.push({ doc: biz, city: REAL_BUSINESSES[i].city });
         }
 
-        for (let i = 0; i < 50; i++) {
+        // 6. EVENTOS + WEAVIATE
+        const createdEvents = [];
+        for (let i = 0; i < 100; i++) {
             const biz = randomFromArray(businesses);
-            await new Event({
+            const numLikes = Math.floor(Math.random() * 80) + 10;
+            const likedByUsers = randomUsers.sort(() => 0.5 - Math.random()).slice(0, numLikes).map(u => u._id);
+
+            const event = await new Event({
                 name: `Noche de ${randomFromArray(EVENT_CATEGORIES)} @ ${biz.doc.name} #${i}`,
-                description: 'La mejor fiesta.',
-                schedule: new Date(Date.now() + 86400000 * (i % 7)),
+                description: 'La mejor fiesta de la semana.',
+                schedule: new Date(Date.now() + 86400000 * (i % 30)),
                 location: biz.doc.location,
                 city: biz.city,
                 category: randomFromArray(EVENT_CATEGORIES),
                 capacity: 500,
                 price: 20,
-                image: getVariedImage(BUSINESS_PHOTOS, i + 10),
+                image: getVariedImage(PARTY_PHOTOS, i + 15),
                 active: true,
-                participants: randomUsers.slice(0, 5).map(u => u._id)
+                participants: randomUsers.slice(0, 10).map(u => u._id),
+                likes: numLikes,
+                likedBy: likedByUsers
             }).save();
+            createdEvents.push(event);
+        }
+
+        // Batching Weaviate
+        const BATCH_SIZE = 10;
+        for (let i = 0; i < createdEvents.length; i += BATCH_SIZE) {
+            const batch = createdEvents.slice(i, i + BATCH_SIZE);
+            let batcher = weaviateClient.batch.objectsBatcher();
+            for (const event of batch) {
+                batcher = batcher.withObject({
+                    class: 'Event',
+                    properties: {
+                        eventId: event._id.toString(),
+                        name: event.name,
+                        description: event.description,
+                        category: event.category
+                    }
+                });
+            }
+            await batcher.do();
+            process.stdout.write('.');
         }
 
         await mongoose.disconnect();
-        console.log('✨ SEEDING COMPLETADO CON ÉXITO ✨');
         process.exit(0);
     } catch (err) {
-        console.error('❌ ERROR:', err);
         process.exit(1);
     }
 }

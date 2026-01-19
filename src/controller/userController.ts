@@ -566,6 +566,14 @@ export async function updateMyProfile(req: Request, res: Response): Promise<Resp
             }
         }
 
+        if (userData.isVisibleOnMap !== undefined) {
+            if (typeof userData.isVisibleOnMap === 'string') {
+                filteredData.isVisibleOnMap = userData.isVisibleOnMap === 'true';
+            } else {
+                filteredData.isVisibleOnMap = Boolean(userData.isVisibleOnMap);
+            }
+        }
+
         if (Object.keys(filteredData).length === 0) {
             return res.status(400).json({ message: 'No valid fields to update provided' });
         }

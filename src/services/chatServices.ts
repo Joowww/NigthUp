@@ -17,6 +17,13 @@ export class ChatService {
         path: 'participants.participant',
         select: 'name username avatar email'
       })
+      .populate({
+        path: 'groupPolls',
+        populate: {
+          path: 'creator',
+          select: 'username email avatar'
+        }
+      })
       .sort({ updatedAt: -1 });
 
     const formattedConversations = await Promise.all(conversations.map(async (convo) => {
@@ -63,6 +70,54 @@ export class ChatService {
         readBy: { $ne: userObjectId }
       });
 
+      // const groupPolls = isGroup && convo.groupPolls ? convo.groupPolls.map((poll: any) => ({
+      //   id: poll._id.toString(),
+      //   question: poll.question,
+      //   options: poll.options.map((opt: any) => ({
+      //     text: opt.text,
+      //     voters: opt.voters.map((v: any) => v.toString())
+      //   })),
+      //   creator: poll.creator ? {
+      //     id: poll.creator._id?.toString() || poll.creator.toString(),
+      //     username: poll.creator.username || 'Usuario',
+      //     email: poll.creator.email || ''
+      //   } : null,
+      //   isActive: poll.isActive,
+      //   expiresAt: poll.expiresAt,
+      //   createdAt: poll.createdAt
+      // })) : undefined;
+
+      const groupPolls = isGroup && convo.groupPolls ? convo.groupPolls.map((poll: any) => {
+        console.log('🔍 DEBUG chatServices - poll._id:', poll._id);
+        console.log('🔍 DEBUG chatServices - typeof poll._id:', typeof poll._id);
+
+        const pollId = poll._id?.toString() || '';
+        console.log('🔍 DEBUG chatServices - pollId después de toString():', pollId);
+        console.log('🔍 DEBUG chatServices - pollId.length:', pollId.length);
+
+        const result = {
+          id: pollId,
+          question: poll.question,
+          options: poll.options.map((opt: any) => ({
+            text: opt.text,
+            voters: opt.voters.map((v: any) => v.toString())
+          })),
+          creator: poll.creator ? {
+            id: poll.creator._id?.toString() || poll.creator.toString(),
+            username: poll.creator.username || 'Usuario',
+            email: poll.creator.email || ''
+          } : null,
+          isActive: poll.isActive,
+          expiresAt: poll.expiresAt,
+          createdAt: poll.createdAt
+        };
+
+        console.log('🔍 DEBUG chatServices - result.id:', result.id);
+        console.log('🔍 DEBUG chatServices - result completo:', JSON.stringify(result, null, 2));
+
+        return result;
+      }) : undefined;
+
       return {
         id: convo._id,
         isGroup,
@@ -73,7 +128,8 @@ export class ChatService {
         participants: convo.participants
           .filter((p: any) => p.participant)
           .map((p: any) => p.participant._id.toString()),
-        unreadCount
+        unreadCount,
+        ...(isGroup && groupPolls ? { groupPolls } : {})
       };
     }));
 
@@ -247,10 +303,24 @@ export class ChatService {
       throw new Error('No tienes acceso a esta conversación');
     }
 
+    const bannedWords = [
+      'puta', 'mierda', 'cabron', 'cabrón', 'joder', 'gilipollas', 'capullo', 'imbécil',
+      'fuck', 'shit', 'bitch', 'asshole', 'dick', 'pussy', 'bastard'
+    ];
+
+    let cleanText = data.text || '';
+
+    bannedWords.forEach(word => {
+      const regex = new RegExp(`\\b${word}\\b`, 'gi');
+      cleanText = cleanText.replace(regex, (match) => {
+        return match[0] + '*'.repeat(match.length - 1);
+      });
+    });
+
     const message = await Message.create({
       conversation: data.conversationId,
       sender: data.senderId,
-      text: data.text || '',
+      text: cleanText,
       messageType: data.messageType || 'text',
       imageUrl: data.imageUrl,
       audioUrl: data.audioUrl,

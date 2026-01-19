@@ -160,7 +160,7 @@ const userSchema = new Schema<IUser>({
             default: [0, 0]
         }
     },
-    isVisibleOnMap: { type: Boolean, default: true },
+    isVisibleOnMap: { type: Boolean, default: true, index: true },
     lastLocationUpdate: { type: Date },
     bio: {
         type: String,

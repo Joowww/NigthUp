@@ -27,7 +27,7 @@ export class PostService {
                     }
                 ]
             })
-                .populate('user', 'username avatar coverPhoto bio')
+                .populate('user', 'username avatar profilePicture coverPhoto bio')
                 .populate('event', 'name schedule location category image')
                 .populate('tags', 'name color')
                 .sort({
@@ -64,7 +64,7 @@ export class PostService {
                 user: { $in: allUserIds },
                 event: { $exists: false }
             })
-                .populate('user', 'username avatar coverPhoto bio isOnline lastSeen')
+                .populate('user', 'username avatar profilePicture coverPhoto bio isOnline lastSeen')
                 .populate('tags', 'name color')
                 .sort({
                     createdAt: -1,
@@ -98,7 +98,7 @@ export class PostService {
                     { event: { $exists: true, $ne: null }, 'likes': { $size: { $gte: 10 } } }
                 ]
             })
-                .populate('user', 'username avatar coverPhoto bio')
+                .populate('user', 'username avatar profilePicture coverPhoto bio')
                 .populate('event', 'name schedule location category image')
                 .populate('tags', 'name color')
                 .sort({
@@ -163,7 +163,7 @@ export class PostService {
     async getEventPosts(eventId: string, skip: number = 0, limit: number = 10): Promise<PostFeedResponse> {
         try {
             const posts = await Post.find({ event: eventId })
-                .populate('user', 'username avatar')
+                .populate('user', 'username avatar profilePicture')
                 .populate('event', 'name schedule location image')
                 .populate('tags', 'name color')
                 .sort({ createdAt: -1 })
@@ -184,7 +184,7 @@ export class PostService {
                 user: userId,
                 event: { $exists: false }
             })
-                .populate('user', 'username avatar coverPhoto bio')
+                .populate('user', 'username avatar profilePicture coverPhoto bio')
                 .populate('tags', 'name color')
                 .sort({ createdAt: -1 })
                 .skip(skip)
@@ -204,7 +204,7 @@ export class PostService {
     async getPostById(postId: string, currentUserId?: string): Promise<any | null> {
         try {
             const post = await Post.findById(postId)
-                .populate('user', 'username avatar coverPhoto bio isOnline lastSeen')
+                .populate('user', 'username avatar profilePicture coverPhoto bio isOnline lastSeen')
                 .populate('event', 'name schedule location category image')
                 .populate('tags', 'name color')
                 .populate('likes', 'username avatar')
