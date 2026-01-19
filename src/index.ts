@@ -58,13 +58,15 @@ const io = new Server(httpServer, {
                 "http://localhost:4200",
                 "http://localhost:5173",
                 "http://localhost:3000",
-                "http://localhost:5000"
+                "http://localhost:5000",
+                'https://ea1.upc.edu',
+                'https://ea1-api.upc.edu'
             ].filter(Boolean);
 
             if (!origin || allowedOrigins.includes(origin)) {
                 callback(null, true);
             } else {
-                callback(null, true); // Permitir todo por ahora para evitar problemas de bloqueo
+                callback(null, true);
             }
         },
         methods: ["GET", "POST", "PUT", "DELETE", "PATCH"],
@@ -73,7 +75,7 @@ const io = new Server(httpServer, {
 initializeSocket(io);
 
 
-mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/NIGHTUP_BBDD')
     .then(async () => {
         console.log('SUCCESSFUL CONNECTION TO MONGODB DATABASE');
 

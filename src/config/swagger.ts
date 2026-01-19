@@ -12,7 +12,12 @@ const options: swaggerJSDoc.Options = {
         },
         servers: [
             {
+                url: 'https://ea1-api.upc.edu',
+                description: 'Production server',
+            },
+            {
                 url: 'http://localhost:3000',
+                description: 'Local development server',
             },
         ],
         components: {
@@ -127,23 +132,9 @@ const options: swaggerJSDoc.Options = {
         ],
     },
     apis: [
-        './src/routes/userRoutes.ts',
-        './src/routes/eventRoutes.ts',
-        './src/routes/businessRoutes.ts',
-        './src/routes/ratingRoutes.ts',
-        './src/routes/tagRoutes.ts',
-        './src/routes/userInterestRoutes.ts',
-        './src/routes/userTrustRoutes.ts',
-        './src/routes/friendshipRoutes.ts',
-        './src/routes/userStatusRoutes.ts',
-        './src/routes/mapRoutes.ts',
-        './src/routes/panicButtonRoutes.ts',
-        './src/routes/calendarEventRoutes.ts',
-        './src/routes/pollRoutes.ts',
-        './src/routes/eventTinderRoutes.ts',
-        './src/routes/chatRoutes.ts',
-        './src/routes/postRoutes.ts',
-        './src/routes/aiRoutes.ts'
+        './src/routes/*.ts',
+        './dist/routes/*.js',
+        './routes/*.js'
     ],
 };
 
