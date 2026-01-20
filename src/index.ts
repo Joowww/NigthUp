@@ -10,6 +10,7 @@ import { setupSwagger } from './config/swagger';
 import http from 'http';
 import { Server } from 'socket.io';
 import { initializeSocket } from './socket/socketHandler';
+import { seedDemoData } from './scripts/seedDemoData';
 
 import userRoutes from './routes/userRoutes';
 import eventRoutes from './routes/eventRoutes';
@@ -58,8 +59,11 @@ const io = new Server(httpServer, {
 initializeSocket(io);
 
 
-mongoose.connect('mongodb://localhost:27017/NIGHTUP_BBDD')
+mongoose.connect(process.env.MONGO_URI || 'mongodb://localhost:27017/NIGHTUP_BBDD')
     .then(async () => {
+        // Run seed check
+        await seedDemoData();
+
         app.use('/api/user', userRoutes);
         app.use('/api/event', eventRoutes);
         app.use('/api/business', businessRoutes);

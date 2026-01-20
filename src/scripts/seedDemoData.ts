@@ -238,8 +238,24 @@ async function makeFriends(user1: any, user2: any) {
 export async function seedDemoData() {
     try {
         const mongoUri = process.env.MONGO_URI || 'mongodb://localhost:27017/NIGHTUP_BBDD';
-        if (mongoose.connection.readyState !== 0) await mongoose.disconnect();
-        await mongoose.connect(mongoUri);
+
+        // Connect only if not connected
+        if (mongoose.connection.readyState === 0) {
+            await mongoose.connect(mongoUri);
+        }
+
+        // CHECK IF DATA EXISTS
+        const userCount = await User.countDocuments();
+        if (userCount > 0) {
+            console.log('⚠️  Database already populated. Skipping seed.');
+            if (require.main === module) {
+                await mongoose.disconnect();
+                process.exit(0);
+            }
+            return;
+        }
+
+        console.log('🌱 Starting database seed...');
 
         // Configuración Weaviate
         const weaviateClient = weaviate.client({
@@ -247,6 +263,7 @@ export async function seedDemoData() {
             host: process.env.WEAVIATE_HOST || 'localhost:8080',
         });
 
+        /* ... Weaviate setup skipped for brevity if unchanged, but included below ... */
         try {
             await weaviateClient.schema.classDeleter().withClassName('Event').do();
         } catch (e) { /* Ignorar si no existe */ }
@@ -268,9 +285,12 @@ export async function seedDemoData() {
                 { name: 'category', dataType: ['string'], moduleConfig: { 'text2vec-transformers': { skip: false } } }
             ]
         };
-        await weaviateClient.schema.classCreator().withClass(eventClassObj).do();
+        try {
+            await weaviateClient.schema.classCreator().withClass(eventClassObj).do();
+        } catch (e) { console.error("Weaviate schema creation error (might exist):", e); }
 
-        // Limpieza
+
+        // Limpieza (SOLO SI LLEGAMOS AQUI ES QUE NO HABIA USUARIOS, PERO LIMPIAMOS POR SEGURIDAD)
         const collections = Object.keys(mongoose.connection.collections);
         for (const c of collections) await mongoose.connection.collections[c].deleteMany({});
 
@@ -455,11 +475,26 @@ export async function seedDemoData() {
             process.stdout.write('.');
         }
 
-        await mongoose.disconnect();
-        process.exit(0);
+        console.log('\n✅ Database Seeded Successfully!');
+
+        // Only exit if run directly
+        if (require.main === module) {
+            await mongoose.disconnect();
+            process.exit(0);
+        }
+
     } catch (err) {
-        process.exit(1);
+        console.error(err);
+        // Only exit if run directly
+        if (require.main === module) {
+            process.exit(1);
+        } else {
+            throw err; // Re-throw so importing app knows it failed
+        }
     }
 }
 
-seedDemoData();
+// Exec only if run directly
+if (require.main === module) {
+    seedDemoData();
+}
