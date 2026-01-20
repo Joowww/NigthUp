@@ -244,23 +244,12 @@ export async function seedDemoData() {
             await mongoose.connect(mongoUri);
         }
 
-        // CHECK IF DATA EXISTS
-        const userCount = await User.countDocuments();
-        if (userCount > 0) {
-            console.log('⚠️  Database already populated. Skipping seed.');
-            if (require.main === module) {
-                await mongoose.disconnect();
-                process.exit(0);
-            }
-            return;
-        }
-
         console.log('🌱 Starting database seed...');
 
-        // Configuración Weaviate
+        // Configuración Weaviate - Default to weaviate:8081 for Docker production
         const weaviateClient = weaviate.client({
             scheme: process.env.WEAVIATE_SCHEME || 'http',
-            host: process.env.WEAVIATE_HOST || 'localhost:8080',
+            host: process.env.WEAVIATE_HOST || 'weaviate:8081',
         });
 
         /* ... Weaviate setup skipped for brevity if unchanged, but included below ... */
